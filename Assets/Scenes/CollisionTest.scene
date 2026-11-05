@@ -1,0 +1,2650 @@
+{
+    "Version": 4,
+    "World": {
+        "PersistentLevel": {
+            "Actors": [
+                {
+                    "Class": "AStaticMeshActor",
+                    "Components": [
+                        {
+                            "Class": "USceneComponent",
+                            "Name": "DefaultSceneRoot",
+                            "Parent": "",
+                            "Properties": {
+                                "Transform": {
+                                    "Location": {
+                                        "X": 21.57536506652832,
+                                        "Y": 107.73785400390625,
+                                        "Z": 7.840694904327393
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                }
+                            }
+                        },
+                        {
+                            "Class": "UStaticMeshComponent",
+                            "Name": "UStaticMeshComponent",
+                            "OverrideMaterials": [],
+                            "Parent": "DefaultSceneRoot",
+                            "Properties": {
+                                "ShowBeginOverlapLog": false,
+                                "ShowEndOverlapLog": false,
+                                "ShowHitLog": false,
+                                "StaticMesh": "Cube",
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bBlockComponet": false,
+                                "bCastShadow": true,
+                                "bGenerateOverlapEvents": true,
+                                "bReceiveShadow": true,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "USphereComponent",
+                            "Name": "RedSphereCollision",
+                            "Parent": "DefaultSceneRoot",
+                            "Properties": {
+                                "ShapeColor": {
+                                    "A": 255,
+                                    "B": 3,
+                                    "G": 3,
+                                    "R": 255
+                                },
+                                "ShowBeginOverlapLog": true,
+                                "ShowEndOverlapLog": true,
+                                "ShowHitLog": false,
+                                "SphereRadius": 1.2999999523162842,
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bBlockComponet": false,
+                                "bCastShadow": false,
+                                "bDrawOnlyIfSelected": false,
+                                "bGenerateOverlapEvents": true,
+                                "bIsGameHidden": false,
+                                "bReceiveShadow": false,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UScriptComponent",
+                            "Name": "UScriptComponent_0",
+                            "Parent": "",
+                            "Properties": {
+                                "ScriptPath": "Assets/Scripts/Actors/TestActor.lua"
+                            }
+                        }
+                    ],
+                    "Name": "RedCube",
+                    "Properties": {},
+                    "RootComponent": "DefaultSceneRoot"
+                },
+                {
+                    "Class": "AStaticMeshActor",
+                    "Components": [
+                        {
+                            "Class": "UStaticMeshComponent",
+                            "Name": "UStaticMeshComponent",
+                            "OverrideMaterials": [],
+                            "Parent": "BlackSphereCollision",
+                            "Properties": {
+                                "ShowBeginOverlapLog": false,
+                                "ShowEndOverlapLog": false,
+                                "ShowHitLog": false,
+                                "StaticMesh": "Cube",
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": -0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bBlockComponet": false,
+                                "bCastShadow": true,
+                                "bGenerateOverlapEvents": true,
+                                "bReceiveShadow": true,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "USphereComponent",
+                            "Name": "BlackSphereCollision",
+                            "Parent": "",
+                            "Properties": {
+                                "ShapeColor": {
+                                    "A": 255,
+                                    "B": 0,
+                                    "G": 0,
+                                    "R": 0
+                                },
+                                "ShowBeginOverlapLog": false,
+                                "ShowEndOverlapLog": false,
+                                "ShowHitLog": false,
+                                "SphereRadius": 1.399999976158142,
+                                "Transform": {
+                                    "Location": {
+                                        "X": 28.795513153076172,
+                                        "Y": 142.85845947265625,
+                                        "Z": 7.682967662811279
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bBlockComponet": true,
+                                "bCastShadow": false,
+                                "bDrawOnlyIfSelected": false,
+                                "bGenerateOverlapEvents": false,
+                                "bIsGameHidden": false,
+                                "bReceiveShadow": false,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UProjectileMovementComponent",
+                            "Name": "UProjectileMovementComponent_0",
+                            "Parent": "",
+                            "Properties": {
+                                "Bounciness": 0.6000000238418579,
+                                "Friction": 0.20000000298023224,
+                                "Gravity": 0.0,
+                                "HomingAccelerationMagnitude": 0.0,
+                                "InintialSpeed": 50.0,
+                                "MaxSpeed": 10000.0,
+                                "ProjectileGravityScale": 0.0,
+                                "Velocity": {
+                                    "X": -100.0,
+                                    "Y": 0.0,
+                                    "Z": 0.0
+                                },
+                                "bConstrainToPlane": false,
+                                "bIsHomingProjectile": false,
+                                "bRotationFollowsVelocity": false,
+                                "bShouldBounce": false,
+                                "bSimulationEnabled": true,
+                                "bSweepCollision": true
+                            }
+                        },
+                        {
+                            "Class": "UScriptComponent",
+                            "Name": "UScriptComponent_0",
+                            "Parent": "",
+                            "Properties": {
+                                "ScriptPath": "Assets/Scripts/Actors/TestActor.lua"
+                            }
+                        }
+                    ],
+                    "Name": "BlackCube",
+                    "Properties": {},
+                    "RootComponent": "BlackSphereCollision"
+                },
+                {
+                    "Class": "AStaticMeshActor",
+                    "Components": [
+                        {
+                            "Class": "UStaticMeshComponent",
+                            "Name": "UStaticMeshComponent",
+                            "OverrideMaterials": [],
+                            "Parent": "RedSphereCollision",
+                            "Properties": {
+                                "ShowBeginOverlapLog": false,
+                                "ShowEndOverlapLog": false,
+                                "ShowHitLog": false,
+                                "StaticMesh": "Cube",
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": -0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bBlockComponet": false,
+                                "bCastShadow": true,
+                                "bGenerateOverlapEvents": true,
+                                "bReceiveShadow": true,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "USphereComponent",
+                            "Name": "RedSphereCollision",
+                            "Parent": "",
+                            "Properties": {
+                                "ShapeColor": {
+                                    "A": 255,
+                                    "B": 3,
+                                    "G": 3,
+                                    "R": 255
+                                },
+                                "ShowBeginOverlapLog": false,
+                                "ShowEndOverlapLog": false,
+                                "ShowHitLog": false,
+                                "SphereRadius": 1.2000000476837158,
+                                "Transform": {
+                                    "Location": {
+                                        "X": 21.676828384399414,
+                                        "Y": 142.955810546875,
+                                        "Z": 7.681808948516846
+                                    },
+                                    "Rotation": {
+                                        "Pitch": -0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bBlockComponet": true,
+                                "bCastShadow": false,
+                                "bDrawOnlyIfSelected": false,
+                                "bGenerateOverlapEvents": false,
+                                "bIsGameHidden": false,
+                                "bReceiveShadow": false,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UScriptComponent",
+                            "Name": "UScriptComponent_0",
+                            "Parent": "",
+                            "Properties": {
+                                "ScriptPath": "Assets/Scripts/Actors/TestActor.lua"
+                            }
+                        }
+                    ],
+                    "Name": "RedSphereCollision",
+                    "Properties": {},
+                    "RootComponent": "RedSphereCollision"
+                },
+                {
+                    "Class": "AStaticMeshActor",
+                    "Components": [
+                        {
+                            "Class": "USceneComponent",
+                            "Name": "DefaultSceneRoot",
+                            "Parent": "",
+                            "Properties": {
+                                "Transform": {
+                                    "Location": {
+                                        "X": 29.471099853515625,
+                                        "Y": 108.23340606689453,
+                                        "Z": 7.675517559051514
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                }
+                            }
+                        },
+                        {
+                            "Class": "UStaticMeshComponent",
+                            "Name": "UStaticMeshComponent",
+                            "OverrideMaterials": [],
+                            "Parent": "DefaultSceneRoot",
+                            "Properties": {
+                                "ShowBeginOverlapLog": false,
+                                "ShowEndOverlapLog": false,
+                                "ShowHitLog": false,
+                                "StaticMesh": "Cube",
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bBlockComponet": false,
+                                "bCastShadow": true,
+                                "bGenerateOverlapEvents": true,
+                                "bReceiveShadow": true,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "USphereComponent",
+                            "Name": "BlackSphereCollision",
+                            "Parent": "DefaultSceneRoot",
+                            "Properties": {
+                                "ShapeColor": {
+                                    "A": 255,
+                                    "B": 0,
+                                    "G": 0,
+                                    "R": 0
+                                },
+                                "ShowBeginOverlapLog": true,
+                                "ShowEndOverlapLog": true,
+                                "ShowHitLog": false,
+                                "SphereRadius": 1.2000000476837158,
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bBlockComponet": false,
+                                "bCastShadow": false,
+                                "bDrawOnlyIfSelected": false,
+                                "bGenerateOverlapEvents": true,
+                                "bIsGameHidden": false,
+                                "bReceiveShadow": false,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UProjectileMovementComponent",
+                            "Name": "UProjectileMovementComponent_0",
+                            "Parent": "",
+                            "Properties": {
+                                "Bounciness": 0.6000000238418579,
+                                "Friction": 0.20000000298023224,
+                                "Gravity": 0.0,
+                                "HomingAccelerationMagnitude": 0.0,
+                                "InintialSpeed": 100.0,
+                                "MaxSpeed": 10000.0,
+                                "ProjectileGravityScale": 0.0,
+                                "Velocity": {
+                                    "X": -100.0,
+                                    "Y": 0.0,
+                                    "Z": 0.0
+                                },
+                                "bConstrainToPlane": false,
+                                "bIsHomingProjectile": false,
+                                "bRotationFollowsVelocity": false,
+                                "bShouldBounce": false,
+                                "bSimulationEnabled": true,
+                                "bSweepCollision": true
+                            }
+                        },
+                        {
+                            "Class": "UScriptComponent",
+                            "Name": "UScriptComponent_0",
+                            "Parent": "",
+                            "Properties": {
+                                "ScriptPath": "Assets/Scripts/Actors/TestActor.lua"
+                            }
+                        }
+                    ],
+                    "Name": "AStaticMeshActor_3",
+                    "Properties": {},
+                    "RootComponent": "DefaultSceneRoot"
+                },
+                {
+                    "Class": "AStaticMeshActor",
+                    "Components": [
+                        {
+                            "Class": "UStaticMeshComponent",
+                            "Name": "UStaticMeshComponent",
+                            "OverrideMaterials": [],
+                            "Parent": "RedSphereCollision",
+                            "Properties": {
+                                "ShowBeginOverlapLog": false,
+                                "ShowEndOverlapLog": false,
+                                "ShowHitLog": false,
+                                "StaticMesh": "Cube",
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": -0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bBlockComponet": false,
+                                "bCastShadow": true,
+                                "bGenerateOverlapEvents": true,
+                                "bReceiveShadow": true,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "USphereComponent",
+                            "Name": "RedSphereCollision",
+                            "Parent": "",
+                            "Properties": {
+                                "ShapeColor": {
+                                    "A": 255,
+                                    "B": 3,
+                                    "G": 3,
+                                    "R": 255
+                                },
+                                "ShowBeginOverlapLog": true,
+                                "ShowEndOverlapLog": true,
+                                "ShowHitLog": false,
+                                "SphereRadius": 1.2000000476837158,
+                                "Transform": {
+                                    "Location": {
+                                        "X": 21.634309768676758,
+                                        "Y": 112.59403228759766,
+                                        "Z": 7.6985650062561035
+                                    },
+                                    "Rotation": {
+                                        "Pitch": -0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bBlockComponet": false,
+                                "bCastShadow": false,
+                                "bDrawOnlyIfSelected": false,
+                                "bGenerateOverlapEvents": true,
+                                "bIsGameHidden": false,
+                                "bReceiveShadow": false,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UScriptComponent",
+                            "Name": "UScriptComponent_0",
+                            "Parent": "",
+                            "Properties": {
+                                "ScriptPath": "Assets/Scripts/Actors/TestActor.lua"
+                            }
+                        }
+                    ],
+                    "Name": "RedSphereCollision_Box",
+                    "Properties": {},
+                    "RootComponent": "RedSphereCollision"
+                },
+                {
+                    "Class": "AStaticMeshActor",
+                    "Components": [
+                        {
+                            "Class": "UStaticMeshComponent",
+                            "Name": "UStaticMeshComponent",
+                            "OverrideMaterials": [],
+                            "Parent": "BlackBoxCollision",
+                            "Properties": {
+                                "ShowBeginOverlapLog": false,
+                                "ShowEndOverlapLog": false,
+                                "ShowHitLog": false,
+                                "StaticMesh": "Cube",
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": -0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bBlockComponet": false,
+                                "bCastShadow": true,
+                                "bGenerateOverlapEvents": true,
+                                "bReceiveShadow": true,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UProjectileMovementComponent",
+                            "Name": "UProjectileMovementComponent_0",
+                            "Parent": "",
+                            "Properties": {
+                                "Bounciness": 0.6000000238418579,
+                                "Friction": 0.20000000298023224,
+                                "Gravity": 0.0,
+                                "HomingAccelerationMagnitude": 0.0,
+                                "InintialSpeed": 50.0,
+                                "MaxSpeed": 10000.0,
+                                "ProjectileGravityScale": 0.0,
+                                "Velocity": {
+                                    "X": -100.0,
+                                    "Y": 0.0,
+                                    "Z": 0.0
+                                },
+                                "bConstrainToPlane": false,
+                                "bIsHomingProjectile": false,
+                                "bRotationFollowsVelocity": false,
+                                "bShouldBounce": false,
+                                "bSimulationEnabled": true,
+                                "bSweepCollision": true
+                            }
+                        },
+                        {
+                            "Class": "UScriptComponent",
+                            "Name": "UScriptComponent_0",
+                            "Parent": "",
+                            "Properties": {
+                                "ScriptPath": "Assets/Scripts/Actors/TestActor.lua"
+                            }
+                        },
+                        {
+                            "Class": "UBoxComponent",
+                            "Name": "BlackBoxCollision",
+                            "Parent": "",
+                            "Properties": {
+                                "BoxExtent": {
+                                    "X": 1.399999976158142,
+                                    "Y": 1.7000000476837158,
+                                    "Z": 1.2999999523162842
+                                },
+                                "ShapeColor": {
+                                    "A": 255,
+                                    "B": 0,
+                                    "G": 0,
+                                    "R": 0
+                                },
+                                "ShowBeginOverlapLog": true,
+                                "ShowEndOverlapLog": true,
+                                "ShowHitLog": false,
+                                "Transform": {
+                                    "Location": {
+                                        "X": 28.02716064453125,
+                                        "Y": 112.49398040771484,
+                                        "Z": 7.678958415985107
+                                    },
+                                    "Rotation": {
+                                        "Pitch": -0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bBlockComponet": false,
+                                "bCastShadow": false,
+                                "bDrawOnlyIfSelected": false,
+                                "bGenerateOverlapEvents": true,
+                                "bIsGameHidden": false,
+                                "bReceiveShadow": false,
+                                "bVisible": true
+                            }
+                        }
+                    ],
+                    "Name": "BlackBoxCollision",
+                    "Properties": {},
+                    "RootComponent": "BlackBoxCollision"
+                },
+                {
+                    "Class": "AStaticMeshActor",
+                    "Components": [
+                        {
+                            "Class": "UStaticMeshComponent",
+                            "Name": "UStaticMeshComponent",
+                            "OverrideMaterials": [],
+                            "Parent": "RedSphereCollision",
+                            "Properties": {
+                                "ShowBeginOverlapLog": false,
+                                "ShowEndOverlapLog": false,
+                                "ShowHitLog": false,
+                                "StaticMesh": "Cube",
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": -0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bBlockComponet": false,
+                                "bCastShadow": true,
+                                "bGenerateOverlapEvents": true,
+                                "bReceiveShadow": true,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "USphereComponent",
+                            "Name": "RedSphereCollision",
+                            "Parent": "",
+                            "Properties": {
+                                "ShapeColor": {
+                                    "A": 255,
+                                    "B": 3,
+                                    "G": 3,
+                                    "R": 255
+                                },
+                                "ShowBeginOverlapLog": true,
+                                "ShowEndOverlapLog": true,
+                                "ShowHitLog": false,
+                                "SphereRadius": 1.2000000476837158,
+                                "Transform": {
+                                    "Location": {
+                                        "X": 21.634309768676758,
+                                        "Y": 121.74713134765625,
+                                        "Z": 7.6985650062561035
+                                    },
+                                    "Rotation": {
+                                        "Pitch": -0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bBlockComponet": false,
+                                "bCastShadow": false,
+                                "bDrawOnlyIfSelected": false,
+                                "bGenerateOverlapEvents": true,
+                                "bIsGameHidden": false,
+                                "bReceiveShadow": false,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UScriptComponent",
+                            "Name": "UScriptComponent_0",
+                            "Parent": "",
+                            "Properties": {
+                                "ScriptPath": "Assets/Scripts/Actors/TestActor.lua"
+                            }
+                        }
+                    ],
+                    "Name": "RedSphere_Capsule",
+                    "Properties": {},
+                    "RootComponent": "RedSphereCollision"
+                },
+                {
+                    "Class": "AStaticMeshActor",
+                    "Components": [
+                        {
+                            "Class": "UStaticMeshComponent",
+                            "Name": "UStaticMeshComponent",
+                            "OverrideMaterials": [],
+                            "Parent": "BlackCapsuleCollision",
+                            "Properties": {
+                                "ShowBeginOverlapLog": false,
+                                "ShowEndOverlapLog": false,
+                                "ShowHitLog": false,
+                                "StaticMesh": "Cylinder",
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": -0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": -0.4000000059604645,
+                                        "Y": 0.4000000059604645,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bBlockComponet": false,
+                                "bCastShadow": true,
+                                "bGenerateOverlapEvents": true,
+                                "bReceiveShadow": true,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UProjectileMovementComponent",
+                            "Name": "UProjectileMovementComponent_0",
+                            "Parent": "",
+                            "Properties": {
+                                "Bounciness": 0.6000000238418579,
+                                "Friction": 0.20000000298023224,
+                                "Gravity": 0.0,
+                                "HomingAccelerationMagnitude": 0.0,
+                                "InintialSpeed": 50.0,
+                                "MaxSpeed": 10000.0,
+                                "ProjectileGravityScale": 0.0,
+                                "Velocity": {
+                                    "X": -100.0,
+                                    "Y": 0.0,
+                                    "Z": 0.0
+                                },
+                                "bConstrainToPlane": false,
+                                "bIsHomingProjectile": false,
+                                "bRotationFollowsVelocity": false,
+                                "bShouldBounce": false,
+                                "bSimulationEnabled": true,
+                                "bSweepCollision": true
+                            }
+                        },
+                        {
+                            "Class": "UScriptComponent",
+                            "Name": "UScriptComponent_0",
+                            "Parent": "",
+                            "Properties": {
+                                "ScriptPath": "Assets/Scripts/Actors/TestActor.lua"
+                            }
+                        },
+                        {
+                            "Class": "UCapsuleComponent",
+                            "Name": "BlackCapsuleCollision",
+                            "Parent": "",
+                            "Properties": {
+                                "CapsuleHalfHeight": 1.0,
+                                "CapsuleRadius": 0.5,
+                                "ShapeColor": {
+                                    "A": 255,
+                                    "B": 0,
+                                    "G": 0,
+                                    "R": 0
+                                },
+                                "ShowBeginOverlapLog": true,
+                                "ShowEndOverlapLog": true,
+                                "ShowHitLog": false,
+                                "Transform": {
+                                    "Location": {
+                                        "X": 27.141386032104492,
+                                        "Y": 121.77735900878906,
+                                        "Z": 7.692739009857178
+                                    },
+                                    "Rotation": {
+                                        "Pitch": -0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bBlockComponet": false,
+                                "bCastShadow": false,
+                                "bDrawOnlyIfSelected": false,
+                                "bGenerateOverlapEvents": true,
+                                "bIsGameHidden": false,
+                                "bReceiveShadow": false,
+                                "bVisible": true
+                            }
+                        }
+                    ],
+                    "Name": "BlackCapsuleCollision",
+                    "Properties": {},
+                    "RootComponent": "BlackCapsuleCollision"
+                },
+                {
+                    "Class": "AStaticMeshActor",
+                    "Components": [
+                        {
+                            "Class": "UStaticMeshComponent",
+                            "Name": "UStaticMeshComponent",
+                            "OverrideMaterials": [],
+                            "Parent": "RedBoxCollision",
+                            "Properties": {
+                                "ShowBeginOverlapLog": false,
+                                "ShowEndOverlapLog": false,
+                                "ShowHitLog": false,
+                                "StaticMesh": "Cube",
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": -0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bBlockComponet": false,
+                                "bCastShadow": true,
+                                "bGenerateOverlapEvents": true,
+                                "bReceiveShadow": true,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UScriptComponent",
+                            "Name": "UScriptComponent_0",
+                            "Parent": "",
+                            "Properties": {
+                                "ScriptPath": "Assets/Scripts/Actors/TestActor.lua"
+                            }
+                        },
+                        {
+                            "Class": "UBoxComponent",
+                            "Name": "RedBoxCollision",
+                            "Parent": "",
+                            "Properties": {
+                                "BoxExtent": {
+                                    "X": 1.2999999523162842,
+                                    "Y": 0.8999999761581421,
+                                    "Z": 0.800000011920929
+                                },
+                                "ShapeColor": {
+                                    "A": 255,
+                                    "B": 31,
+                                    "G": 31,
+                                    "R": 243
+                                },
+                                "ShowBeginOverlapLog": true,
+                                "ShowEndOverlapLog": true,
+                                "ShowHitLog": false,
+                                "Transform": {
+                                    "Location": {
+                                        "X": 21.634309768676758,
+                                        "Y": 127.61790466308594,
+                                        "Z": 7.6985650062561035
+                                    },
+                                    "Rotation": {
+                                        "Pitch": -0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bBlockComponet": false,
+                                "bCastShadow": false,
+                                "bDrawOnlyIfSelected": false,
+                                "bGenerateOverlapEvents": true,
+                                "bIsGameHidden": true,
+                                "bReceiveShadow": false,
+                                "bVisible": true
+                            }
+                        }
+                    ],
+                    "Name": "AStaticMeshActor_8",
+                    "Properties": {},
+                    "RootComponent": "RedBoxCollision"
+                },
+                {
+                    "Class": "AStaticMeshActor",
+                    "Components": [
+                        {
+                            "Class": "UStaticMeshComponent",
+                            "Name": "UStaticMeshComponent",
+                            "OverrideMaterials": [],
+                            "Parent": "BlackBoxComponent",
+                            "Properties": {
+                                "ShowBeginOverlapLog": false,
+                                "ShowEndOverlapLog": false,
+                                "ShowHitLog": false,
+                                "StaticMesh": "Cylinder",
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": -0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 180.0000457763672
+                                    },
+                                    "Scale": {
+                                        "X": 0.4000000059604645,
+                                        "Y": 0.4000000059604645,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bBlockComponet": false,
+                                "bCastShadow": true,
+                                "bGenerateOverlapEvents": true,
+                                "bReceiveShadow": true,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UProjectileMovementComponent",
+                            "Name": "UProjectileMovementComponent_0",
+                            "Parent": "",
+                            "Properties": {
+                                "Bounciness": 0.6000000238418579,
+                                "Friction": 0.20000000298023224,
+                                "Gravity": 0.0,
+                                "HomingAccelerationMagnitude": 0.0,
+                                "InintialSpeed": 50.0,
+                                "MaxSpeed": 10000.0,
+                                "ProjectileGravityScale": 0.0,
+                                "Velocity": {
+                                    "X": -100.0,
+                                    "Y": 0.0,
+                                    "Z": 0.0
+                                },
+                                "bConstrainToPlane": false,
+                                "bIsHomingProjectile": false,
+                                "bRotationFollowsVelocity": false,
+                                "bShouldBounce": false,
+                                "bSimulationEnabled": true,
+                                "bSweepCollision": true
+                            }
+                        },
+                        {
+                            "Class": "UScriptComponent",
+                            "Name": "UScriptComponent_0",
+                            "Parent": "",
+                            "Properties": {
+                                "ScriptPath": "Assets/Scripts/Actors/TestActor.lua"
+                            }
+                        },
+                        {
+                            "Class": "UBoxComponent",
+                            "Name": "BlackBoxComponent",
+                            "Parent": "",
+                            "Properties": {
+                                "BoxExtent": {
+                                    "X": 0.5,
+                                    "Y": 0.5,
+                                    "Z": 0.5
+                                },
+                                "ShapeColor": {
+                                    "A": 255,
+                                    "B": 0,
+                                    "G": 0,
+                                    "R": 0
+                                },
+                                "ShowBeginOverlapLog": true,
+                                "ShowEndOverlapLog": true,
+                                "ShowHitLog": false,
+                                "Transform": {
+                                    "Location": {
+                                        "X": 24.601970672607422,
+                                        "Y": 127.53559112548828,
+                                        "Z": 7.721771717071533
+                                    },
+                                    "Rotation": {
+                                        "Pitch": -0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bBlockComponet": false,
+                                "bCastShadow": false,
+                                "bDrawOnlyIfSelected": false,
+                                "bGenerateOverlapEvents": true,
+                                "bIsGameHidden": true,
+                                "bReceiveShadow": false,
+                                "bVisible": true
+                            }
+                        }
+                    ],
+                    "Name": "AStaticMeshActor_9",
+                    "Properties": {},
+                    "RootComponent": "BlackBoxComponent"
+                },
+                {
+                    "Class": "AStaticMeshActor",
+                    "Components": [
+                        {
+                            "Class": "UStaticMeshComponent",
+                            "Name": "UStaticMeshComponent",
+                            "OverrideMaterials": [],
+                            "Parent": "USphereComponent_0",
+                            "Properties": {
+                                "ShowBeginOverlapLog": false,
+                                "ShowEndOverlapLog": false,
+                                "ShowHitLog": false,
+                                "StaticMesh": "Cube",
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": -0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bBlockComponet": false,
+                                "bCastShadow": true,
+                                "bGenerateOverlapEvents": true,
+                                "bReceiveShadow": true,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UScriptComponent",
+                            "Name": "UScriptComponent_0",
+                            "Parent": "",
+                            "Properties": {
+                                "ScriptPath": "Assets/Scripts/Actors/TestActor.lua"
+                            }
+                        },
+                        {
+                            "Class": "USphereComponent",
+                            "Name": "USphereComponent_0",
+                            "Parent": "",
+                            "Properties": {
+                                "ShapeColor": {
+                                    "A": 255,
+                                    "B": 0,
+                                    "G": 0,
+                                    "R": 236
+                                },
+                                "ShowBeginOverlapLog": false,
+                                "ShowEndOverlapLog": false,
+                                "ShowHitLog": false,
+                                "SphereRadius": 1.5,
+                                "Transform": {
+                                    "Location": {
+                                        "X": 21.648216247558594,
+                                        "Y": 148.00177001953125,
+                                        "Z": 7.702207088470459
+                                    },
+                                    "Rotation": {
+                                        "Pitch": -0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bBlockComponet": true,
+                                "bCastShadow": false,
+                                "bDrawOnlyIfSelected": false,
+                                "bGenerateOverlapEvents": false,
+                                "bIsGameHidden": false,
+                                "bReceiveShadow": false,
+                                "bVisible": true
+                            }
+                        }
+                    ],
+                    "Name": "AStaticMeshActor_10",
+                    "Properties": {},
+                    "RootComponent": "USphereComponent_0"
+                },
+                {
+                    "Class": "AStaticMeshActor",
+                    "Components": [
+                        {
+                            "Class": "UStaticMeshComponent",
+                            "Name": "UStaticMeshComponent",
+                            "OverrideMaterials": [],
+                            "Parent": "BlackBoxComponent",
+                            "Properties": {
+                                "ShowBeginOverlapLog": false,
+                                "ShowEndOverlapLog": false,
+                                "ShowHitLog": false,
+                                "StaticMesh": "Cylinder",
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": -0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 180.0000457763672
+                                    },
+                                    "Scale": {
+                                        "X": 0.4000000059604645,
+                                        "Y": 0.4000000059604645,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bBlockComponet": false,
+                                "bCastShadow": true,
+                                "bGenerateOverlapEvents": true,
+                                "bReceiveShadow": true,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UProjectileMovementComponent",
+                            "Name": "UProjectileMovementComponent_0",
+                            "Parent": "",
+                            "Properties": {
+                                "Bounciness": 0.6000000238418579,
+                                "Friction": 0.20000000298023224,
+                                "Gravity": 0.0,
+                                "HomingAccelerationMagnitude": 0.0,
+                                "InintialSpeed": 50.0,
+                                "MaxSpeed": 10000.0,
+                                "ProjectileGravityScale": 0.0,
+                                "Velocity": {
+                                    "X": -100.0,
+                                    "Y": 0.0,
+                                    "Z": 0.0
+                                },
+                                "bConstrainToPlane": false,
+                                "bIsHomingProjectile": false,
+                                "bRotationFollowsVelocity": false,
+                                "bShouldBounce": false,
+                                "bSimulationEnabled": true,
+                                "bSweepCollision": true
+                            }
+                        },
+                        {
+                            "Class": "UScriptComponent",
+                            "Name": "UScriptComponent_0",
+                            "Parent": "",
+                            "Properties": {
+                                "ScriptPath": "Assets/Scripts/Actors/TestActor.lua"
+                            }
+                        },
+                        {
+                            "Class": "UBoxComponent",
+                            "Name": "BlackBoxComponent",
+                            "Parent": "",
+                            "Properties": {
+                                "BoxExtent": {
+                                    "X": 0.699999988079071,
+                                    "Y": 0.699999988079071,
+                                    "Z": 0.800000011920929
+                                },
+                                "ShapeColor": {
+                                    "A": 255,
+                                    "B": 0,
+                                    "G": 0,
+                                    "R": 0
+                                },
+                                "ShowBeginOverlapLog": false,
+                                "ShowEndOverlapLog": false,
+                                "ShowHitLog": false,
+                                "Transform": {
+                                    "Location": {
+                                        "X": 27.773683547973633,
+                                        "Y": 148.49929809570313,
+                                        "Z": 7.6927618980407715
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bBlockComponet": true,
+                                "bCastShadow": false,
+                                "bDrawOnlyIfSelected": false,
+                                "bGenerateOverlapEvents": false,
+                                "bIsGameHidden": false,
+                                "bReceiveShadow": false,
+                                "bVisible": true
+                            }
+                        }
+                    ],
+                    "Name": "AStaticMeshActor_11",
+                    "Properties": {},
+                    "RootComponent": "BlackBoxComponent"
+                },
+                {
+                    "Class": "AStaticMeshActor",
+                    "Components": [
+                        {
+                            "Class": "UStaticMeshComponent",
+                            "Name": "UStaticMeshComponent",
+                            "OverrideMaterials": [],
+                            "Parent": "UCapsuleComponent_0",
+                            "Properties": {
+                                "ShowBeginOverlapLog": false,
+                                "ShowEndOverlapLog": false,
+                                "ShowHitLog": false,
+                                "StaticMesh": "Cylinder",
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": -0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": -180.00001525878906
+                                    },
+                                    "Scale": {
+                                        "X": 0.4000000059604645,
+                                        "Y": 0.4000000059604645,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bBlockComponet": false,
+                                "bCastShadow": true,
+                                "bGenerateOverlapEvents": true,
+                                "bReceiveShadow": true,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UProjectileMovementComponent",
+                            "Name": "UProjectileMovementComponent_0",
+                            "Parent": "",
+                            "Properties": {
+                                "Bounciness": 0.6000000238418579,
+                                "Friction": 0.20000000298023224,
+                                "Gravity": 0.0,
+                                "HomingAccelerationMagnitude": 0.0,
+                                "InintialSpeed": 50.0,
+                                "MaxSpeed": 10000.0,
+                                "ProjectileGravityScale": 0.0,
+                                "Velocity": {
+                                    "X": -100.0,
+                                    "Y": 0.0,
+                                    "Z": 0.0
+                                },
+                                "bConstrainToPlane": false,
+                                "bIsHomingProjectile": false,
+                                "bRotationFollowsVelocity": false,
+                                "bShouldBounce": false,
+                                "bSimulationEnabled": true,
+                                "bSweepCollision": true
+                            }
+                        },
+                        {
+                            "Class": "UScriptComponent",
+                            "Name": "UScriptComponent_0",
+                            "Parent": "",
+                            "Properties": {
+                                "ScriptPath": "Assets/Scripts/Actors/TestActor.lua"
+                            }
+                        },
+                        {
+                            "Class": "UCapsuleComponent",
+                            "Name": "UCapsuleComponent_0",
+                            "Parent": "",
+                            "Properties": {
+                                "CapsuleHalfHeight": 1.0,
+                                "CapsuleRadius": 0.5,
+                                "ShapeColor": {
+                                    "A": 255,
+                                    "B": 0,
+                                    "G": 0,
+                                    "R": 0
+                                },
+                                "ShowBeginOverlapLog": false,
+                                "ShowEndOverlapLog": false,
+                                "ShowHitLog": false,
+                                "Transform": {
+                                    "Location": {
+                                        "X": 27.339149475097656,
+                                        "Y": 152.1405792236328,
+                                        "Z": 7.730342388153076
+                                    },
+                                    "Rotation": {
+                                        "Pitch": -0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bBlockComponet": true,
+                                "bCastShadow": false,
+                                "bDrawOnlyIfSelected": false,
+                                "bGenerateOverlapEvents": false,
+                                "bIsGameHidden": false,
+                                "bReceiveShadow": false,
+                                "bVisible": true
+                            }
+                        }
+                    ],
+                    "Name": "AStaticMeshActor_13",
+                    "Properties": {},
+                    "RootComponent": "UCapsuleComponent_0"
+                },
+                {
+                    "Class": "ATextRenderActor",
+                    "Components": [
+                        {
+                            "Class": "USceneComponent",
+                            "Name": "DefaultSceneRoot",
+                            "Parent": "",
+                            "Properties": {
+                                "Transform": {
+                                    "Location": {
+                                        "X": 22.249025344848633,
+                                        "Y": 139.8833770751953,
+                                        "Z": 8.768903732299805
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": -89.43997955322266
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                }
+                            }
+                        },
+                        {
+                            "Class": "UTextRenderComponent",
+                            "Name": "TextRenderComponent",
+                            "Parent": "DefaultSceneRoot",
+                            "Properties": {
+                                "Font": "Resources/Fonts/Pretendard.json",
+                                "ShowBeginOverlapLog": false,
+                                "ShowEndOverlapLog": false,
+                                "ShowHitLog": false,
+                                "Text": "Hit",
+                                "TextSize": 1.0,
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bBlockComponet": false,
+                                "bCastShadow": true,
+                                "bGenerateOverlapEvents": true,
+                                "bReceiveShadow": true,
+                                "bVisible": true
+                            }
+                        }
+                    ],
+                    "Name": "ATextRenderActor_0",
+                    "Properties": {},
+                    "RootComponent": "DefaultSceneRoot"
+                },
+                {
+                    "Class": "AStaticMeshActor",
+                    "Components": [
+                        {
+                            "Class": "UStaticMeshComponent",
+                            "Name": "UStaticMeshComponent",
+                            "OverrideMaterials": [],
+                            "Parent": "USphereComponent_0",
+                            "Properties": {
+                                "ShowBeginOverlapLog": false,
+                                "ShowEndOverlapLog": false,
+                                "ShowHitLog": false,
+                                "StaticMesh": "Cube",
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": -0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bBlockComponet": false,
+                                "bCastShadow": true,
+                                "bGenerateOverlapEvents": true,
+                                "bReceiveShadow": true,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UScriptComponent",
+                            "Name": "UScriptComponent_0",
+                            "Parent": "",
+                            "Properties": {
+                                "ScriptPath": "Assets/Scripts/Actors/TestActor.lua"
+                            }
+                        },
+                        {
+                            "Class": "USphereComponent",
+                            "Name": "USphereComponent_0",
+                            "Parent": "",
+                            "Properties": {
+                                "ShapeColor": {
+                                    "A": 255,
+                                    "B": 0,
+                                    "G": 0,
+                                    "R": 236
+                                },
+                                "ShowBeginOverlapLog": false,
+                                "ShowEndOverlapLog": false,
+                                "ShowHitLog": false,
+                                "SphereRadius": 1.5,
+                                "Transform": {
+                                    "Location": {
+                                        "X": 21.648216247558594,
+                                        "Y": 151.98419189453125,
+                                        "Z": 7.702207088470459
+                                    },
+                                    "Rotation": {
+                                        "Pitch": -0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bBlockComponet": true,
+                                "bCastShadow": false,
+                                "bDrawOnlyIfSelected": false,
+                                "bGenerateOverlapEvents": false,
+                                "bIsGameHidden": false,
+                                "bReceiveShadow": false,
+                                "bVisible": true
+                            }
+                        }
+                    ],
+                    "Name": "AStaticMeshActor_14",
+                    "Properties": {},
+                    "RootComponent": "USphereComponent_0"
+                },
+                {
+                    "Class": "AStaticMeshActor",
+                    "Components": [
+                        {
+                            "Class": "UStaticMeshComponent",
+                            "Name": "UStaticMeshComponent",
+                            "OverrideMaterials": [],
+                            "Parent": "UBoxComponent_0",
+                            "Properties": {
+                                "ShowBeginOverlapLog": false,
+                                "ShowEndOverlapLog": false,
+                                "ShowHitLog": false,
+                                "StaticMesh": "Cube",
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": -0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bBlockComponet": false,
+                                "bCastShadow": true,
+                                "bGenerateOverlapEvents": true,
+                                "bReceiveShadow": true,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UScriptComponent",
+                            "Name": "UScriptComponent_0",
+                            "Parent": "",
+                            "Properties": {
+                                "ScriptPath": "Assets/Scripts/Actors/TestActor.lua"
+                            }
+                        },
+                        {
+                            "Class": "UBoxComponent",
+                            "Name": "UBoxComponent_0",
+                            "Parent": "",
+                            "Properties": {
+                                "BoxExtent": {
+                                    "X": 0.8999999761581421,
+                                    "Y": 0.800000011920929,
+                                    "Z": 0.800000011920929
+                                },
+                                "ShapeColor": {
+                                    "A": 255,
+                                    "B": 0,
+                                    "G": 0,
+                                    "R": 255
+                                },
+                                "ShowBeginOverlapLog": false,
+                                "ShowEndOverlapLog": false,
+                                "ShowHitLog": false,
+                                "Transform": {
+                                    "Location": {
+                                        "X": 21.659746170043945,
+                                        "Y": 156.93389892578125,
+                                        "Z": 7.702207088470459
+                                    },
+                                    "Rotation": {
+                                        "Pitch": -0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bBlockComponet": true,
+                                "bCastShadow": false,
+                                "bDrawOnlyIfSelected": false,
+                                "bGenerateOverlapEvents": false,
+                                "bIsGameHidden": false,
+                                "bReceiveShadow": false,
+                                "bVisible": true
+                            }
+                        }
+                    ],
+                    "Name": "AStaticMeshActor_15",
+                    "Properties": {},
+                    "RootComponent": "UBoxComponent_0"
+                },
+                {
+                    "Class": "AStaticMeshActor",
+                    "Components": [
+                        {
+                            "Class": "UStaticMeshComponent",
+                            "Name": "UStaticMeshComponent",
+                            "OverrideMaterials": [],
+                            "Parent": "BlackBoxComponent",
+                            "Properties": {
+                                "ShowBeginOverlapLog": false,
+                                "ShowEndOverlapLog": false,
+                                "ShowHitLog": false,
+                                "StaticMesh": "Cylinder",
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": -0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 180.0000457763672
+                                    },
+                                    "Scale": {
+                                        "X": 0.4000000059604645,
+                                        "Y": 0.4000000059604645,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bBlockComponet": false,
+                                "bCastShadow": true,
+                                "bGenerateOverlapEvents": true,
+                                "bReceiveShadow": true,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UProjectileMovementComponent",
+                            "Name": "UProjectileMovementComponent_0",
+                            "Parent": "",
+                            "Properties": {
+                                "Bounciness": 0.6000000238418579,
+                                "Friction": 0.20000000298023224,
+                                "Gravity": 0.0,
+                                "HomingAccelerationMagnitude": 0.0,
+                                "InintialSpeed": 50.0,
+                                "MaxSpeed": 10000.0,
+                                "ProjectileGravityScale": 0.0,
+                                "Velocity": {
+                                    "X": -100.0,
+                                    "Y": 0.0,
+                                    "Z": 0.0
+                                },
+                                "bConstrainToPlane": false,
+                                "bIsHomingProjectile": false,
+                                "bRotationFollowsVelocity": false,
+                                "bShouldBounce": false,
+                                "bSimulationEnabled": true,
+                                "bSweepCollision": true
+                            }
+                        },
+                        {
+                            "Class": "UScriptComponent",
+                            "Name": "UScriptComponent_0",
+                            "Parent": "",
+                            "Properties": {
+                                "ScriptPath": "Assets/Scripts/Actors/TestActor.lua"
+                            }
+                        },
+                        {
+                            "Class": "UBoxComponent",
+                            "Name": "BlackBoxComponent",
+                            "Parent": "",
+                            "Properties": {
+                                "BoxExtent": {
+                                    "X": 0.699999988079071,
+                                    "Y": 0.699999988079071,
+                                    "Z": 0.800000011920929
+                                },
+                                "ShapeColor": {
+                                    "A": 255,
+                                    "B": 0,
+                                    "G": 0,
+                                    "R": 0
+                                },
+                                "ShowBeginOverlapLog": false,
+                                "ShowEndOverlapLog": false,
+                                "ShowHitLog": false,
+                                "Transform": {
+                                    "Location": {
+                                        "X": 27.773683547973633,
+                                        "Y": 156.88580322265625,
+                                        "Z": 7.6927618980407715
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bBlockComponet": true,
+                                "bCastShadow": false,
+                                "bDrawOnlyIfSelected": false,
+                                "bGenerateOverlapEvents": false,
+                                "bIsGameHidden": false,
+                                "bReceiveShadow": false,
+                                "bVisible": true
+                            }
+                        }
+                    ],
+                    "Name": "AStaticMeshActor_16",
+                    "Properties": {},
+                    "RootComponent": "BlackBoxComponent"
+                },
+                {
+                    "Class": "AStaticMeshActor",
+                    "Components": [
+                        {
+                            "Class": "UStaticMeshComponent",
+                            "Name": "UStaticMeshComponent",
+                            "OverrideMaterials": [],
+                            "Parent": "UBoxComponent_0",
+                            "Properties": {
+                                "ShowBeginOverlapLog": false,
+                                "ShowEndOverlapLog": false,
+                                "ShowHitLog": false,
+                                "StaticMesh": "Cube",
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": -0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bBlockComponet": false,
+                                "bCastShadow": true,
+                                "bGenerateOverlapEvents": true,
+                                "bReceiveShadow": true,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UScriptComponent",
+                            "Name": "UScriptComponent_0",
+                            "Parent": "",
+                            "Properties": {
+                                "ScriptPath": "Assets/Scripts/Actors/TestActor.lua"
+                            }
+                        },
+                        {
+                            "Class": "UBoxComponent",
+                            "Name": "UBoxComponent_0",
+                            "Parent": "",
+                            "Properties": {
+                                "BoxExtent": {
+                                    "X": 0.8999999761581421,
+                                    "Y": 0.800000011920929,
+                                    "Z": 0.800000011920929
+                                },
+                                "ShapeColor": {
+                                    "A": 255,
+                                    "B": 0,
+                                    "G": 0,
+                                    "R": 255
+                                },
+                                "ShowBeginOverlapLog": false,
+                                "ShowEndOverlapLog": false,
+                                "ShowHitLog": false,
+                                "Transform": {
+                                    "Location": {
+                                        "X": 21.659746170043945,
+                                        "Y": 160.95384216308594,
+                                        "Z": 7.702207088470459
+                                    },
+                                    "Rotation": {
+                                        "Pitch": -0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bBlockComponet": true,
+                                "bCastShadow": false,
+                                "bDrawOnlyIfSelected": false,
+                                "bGenerateOverlapEvents": false,
+                                "bIsGameHidden": false,
+                                "bReceiveShadow": false,
+                                "bVisible": true
+                            }
+                        }
+                    ],
+                    "Name": "AStaticMeshActor_17",
+                    "Properties": {},
+                    "RootComponent": "UBoxComponent_0"
+                },
+                {
+                    "Class": "AStaticMeshActor",
+                    "Components": [
+                        {
+                            "Class": "UStaticMeshComponent",
+                            "Name": "UStaticMeshComponent",
+                            "OverrideMaterials": [],
+                            "Parent": "UCapsuleComponent_0",
+                            "Properties": {
+                                "ShowBeginOverlapLog": false,
+                                "ShowEndOverlapLog": false,
+                                "ShowHitLog": false,
+                                "StaticMesh": "Cylinder",
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": -0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": -180.00001525878906
+                                    },
+                                    "Scale": {
+                                        "X": 0.4000000059604645,
+                                        "Y": 0.4000000059604645,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bBlockComponet": false,
+                                "bCastShadow": true,
+                                "bGenerateOverlapEvents": true,
+                                "bReceiveShadow": true,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UProjectileMovementComponent",
+                            "Name": "UProjectileMovementComponent_0",
+                            "Parent": "",
+                            "Properties": {
+                                "Bounciness": 0.6000000238418579,
+                                "Friction": 0.20000000298023224,
+                                "Gravity": 0.0,
+                                "HomingAccelerationMagnitude": 0.0,
+                                "InintialSpeed": 50.0,
+                                "MaxSpeed": 10000.0,
+                                "ProjectileGravityScale": 0.0,
+                                "Velocity": {
+                                    "X": -100.0,
+                                    "Y": 0.0,
+                                    "Z": 0.0
+                                },
+                                "bConstrainToPlane": false,
+                                "bIsHomingProjectile": false,
+                                "bRotationFollowsVelocity": false,
+                                "bShouldBounce": false,
+                                "bSimulationEnabled": true,
+                                "bSweepCollision": true
+                            }
+                        },
+                        {
+                            "Class": "UScriptComponent",
+                            "Name": "UScriptComponent_0",
+                            "Parent": "",
+                            "Properties": {
+                                "ScriptPath": "Assets/Scripts/Actors/TestActor.lua"
+                            }
+                        },
+                        {
+                            "Class": "UCapsuleComponent",
+                            "Name": "UCapsuleComponent_0",
+                            "Parent": "",
+                            "Properties": {
+                                "CapsuleHalfHeight": 1.0,
+                                "CapsuleRadius": 0.5,
+                                "ShapeColor": {
+                                    "A": 255,
+                                    "B": 0,
+                                    "G": 0,
+                                    "R": 0
+                                },
+                                "ShowBeginOverlapLog": false,
+                                "ShowEndOverlapLog": false,
+                                "ShowHitLog": false,
+                                "Transform": {
+                                    "Location": {
+                                        "X": 27.339149475097656,
+                                        "Y": 161.09666442871094,
+                                        "Z": 7.730342388153076
+                                    },
+                                    "Rotation": {
+                                        "Pitch": -0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bBlockComponet": true,
+                                "bCastShadow": false,
+                                "bDrawOnlyIfSelected": false,
+                                "bGenerateOverlapEvents": false,
+                                "bIsGameHidden": false,
+                                "bReceiveShadow": false,
+                                "bVisible": true
+                            }
+                        }
+                    ],
+                    "Name": "AStaticMeshActor_18",
+                    "Properties": {},
+                    "RootComponent": "UCapsuleComponent_0"
+                },
+                {
+                    "Class": "AStaticMeshActor",
+                    "Components": [
+                        {
+                            "Class": "UStaticMeshComponent",
+                            "Name": "UStaticMeshComponent",
+                            "OverrideMaterials": [],
+                            "Parent": "UCapsuleComponent_0",
+                            "Properties": {
+                                "ShowBeginOverlapLog": false,
+                                "ShowEndOverlapLog": false,
+                                "ShowHitLog": false,
+                                "StaticMesh": "Cube",
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": -0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bBlockComponet": false,
+                                "bCastShadow": true,
+                                "bGenerateOverlapEvents": true,
+                                "bReceiveShadow": true,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UScriptComponent",
+                            "Name": "UScriptComponent_0",
+                            "Parent": "",
+                            "Properties": {
+                                "ScriptPath": "Assets/Scripts/Actors/TestActor.lua"
+                            }
+                        },
+                        {
+                            "Class": "UCapsuleComponent",
+                            "Name": "UCapsuleComponent_0",
+                            "Parent": "",
+                            "Properties": {
+                                "CapsuleHalfHeight": 2.0,
+                                "CapsuleRadius": 1.100000023841858,
+                                "ShapeColor": {
+                                    "A": 255,
+                                    "B": 0,
+                                    "G": 0,
+                                    "R": 255
+                                },
+                                "ShowBeginOverlapLog": false,
+                                "ShowEndOverlapLog": false,
+                                "ShowHitLog": false,
+                                "Transform": {
+                                    "Location": {
+                                        "X": 21.659746170043945,
+                                        "Y": 164.9100799560547,
+                                        "Z": 7.702207088470459
+                                    },
+                                    "Rotation": {
+                                        "Pitch": -0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bBlockComponet": true,
+                                "bCastShadow": false,
+                                "bDrawOnlyIfSelected": false,
+                                "bGenerateOverlapEvents": false,
+                                "bIsGameHidden": false,
+                                "bReceiveShadow": false,
+                                "bVisible": true
+                            }
+                        }
+                    ],
+                    "Name": "AStaticMeshActor_19",
+                    "Properties": {},
+                    "RootComponent": "UCapsuleComponent_0"
+                },
+                {
+                    "Class": "AStaticMeshActor",
+                    "Components": [
+                        {
+                            "Class": "UStaticMeshComponent",
+                            "Name": "UStaticMeshComponent",
+                            "OverrideMaterials": [],
+                            "Parent": "UCapsuleComponent_0",
+                            "Properties": {
+                                "ShowBeginOverlapLog": false,
+                                "ShowEndOverlapLog": false,
+                                "ShowHitLog": false,
+                                "StaticMesh": "Cylinder",
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": -0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": -180.00001525878906
+                                    },
+                                    "Scale": {
+                                        "X": 0.4000000059604645,
+                                        "Y": 0.4000000059604645,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bBlockComponet": false,
+                                "bCastShadow": true,
+                                "bGenerateOverlapEvents": true,
+                                "bReceiveShadow": true,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UProjectileMovementComponent",
+                            "Name": "UProjectileMovementComponent_0",
+                            "Parent": "",
+                            "Properties": {
+                                "Bounciness": 0.6000000238418579,
+                                "Friction": 0.20000000298023224,
+                                "Gravity": 0.0,
+                                "HomingAccelerationMagnitude": 0.0,
+                                "InintialSpeed": 50.0,
+                                "MaxSpeed": 10000.0,
+                                "ProjectileGravityScale": 0.0,
+                                "Velocity": {
+                                    "X": -100.0,
+                                    "Y": 0.0,
+                                    "Z": 0.0
+                                },
+                                "bConstrainToPlane": false,
+                                "bIsHomingProjectile": false,
+                                "bRotationFollowsVelocity": false,
+                                "bShouldBounce": false,
+                                "bSimulationEnabled": true,
+                                "bSweepCollision": true
+                            }
+                        },
+                        {
+                            "Class": "UScriptComponent",
+                            "Name": "UScriptComponent_0",
+                            "Parent": "",
+                            "Properties": {
+                                "ScriptPath": "Assets/Scripts/Actors/TestActor.lua"
+                            }
+                        },
+                        {
+                            "Class": "UCapsuleComponent",
+                            "Name": "UCapsuleComponent_0",
+                            "Parent": "",
+                            "Properties": {
+                                "CapsuleHalfHeight": 1.0,
+                                "CapsuleRadius": 0.5,
+                                "ShapeColor": {
+                                    "A": 255,
+                                    "B": 0,
+                                    "G": 0,
+                                    "R": 0
+                                },
+                                "ShowBeginOverlapLog": false,
+                                "ShowEndOverlapLog": false,
+                                "ShowHitLog": false,
+                                "Transform": {
+                                    "Location": {
+                                        "X": 27.339149475097656,
+                                        "Y": 164.91868591308594,
+                                        "Z": 7.730342388153076
+                                    },
+                                    "Rotation": {
+                                        "Pitch": -0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bBlockComponet": true,
+                                "bCastShadow": false,
+                                "bDrawOnlyIfSelected": false,
+                                "bGenerateOverlapEvents": false,
+                                "bIsGameHidden": false,
+                                "bReceiveShadow": false,
+                                "bVisible": true
+                            }
+                        }
+                    ],
+                    "Name": "AStaticMeshActor_20",
+                    "Properties": {},
+                    "RootComponent": "UCapsuleComponent_0"
+                },
+                {
+                    "Class": "AStaticMeshActor",
+                    "Components": [
+                        {
+                            "Class": "UStaticMeshComponent",
+                            "Name": "UStaticMeshComponent",
+                            "OverrideMaterials": [],
+                            "Parent": "RedBoxCollision",
+                            "Properties": {
+                                "ShowBeginOverlapLog": false,
+                                "ShowEndOverlapLog": false,
+                                "ShowHitLog": false,
+                                "StaticMesh": "Cube",
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": -0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bBlockComponet": false,
+                                "bCastShadow": true,
+                                "bGenerateOverlapEvents": true,
+                                "bReceiveShadow": true,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UScriptComponent",
+                            "Name": "UScriptComponent_0",
+                            "Parent": "",
+                            "Properties": {
+                                "ScriptPath": "Assets/Scripts/Actors/TestActor.lua"
+                            }
+                        },
+                        {
+                            "Class": "UBoxComponent",
+                            "Name": "RedBoxCollision",
+                            "Parent": "",
+                            "Properties": {
+                                "BoxExtent": {
+                                    "X": 1.2999999523162842,
+                                    "Y": 0.8999999761581421,
+                                    "Z": 0.800000011920929
+                                },
+                                "ShapeColor": {
+                                    "A": 255,
+                                    "B": 31,
+                                    "G": 31,
+                                    "R": 243
+                                },
+                                "ShowBeginOverlapLog": true,
+                                "ShowEndOverlapLog": true,
+                                "ShowHitLog": false,
+                                "Transform": {
+                                    "Location": {
+                                        "X": 21.634309768676758,
+                                        "Y": 131.9962921142578,
+                                        "Z": 7.6985650062561035
+                                    },
+                                    "Rotation": {
+                                        "Pitch": -0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bBlockComponet": false,
+                                "bCastShadow": false,
+                                "bDrawOnlyIfSelected": false,
+                                "bGenerateOverlapEvents": true,
+                                "bIsGameHidden": true,
+                                "bReceiveShadow": false,
+                                "bVisible": true
+                            }
+                        }
+                    ],
+                    "Name": "AStaticMeshActor_21",
+                    "Properties": {},
+                    "RootComponent": "RedBoxCollision"
+                },
+                {
+                    "Class": "AStaticMeshActor",
+                    "Components": [
+                        {
+                            "Class": "UStaticMeshComponent",
+                            "Name": "UStaticMeshComponent",
+                            "OverrideMaterials": [],
+                            "Parent": "BlackCapsuleCollision",
+                            "Properties": {
+                                "ShowBeginOverlapLog": false,
+                                "ShowEndOverlapLog": false,
+                                "ShowHitLog": false,
+                                "StaticMesh": "Cylinder",
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": -0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": -0.4000000059604645,
+                                        "Y": 0.4000000059604645,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bBlockComponet": false,
+                                "bCastShadow": true,
+                                "bGenerateOverlapEvents": true,
+                                "bReceiveShadow": true,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UProjectileMovementComponent",
+                            "Name": "UProjectileMovementComponent_0",
+                            "Parent": "",
+                            "Properties": {
+                                "Bounciness": 0.6000000238418579,
+                                "Friction": 0.20000000298023224,
+                                "Gravity": 0.0,
+                                "HomingAccelerationMagnitude": 0.0,
+                                "InintialSpeed": 50.0,
+                                "MaxSpeed": 10000.0,
+                                "ProjectileGravityScale": 0.0,
+                                "Velocity": {
+                                    "X": -100.0,
+                                    "Y": 0.0,
+                                    "Z": 0.0
+                                },
+                                "bConstrainToPlane": false,
+                                "bIsHomingProjectile": false,
+                                "bRotationFollowsVelocity": false,
+                                "bShouldBounce": false,
+                                "bSimulationEnabled": true,
+                                "bSweepCollision": true
+                            }
+                        },
+                        {
+                            "Class": "UScriptComponent",
+                            "Name": "UScriptComponent_0",
+                            "Parent": "",
+                            "Properties": {
+                                "ScriptPath": "Assets/Scripts/Actors/TestActor.lua"
+                            }
+                        },
+                        {
+                            "Class": "UCapsuleComponent",
+                            "Name": "BlackCapsuleCollision",
+                            "Parent": "",
+                            "Properties": {
+                                "CapsuleHalfHeight": 1.0,
+                                "CapsuleRadius": 0.5,
+                                "ShapeColor": {
+                                    "A": 255,
+                                    "B": 0,
+                                    "G": 0,
+                                    "R": 0
+                                },
+                                "ShowBeginOverlapLog": true,
+                                "ShowEndOverlapLog": true,
+                                "ShowHitLog": false,
+                                "Transform": {
+                                    "Location": {
+                                        "X": 26.440168380737305,
+                                        "Y": 132.07009887695313,
+                                        "Z": 7.692739009857178
+                                    },
+                                    "Rotation": {
+                                        "Pitch": -0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bBlockComponet": false,
+                                "bCastShadow": false,
+                                "bDrawOnlyIfSelected": false,
+                                "bGenerateOverlapEvents": true,
+                                "bIsGameHidden": false,
+                                "bReceiveShadow": false,
+                                "bVisible": true
+                            }
+                        }
+                    ],
+                    "Name": "AStaticMeshActor_22",
+                    "Properties": {},
+                    "RootComponent": "BlackCapsuleCollision"
+                },
+                {
+                    "Class": "AStaticMeshActor",
+                    "Components": [
+                        {
+                            "Class": "UStaticMeshComponent",
+                            "Name": "UStaticMeshComponent",
+                            "OverrideMaterials": [],
+                            "Parent": "UCapsuleComponent_0",
+                            "Properties": {
+                                "ShowBeginOverlapLog": false,
+                                "ShowEndOverlapLog": false,
+                                "ShowHitLog": false,
+                                "StaticMesh": "Cube",
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": -0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bBlockComponet": false,
+                                "bCastShadow": true,
+                                "bGenerateOverlapEvents": true,
+                                "bReceiveShadow": true,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UScriptComponent",
+                            "Name": "UScriptComponent_0",
+                            "Parent": "",
+                            "Properties": {
+                                "ScriptPath": "Assets/Scripts/Actors/TestActor.lua"
+                            }
+                        },
+                        {
+                            "Class": "UCapsuleComponent",
+                            "Name": "UCapsuleComponent_0",
+                            "Parent": "",
+                            "Properties": {
+                                "CapsuleHalfHeight": 2.0,
+                                "CapsuleRadius": 1.100000023841858,
+                                "ShapeColor": {
+                                    "A": 255,
+                                    "B": 0,
+                                    "G": 0,
+                                    "R": 255
+                                },
+                                "ShowBeginOverlapLog": true,
+                                "ShowEndOverlapLog": true,
+                                "ShowHitLog": false,
+                                "Transform": {
+                                    "Location": {
+                                        "X": 21.659746170043945,
+                                        "Y": 136.281005859375,
+                                        "Z": 7.702207088470459
+                                    },
+                                    "Rotation": {
+                                        "Pitch": -0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bBlockComponet": false,
+                                "bCastShadow": false,
+                                "bDrawOnlyIfSelected": false,
+                                "bGenerateOverlapEvents": true,
+                                "bIsGameHidden": false,
+                                "bReceiveShadow": false,
+                                "bVisible": true
+                            }
+                        }
+                    ],
+                    "Name": "AStaticMeshActor_23",
+                    "Properties": {},
+                    "RootComponent": "UCapsuleComponent_0"
+                },
+                {
+                    "Class": "AStaticMeshActor",
+                    "Components": [
+                        {
+                            "Class": "UStaticMeshComponent",
+                            "Name": "UStaticMeshComponent",
+                            "OverrideMaterials": [],
+                            "Parent": "BlackCapsuleCollision",
+                            "Properties": {
+                                "ShowBeginOverlapLog": false,
+                                "ShowEndOverlapLog": false,
+                                "ShowHitLog": false,
+                                "StaticMesh": "Cylinder",
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": -0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": -0.4000000059604645,
+                                        "Y": 0.4000000059604645,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bBlockComponet": false,
+                                "bCastShadow": true,
+                                "bGenerateOverlapEvents": true,
+                                "bReceiveShadow": true,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "UProjectileMovementComponent",
+                            "Name": "UProjectileMovementComponent_0",
+                            "Parent": "",
+                            "Properties": {
+                                "Bounciness": 0.6000000238418579,
+                                "Friction": 0.20000000298023224,
+                                "Gravity": 0.0,
+                                "HomingAccelerationMagnitude": 0.0,
+                                "InintialSpeed": 50.0,
+                                "MaxSpeed": 10000.0,
+                                "ProjectileGravityScale": 0.0,
+                                "Velocity": {
+                                    "X": -100.0,
+                                    "Y": 0.0,
+                                    "Z": 0.0
+                                },
+                                "bConstrainToPlane": false,
+                                "bIsHomingProjectile": false,
+                                "bRotationFollowsVelocity": false,
+                                "bShouldBounce": false,
+                                "bSimulationEnabled": true,
+                                "bSweepCollision": true
+                            }
+                        },
+                        {
+                            "Class": "UScriptComponent",
+                            "Name": "UScriptComponent_0",
+                            "Parent": "",
+                            "Properties": {
+                                "ScriptPath": "Assets/Scripts/Actors/TestActor.lua"
+                            }
+                        },
+                        {
+                            "Class": "UCapsuleComponent",
+                            "Name": "BlackCapsuleCollision",
+                            "Parent": "",
+                            "Properties": {
+                                "CapsuleHalfHeight": 1.0,
+                                "CapsuleRadius": 0.5,
+                                "ShapeColor": {
+                                    "A": 255,
+                                    "B": 0,
+                                    "G": 0,
+                                    "R": 0
+                                },
+                                "ShowBeginOverlapLog": true,
+                                "ShowEndOverlapLog": true,
+                                "ShowHitLog": false,
+                                "Transform": {
+                                    "Location": {
+                                        "X": 25.62495231628418,
+                                        "Y": 136.2139434814453,
+                                        "Z": 7.692739009857178
+                                    },
+                                    "Rotation": {
+                                        "Pitch": -0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bBlockComponet": false,
+                                "bCastShadow": false,
+                                "bDrawOnlyIfSelected": false,
+                                "bGenerateOverlapEvents": true,
+                                "bIsGameHidden": false,
+                                "bReceiveShadow": false,
+                                "bVisible": true
+                            }
+                        }
+                    ],
+                    "Name": "AStaticMeshActor_24",
+                    "Properties": {},
+                    "RootComponent": "BlackCapsuleCollision"
+                }
+            ],
+            "Properties": {}
+        },
+        "Properties": {}
+    }
+}

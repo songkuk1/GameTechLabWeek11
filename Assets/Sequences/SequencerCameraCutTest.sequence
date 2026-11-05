@@ -1,0 +1,178 @@
+{
+    "Sequence": {
+        "MovieScene": {
+            "Bindings": [
+                {
+                    "ObjectName": "CutTest_MovingCube",
+                    "Tracks": [
+                        {
+                            "ClassName": "UMovieScene3DTransformTrack",
+                            "Properties": {},
+                            "Sections": [
+                                {
+                                    "Properties": {},
+                                    "Rotation0": {
+                                        "DefaultValue": 0.0,
+                                        "HasDefaultValue": true,
+                                        "Times": [],
+                                        "Values": []
+                                    },
+                                    "Rotation1": {
+                                        "DefaultValue": 0.0,
+                                        "HasDefaultValue": true,
+                                        "Times": [],
+                                        "Values": []
+                                    },
+                                    "Rotation2": {
+                                        "DefaultValue": 0.0,
+                                        "HasDefaultValue": true,
+                                        "Times": [],
+                                        "Values": []
+                                    },
+                                    "Scale0": {
+                                        "DefaultValue": 1.5,
+                                        "HasDefaultValue": true,
+                                        "Times": [],
+                                        "Values": []
+                                    },
+                                    "Scale1": {
+                                        "DefaultValue": 1.5,
+                                        "HasDefaultValue": true,
+                                        "Times": [],
+                                        "Values": []
+                                    },
+                                    "Scale2": {
+                                        "DefaultValue": 1.5,
+                                        "HasDefaultValue": true,
+                                        "Times": [],
+                                        "Values": []
+                                    },
+                                    "SectionRange": {
+                                        "Max": 61.0,
+                                        "Min": 0.0
+                                    },
+                                    "Translation0": {
+                                        "DefaultValue": 0.0,
+                                        "HasDefaultValue": true,
+                                        "Times": [],
+                                        "Values": []
+                                    },
+                                    "Translation1": {
+                                        "DefaultValue": -2.0,
+                                        "HasDefaultValue": true,
+                                        "Times": [
+                                            0,
+                                            30,
+                                            60
+                                        ],
+                                        "Values": [
+                                            {
+                                                "InterpMode": 1,
+                                                "Value": -2.0
+                                            },
+                                            {
+                                                "InterpMode": 1,
+                                                "Value": 0.0
+                                            },
+                                            {
+                                                "InterpMode": 1,
+                                                "Value": 2.0
+                                            }
+                                        ]
+                                    },
+                                    "Translation2": {
+                                        "DefaultValue": 1.0,
+                                        "HasDefaultValue": true,
+                                        "Times": [],
+                                        "Values": []
+                                    }
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ],
+            "CameraCutTrack": {
+                "Properties": {},
+                "Sections": [
+                    {
+                        "CameraName": "CameraActor_0",
+                        "Properties": {},
+                        "SectionRange": {
+                            "Max": 30.0,
+                            "Min": 0.0
+                        }
+                    },
+                    {
+                        "CameraName": "CameraActor_1",
+                        "Properties": {},
+                        "SectionRange": {
+                            "Max": 40.0,
+                            "Min": 30.0
+                        }
+                    }
+                ]
+            },
+            "Duration": 2.0,
+            "FrameCount": 60,
+            "HasCameraCutTrack": true,
+            "Properties": {},
+            "Tracks": [
+                {
+                    "ClassName": "UMovieSceneFadeTrack",
+                    "Properties": {},
+                    "Sections": [
+                        {
+                            "Properties": {},
+                            "SectionRange": {
+                                "Min": 0.0,
+                                "Max": 61.0
+                            },
+                            "FadeColor": {
+                                "R": 0.0,
+                                "G": 0.0,
+                                "B": 0.0,
+                                "A": 1.0
+                            },
+                            "FadeCurve": {
+                                "HasDefaultValue": true,
+                                "DefaultValue": 0.0,
+                                "Times": [
+                                    0,
+                                    20,
+                                    30,
+                                    40,
+                                    60
+                                ],
+                                "Values": [
+                                    {
+                                        "InterpMode": 1,
+                                        "Value": 0.0
+                                    },
+                                    {
+                                        "InterpMode": 1,
+                                        "Value": 0.0
+                                    },
+                                    {
+                                        "InterpMode": 1,
+                                        "Value": 1.0
+                                    },
+                                    {
+                                        "InterpMode": 1,
+                                        "Value": 0.0
+                                    },
+                                    {
+                                        "InterpMode": 1,
+                                        "Value": 0.0
+                                    }
+                                ]
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        "Properties": {}
+    },
+    "Version": 2
+}
