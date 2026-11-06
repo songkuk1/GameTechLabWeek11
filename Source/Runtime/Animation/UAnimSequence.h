@@ -14,6 +14,8 @@ public:
 
 	void SetAnimData(FAnimSeqData InAnimData) { AnimData = InAnimData; }
 
+	void CalculateCurrentPose(float CurrentTime, TArray<FMatrix>& OutPose);
+
 private:
 	FAnimSeqData AnimData;
 };
