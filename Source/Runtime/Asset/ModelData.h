@@ -5,6 +5,8 @@
 #include "Containers/Array.h"
 #include "Math/Matrix.h"
 #include "Render/StaticMeshData.h"
+#include "Animation/AnimationData.h"
+
 
 constexpr int32 MaxBoneInfluenceCount = 4;
 
@@ -40,6 +42,7 @@ struct FModelData
 {
 	bool IsSkeletal;
 	FModelMeshData MeshData;
+	TArray <FAnimSeqData> AnimData;
 	TArray<FModelVertexInfluences> VertexInfluencesList;
 	TArray<FModelNode> Nodes;
 	TArray<FModelBone> Bones;

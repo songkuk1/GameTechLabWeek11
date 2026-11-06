@@ -30,7 +30,7 @@ private:
 		uint32 MaterialSlotIndex;
 	};
 
-	static void BuildNodeHierarchy(int32 ParentNodeIndex, fbxsdk::FbxNode* Current, TMap<uint64, int32>& NodeToIndexMap, TMap<int32, int32>& NodeIndexToBoneIndexMap, TArray<FModelNode>& OutNodes, TArray<FModelBone>& OutBones, TArray<FMeshNode>& OutMeshNodes);
+	static void BuildNodeHierarchy(int32 ParentNodeIndex, fbxsdk::FbxNode* Current, TMap<uint64, int32>& NodeToIndexMap, TMap<int32, int32>& NodeIndexToBoneIndexMap, TMap<FbxNode*,int32>& AllNodeToIndex, TArray<FModelNode>& OutNodes, TArray<FModelBone>& OutBones, TArray<FMeshNode>& OutMeshNodes);
 
 	static void ProcessMeshNode(const std::filesystem::path& FbxPath, const TMap<uint64, int32>& NodeToIndexMap, const TMap<int32, int32>& NodeIndexToBoneIndexMap, TArray<FModelBone>& Bones, const FMeshNode& MeshNode, FModelMeshData& OutModelMeshData, TArray<FModelVertexInfluences>& OutVertexInfluencesList, TArray<FModelMesh>& OutMeshs);
 
@@ -41,4 +41,6 @@ private:
 	static void CompactSoftSkin(FSoftModelVertexInfluences& Skin);
 
 	static void ParseSkin(const TArray<int32>& VertexToControlPoints, const TMap<uint64, int32>& NodeToIndexMap, const TMap<int32, int32>& NodeIndexToBoneIndexMap, const FMeshNode& MeshNode, TArray<FModelBone>& Bones, TArray<FModelVertexInfluences>& OutVertexInfluencesList, FMatrix& OutBindGlobalTransform);
+
+	static void ProcessAnimationNode(FbxAnimStack* AnimStack, TMap<FbxNode*, int32>& AllNodeToIndex, double FrameRate, FModelData& OutModelData);
 };

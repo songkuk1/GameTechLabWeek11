@@ -4,6 +4,8 @@
 #include "Asset/ModelBake.h"
 #include "Core/PathUtils.h"
 #include <algorithm>
+#include <cmath>
+#include <limits>
 #include <stdexcept>
 
 namespace
@@ -110,12 +112,33 @@ bool FFbxImporter::LoadFromFile(const FString& Path, FModelData& OutModelData)
 	// 파싱
 	TMap<uint64, int32> NodeToIndexMap;
 	TMap<int32, int32> NodeIndexToBoneIndexMap;
+	TMap<fbxsdk::FbxNode*,int32> AllNodeToIndex;
 	TArray<FMeshNode> MeshNodes;
-	BuildNodeHierarchy(-1, Scene->GetRootNode(), NodeToIndexMap, NodeIndexToBoneIndexMap, OutModelData.Nodes, OutModelData.Bones, MeshNodes);
+	BuildNodeHierarchy(-1, Scene->GetRootNode(), NodeToIndexMap, NodeIndexToBoneIndexMap, AllNodeToIndex, OutModelData.Nodes, OutModelData.Bones, MeshNodes);
 
 	for (FMeshNode& MeshNode : MeshNodes)
 	{
 		ProcessMeshNode(FbxPath, NodeToIndexMap, NodeIndexToBoneIndexMap, OutModelData.Bones, MeshNode, OutModelData.MeshData, OutModelData.VertexInfluencesList, OutModelData.Meshs);
+	}
+
+	int StackCount = Scene->GetSrcObjectCount<fbxsdk::FbxAnimStack>();
+	if (StackCount > 0)
+	{
+		for (int i = 0;i < StackCount;i++)
+		{
+			fbxsdk::FbxAnimStack* Stack = Scene->GetSrcObject<fbxsdk::FbxAnimStack>(i);
+			Scene->SetCurrentAnimationStack(Stack);
+
+			auto& Settings = Scene->GetGlobalSettings();
+			FbxTime::EMode TimeMode = Settings.GetTimeMode();
+			double FrameRate = FbxTime::GetFrameRate(TimeMode);		// FbxScene의 FrameRate 가져옴
+			if (TimeMode == FbxTime::eCustom)
+			{
+				FrameRate = Settings.GetCustomFrameRate();
+			}
+
+			ProcessAnimationNode(Stack, AllNodeToIndex, FrameRate, OutModelData);
+		}
 	}
 
 	OutModelData.IsSkeletal = OutModelData.Bones.Num();
@@ -174,7 +197,7 @@ bool FFbxImporter::LoadFromFile(const FString& Path, FModelData& OutModelData)
 	return true;
 }
 
-void FFbxImporter::BuildNodeHierarchy(int32 ParentNodeIndex, fbxsdk::FbxNode* Current, TMap<uint64, int32>& NodeToIndexMap, TMap<int32, int32>& NodeIndexToBoneIndexMap, TArray<FModelNode>& OutNodes, TArray<FModelBone>& OutBones, TArray<FMeshNode>& OutMeshNodes)
+void FFbxImporter::BuildNodeHierarchy(int32 ParentNodeIndex, fbxsdk::FbxNode* Current, TMap<uint64, int32>& NodeToIndexMap, TMap<int32, int32>& NodeIndexToBoneIndexMap, TMap<FbxNode*, int32>& AllNodeToIndex, TArray<FModelNode>& OutNodes, TArray<FModelBone>& OutBones, TArray<FMeshNode>& OutMeshNodes)
 {
 	if (!Current)
 	{
@@ -182,6 +205,7 @@ void FFbxImporter::BuildNodeHierarchy(int32 ParentNodeIndex, fbxsdk::FbxNode* Cu
 	}
 
 	int32 NodeIndex = OutNodes.Num();
+	AllNodeToIndex[Current] = NodeIndex;	// 전체 노드 - 노드 인덱스 연결 Map 
 
 	NodeToIndexMap[Current->GetUniqueID()] = NodeIndex;
 
@@ -221,7 +245,7 @@ void FFbxImporter::BuildNodeHierarchy(int32 ParentNodeIndex, fbxsdk::FbxNode* Cu
 
 	for (int32 i = 0; i < Current->GetChildCount(); i++)
 	{
-		BuildNodeHierarchy(NodeIndex, Current->GetChild(i), NodeToIndexMap, NodeIndexToBoneIndexMap, OutNodes, OutBones, OutMeshNodes);
+		BuildNodeHierarchy(NodeIndex, Current->GetChild(i), NodeToIndexMap, NodeIndexToBoneIndexMap, AllNodeToIndex, OutNodes, OutBones, OutMeshNodes);
 	}
 }
 
@@ -692,6 +716,66 @@ void FFbxImporter::ParseSkin(const TArray<int32>& VertexToControlPoints, const T
 			VertexInfluences.InfluenceCount++;
 		}
 	}
+}
+
+void FFbxImporter::ProcessAnimationNode(FbxAnimStack* AnimStack, TMap<FbxNode*, int32>& AllNodeToIndex, double InFrameRate, FModelData& OutModelData)
+{
+	if (!AnimStack || !std::isfinite(InFrameRate) || InFrameRate <= 0.0)
+		return;
+
+	FAnimSeqData AnimSequenceData{};
+
+	FbxTimeSpan TimeSpan = AnimStack->GetLocalTimeSpan();	// 애니메이션 재생 시간 추출용
+	FbxTime StartTime = TimeSpan.GetStart();
+	FbxTime EndTime = TimeSpan.GetStop();
+	const double StartSeconds = StartTime.GetSecondDouble();
+	const double EndSeconds = EndTime.GetSecondDouble();
+	const double PlayLength = EndSeconds - StartSeconds;
+	if (!std::isfinite(PlayLength) || PlayLength < 0.0)
+		return;
+
+	// 끝 시점까지 균일하게 저장한다. 길이가 프레임 경계와 맞지 않으면 실제 샘플 레이트를 조정한다.
+	const double FrameCount = std::ceil(PlayLength * InFrameRate);
+	if (!std::isfinite(FrameCount) || FrameCount > (std::numeric_limits<int32>::max)() - 1)
+		return;
+	AnimSequenceData.PlayLength = static_cast<float>(PlayLength);
+	AnimSequenceData.NumberOfFrames = static_cast<int32>(FrameCount);
+	AnimSequenceData.NumberOfKeys = AnimSequenceData.NumberOfFrames + 1;
+	AnimSequenceData.FrameRate = static_cast<float>(PlayLength > 0.0 ? FrameCount / PlayLength : InFrameRate);
+
+	// ConvertMatrix와 같은 Y축 반전을 적용한 뒤 로컬 TRS를 추출한다.
+	FbxAMatrix AxisFlip;
+	AxisFlip.SetS(FbxVector4(1.0, -1.0, 1.0));
+	for (const auto& pair : AllNodeToIndex)
+	{
+		FAnimSeqTrack SequenceTrack;
+		SequenceTrack.NodeIndex = pair.second;
+		for (int32 SampleIndex = 0; SampleIndex < AnimSequenceData.NumberOfKeys; ++SampleIndex)
+		{
+			const double SampleSeconds = AnimSequenceData.NumberOfFrames > 0
+				? StartSeconds + PlayLength * (static_cast<double>(SampleIndex) / AnimSequenceData.NumberOfFrames)
+				: StartSeconds;
+			FbxTime Time;
+			Time.SetSecondDouble(SampleIndex == AnimSequenceData.NumberOfFrames ? EndSeconds : SampleSeconds);
+			const FbxAMatrix LocalTransform = AxisFlip * pair.first->EvaluateLocalTransform(Time) * AxisFlip;
+			const FbxVector4 Translation = LocalTransform.GetT();
+			const FbxQuaternion Rotation = LocalTransform.GetQ();
+			const FbxVector4 Scale = LocalTransform.GetS();
+
+			SequenceTrack.PosKeys.Add(FVector(static_cast<float>(Translation[0]), static_cast<float>(Translation[1]), static_cast<float>(Translation[2])));
+			SequenceTrack.RotKeys.Add(FQuat(static_cast<float>(Rotation[0]), static_cast<float>(Rotation[1]), static_cast<float>(Rotation[2]), static_cast<float>(Rotation[3])));
+			SequenceTrack.ScaleKeys.Add(FVector(static_cast<float>(Scale[0]), static_cast<float>(Scale[1]), static_cast<float>(Scale[2])));
+		}
+		FName NodeName = pair.first->GetName();
+
+		FBoneAnimTrack BoneAnimTrack;
+		BoneAnimTrack.InternalTrack = SequenceTrack;
+		BoneAnimTrack.Name = NodeName;
+
+		AnimSequenceData.BoneAnimationTracks.Add(BoneAnimTrack);
+	}
+
+	OutModelData.AnimData.Add(AnimSequenceData);	// Stack마다 AnimSeqData 배열에 하나씩 추가, 한 FBX 내에서 여러 애니메이션이 나올 수 있음
 }
 
 
