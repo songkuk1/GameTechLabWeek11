@@ -10,6 +10,7 @@
 #include "TypeSerializer.h"
 #include "Asset/AssetManager.h"
 #include "Sequence/MovieSceneSequence.h"
+#include "Core/PathUtils.h"
 
 #include "Serialization/MemoryWriter.h"
 #include "Serialization/MemoryReader.h"
@@ -188,7 +189,7 @@ bool FJsonArchive::SaveSequence(UMovieSceneSequence* Sequence, const FString& Pa
 		return false;
 	}
 
-	std::ofstream File(Path, std::ios::binary);
+	std::ofstream File(PathUtils::FromUtf8(Path), std::ios::binary);
 	if (!File.is_open())
 	{
 		return false;
@@ -227,20 +228,21 @@ bool FJsonArchive::SaveSequenceToBytes(UMovieSceneSequence* Sequence, TArray<uin
 
 bool FJsonArchive::LoadSequence(UMovieSceneSequence* Sequence, const FString& Path)
 {
-	if (!std::filesystem::exists(Path))
+	const std::filesystem::path FilePath = PathUtils::FromUtf8(Path);
+	if (!std::filesystem::exists(FilePath))
 	{
 		HTR_LOG(Warning, "{} is Not Exist!", Path);
 		return false;
 	}
 
-	std::ifstream File(Path, std::ios::binary);
+	std::ifstream File(FilePath, std::ios::binary);
 	if (!File.is_open())
 	{
 		return false;
 	}
 
 	TArray<uint8> Bytes;
-	Bytes.SetNum(static_cast<int32>(std::filesystem::file_size(Path)));
+	Bytes.SetNum(static_cast<int32>(std::filesystem::file_size(FilePath)));
 	File.read(reinterpret_cast<char*>(Bytes.GetData()), Bytes.Num());
 	if (File.fail())
 	{

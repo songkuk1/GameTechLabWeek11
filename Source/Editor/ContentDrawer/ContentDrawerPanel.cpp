@@ -1,6 +1,7 @@
 #include "EnginePCH.h"
 #include "Editor/ContentDrawer/ContentDrawerPanel.h"
 #include "Asset/AssetManager.h"
+#include "Core/PathUtils.h"
 #include "Text/Font.h"
 #include "Editor/HitoriEd/EditorDragDrop.h"
 #include "Editor/HitoriEd/EditorResourcePaths.h"
@@ -43,7 +44,7 @@ void FContentDrawerPanel::OnRender()
 	ImGui::BeginChild("FolderTreeView", ImVec2(treeViewWidth, 0));
 	{
 		// 루트 노드
-		if (ImGui::TreeNodeEx(AssetRootPath.string().c_str(), ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanAvailWidth |
+		if (ImGui::TreeNodeEx(PathUtils::ToUtf8(AssetRootPath).c_str(), ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanAvailWidth |
 			(AssetRootPath == CurrentPath ? ImGuiTreeNodeFlags_Selected : 0) | ImGuiTreeNodeFlags_DrawLinesToNodes))
 		{
 			if (ImGui::IsItemClicked())
@@ -94,8 +95,8 @@ void FContentDrawerPanel::OnRender()
 
 				ImGui::TableNextColumn();
 
-				std::string PathString = Path.generic_string();
-				std::string FilenameString = Path.filename().string();
+				std::string PathString = PathUtils::ToUtf8(Path);
+				std::string FilenameString = PathUtils::ToUtf8(Path.filename());
 
 				ImGui::PushID(PathString.c_str()); // 각 위젯에 고유 ID 부여
 				UTexture2D* Thumbnail = nullptr;
@@ -170,7 +171,7 @@ void FContentDrawerPanel::OnRender()
 					}
 					else if (Path.extension() == ".lua")
 					{
-						FLuaScriptEditor::EditScript(Path.generic_string());
+						FLuaScriptEditor::EditScript(PathString);
 					}
 					else if (Path.extension() == ".sequence" && OpenLevelSequence)
 					{
@@ -217,7 +218,7 @@ void FContentDrawerPanel::CreateLevelSequenceFile()
 		Scene = NewObject<UMovieScene>(Sequence);
 		Scene->Initialize(5.f, 150);
 		Sequence->Initialize(Scene);
-		if (!FJsonArchive::SaveSequence(Sequence, Path.generic_string()))
+		if (!FJsonArchive::SaveSequence(Sequence, PathUtils::ToUtf8(Path)))
 		{
 			CreateAssetError = "Could not create the level sequence file.";
 		}
@@ -243,7 +244,7 @@ void FContentDrawerPanel::DrawPathBar()
 	ImGui::SetItemTooltip("Parent Folder");
 
 	ImGui::SameLine();
-	if (ImGui::SmallButton(AssetRootPath.string().c_str()))
+	if (ImGui::SmallButton(PathUtils::ToUtf8(AssetRootPath).c_str()))
 		NextPath = AssetRootPath;
 
 	fs::path SegmentPath = AssetRootPath;
@@ -260,7 +261,7 @@ void FContentDrawerPanel::DrawPathBar()
 
 		// 폴더 이름이 같아도 위치가 다르면 다른 버튼이 되도록 순번으로 ID를 나눈다.
 		ImGui::PushID(SegmentIndex++);
-		if (ImGui::SmallButton(Segment.string().c_str()))
+		if (ImGui::SmallButton(PathUtils::ToUtf8(Segment).c_str()))
 			NextPath = SegmentPath;
 		ImGui::PopID();
 	}
@@ -286,7 +287,7 @@ void FContentDrawerPanel::RenderFolderTree(const fs::path& Path, fs::path& Selec
 			continue;
 
 		const FString FilenameString =
-			Entry.filename().string();
+			PathUtils::ToUtf8(Entry.filename());
 
 		ImGuiTreeNodeFlags Flags =
 			ImGuiTreeNodeFlags_OpenOnArrow |
