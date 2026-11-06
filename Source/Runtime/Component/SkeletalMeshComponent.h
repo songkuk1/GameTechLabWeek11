@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Component/SkinnedMeshComponent.h"
+#include "Animation/UAnimInstance.h"
 
 class USkeleton;
 
@@ -15,6 +16,9 @@ public:
 
 	FPrimitiveSceneProxy* CreateSceneProxy() override;
 
+	void TickComponent(float DeltaTime) override;
+
 private:
 	USkeleton* Skeleton = nullptr;
+	UAnimationInstance* AnimInstance = nullptr;
 };

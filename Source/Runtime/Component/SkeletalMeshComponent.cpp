@@ -4,6 +4,12 @@
 #include "Engine/PrimitiveSceneProxy.h"
 #include "Render/RenderPacket.h"
 
+USkeletalMeshComponent::USkeletalMeshComponent()
+{
+	PrimaryComponentTick.bCanEverTick = true;
+	PrimaryComponentTick.bStartWithTickEnabled = true;
+}
+
 const FModelMeshData* USkeletalMeshComponent::GetMeshData() const
 {
 	if (!SkeletalMesh)
@@ -50,4 +56,15 @@ void USkeletalMeshComponent::SubmitToRenderQueue(FRenderQueue& RenderQueue)
 FPrimitiveSceneProxy* USkeletalMeshComponent::CreateSceneProxy()
 {
 	return new FSkeletalMeshSceneProxy(this);
+}
+
+void USkeletalMeshComponent::TickComponent(float DeltaTime)
+{
+	Super::TickComponent(DeltaTime);
+
+	if (!SkeletalMesh || !AnimInstance || !AnimInstance->GetSequence())
+		return;
+
+	AnimInstance->Tick(DeltaTime, LocalPose);
+	UpdateBoneMatrices();
 }

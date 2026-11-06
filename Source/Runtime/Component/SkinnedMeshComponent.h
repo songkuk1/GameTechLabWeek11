@@ -46,7 +46,6 @@ public:
 
 protected:
 	USkeletalMesh* SkeletalMesh = nullptr;
-
 	// [노드] = 부모 기준 로컬 트랜스폼. 이 컴포넌트만의 포즈이며 처음에는 에셋 노드의 LocalTransform을 복사한다
 	TArray<FMatrix> LocalPose;
 	TArray<FMatrix> BoneMatrices;
