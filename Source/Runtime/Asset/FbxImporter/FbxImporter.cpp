@@ -930,6 +930,7 @@ void FFbxImporter::ParseSkin(const TArray<int32>& VertexToControlPoints, const T
 			{
 				fbxsdk::FbxAMatrix MeshBindTransform;
 				Cluster->GetTransformMatrix(MeshBindTransform);
+				OutBindGlobalTransform = ConvertMatrix(MeshBindTransform);
 				bHasValidSkinCluster = true;
 			}
 
