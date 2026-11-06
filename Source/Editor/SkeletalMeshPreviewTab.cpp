@@ -48,12 +48,18 @@ FSkeletalMeshPreviewTab::FSkeletalMeshPreviewTab(USkeletalMesh* InSkeletalMesh)
 		UAnimSequence* Animation = *It;
 		if (Animation && Animation->GetPath().find(AnimationPrefix) == 0)
 		{
-			MeshActor->GetSkeletalMeshComponent()->PlayAnimation(Animation);
-			HTR_LOG(Info, "[Animation Preview] Playing: {}", Animation->GetPath());
-			break;
+			Animations.Add(Animation);
 
 		}
 	}
+	std::sort(Animations.begin(), Animations.end(), [](const UAnimSequence* A, const UAnimSequence* B) {return A->GetPath() < B->GetPath();});
+
+	if (Animations.Num() > 0)
+	{
+		SelectedAnimation = Animations[0];
+		MeshActor->GetSkeletalMeshComponent()->PlayAnimation(SelectedAnimation);
+	}
+
 	if (const USkeleton* Skeleton = SkeletalMesh->GetSkeleton())
 	{
 		PoseSavePath = Skeleton->GetPosePath();
@@ -68,9 +74,9 @@ FSkeletalMeshPreviewTab::FSkeletalMeshPreviewTab(USkeletalMesh* InSkeletalMesh)
 	SkeletonTreePanel->SetBoneSelectedCallback([this](int32 BoneIndex) { OnBoneSelected(BoneIndex); });
 
 	ViewportPanel = AddPanel<FPreviewViewportPanel>(GetWorld(), FString("Viewport##") + SkeletalMesh->GetPath(), [this]()
-	{
-		DrawToolbar();
-	});
+		{
+			DrawToolbar();
+		});
 }
 
 FSkeletalMeshPreviewTab::~FSkeletalMeshPreviewTab()
@@ -85,6 +91,32 @@ FSkeletalMeshPreviewTab::~FSkeletalMeshPreviewTab()
 // 포즈 저장 상태 및 공용 스켈레탈 메시 표시 설정 편집
 void FSkeletalMeshPreviewTab::DrawToolbar()
 {
+	const FString CurrentAnimationName = SelectedAnimation ? SelectedAnimation->GetPath().substr(SkeletalMesh->GetPath().size() + 2) : "None";
+	ImGui::SetNextItemWidth(250.0f);
+	if (ImGui::BeginCombo("Animation", CurrentAnimationName.c_str()))
+	{
+		if (ImGui::Selectable("None", SelectedAnimation == nullptr))
+		{
+			SelectedAnimation = nullptr;
+			MeshActor->GetSkeletalMeshComponent()->PlayAnimation(nullptr);
+		}
+
+		for (UAnimSequence* Animation : Animations)
+		{
+			const FString AnimationName = Animation->GetPath().substr(SkeletalMesh->GetPath().size() + 2);
+			const bool bSelected = (SelectedAnimation == Animation);
+			if (ImGui::Selectable(AnimationName.c_str(), bSelected))
+			{
+				SelectedAnimation = Animation;
+				MeshActor->GetSkeletalMeshComponent()->PlayAnimation(SelectedAnimation);
+			}
+			if (bSelected)
+			{
+				ImGui::SetItemDefaultFocus();
+			}
+		}
+		ImGui::EndCombo();
+	}
 	ImGui::BeginDisabled(PoseSavePath.empty() || BoneGizmo.IsUsing());
 	const FString FileEntry = PathUtils::ToUtf8(PoseSavePath.filename()) + " ...###PoseFile";
 	if (ImGui::Button(FileEntry.c_str()))

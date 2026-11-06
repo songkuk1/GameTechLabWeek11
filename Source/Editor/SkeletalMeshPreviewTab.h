@@ -10,8 +10,8 @@ class ASkeletalMeshActor;
 class AActor;
 class FPreviewViewportPanel;
 class FSkeletonTreePanel;
-
 class FViewportsPanel;
+class UAnimSequence;
 
 class FSkeletalMeshPreviewTab : public FEditorTab
 {
@@ -61,5 +61,6 @@ private:
 	FGizmo BoneGizmo;
 	// 선택 안 함은 -1이라 부호 있는 정수여야 한다
 	int32 SelectedBone = -1;
-
+	TArray<UAnimSequence*> Animations;
+	UAnimSequence* SelectedAnimation = nullptr;
 };
