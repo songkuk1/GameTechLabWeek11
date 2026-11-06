@@ -22,6 +22,7 @@
 
 #include "Asset/FbxImporter/FbxImporter.h"
 #include "Animation/Skeleton.h"
+#include "Animation/UAnimSequence.h"
 #include "Render/SkeletalMesh.h"
 #include "Core/PathUtils.h"
 
@@ -119,6 +120,20 @@ namespace
 		Mesh->RebuildRenderData();
 
 		return Mesh;
+	}
+
+	TArray<UAnimSequence*> CreateAnimationAsset(const FModelData& ModelData)
+	{
+		const TArray<FAnimSeqData>& AnimData = ModelData.AnimData;
+		TArray<UAnimSequence*> AnimSeqArray;
+
+		for (int i = 0;i < AnimData.Num();i++)
+		{
+			UAnimSequence* AnimSequence = NewObject<UAnimSequence>();
+			AnimSequence->SetAnimData(AnimData[i]);
+			AnimSeqArray.Add(AnimSequence);
+		}
+		return AnimSeqArray;
 	}
 
 	USkeleton* CreateSkeleton(const FModelData& ModelData)
@@ -568,6 +583,18 @@ void UAssetManager::LoadFbxModel(const FString& Path)
 	{
 		UStaticMesh* Mesh = CreateStaticMesh(&ModelData.MeshData);
 		RegisterAsset(MeshKey, Mesh);
+	}
+
+	if (ModelData.AnimData.Num()>0)	// Animation Data가 존재할때만 AnimationAsset 생성
+	{
+
+		TArray<UAnimSequence*> AnimAssetArray = CreateAnimationAsset(ModelData);	// AnimationData를 AnimationSequence 객체로 변환
+
+		for (int32 AnimIndex = 0; AnimIndex < AnimAssetArray.Num(); ++AnimIndex)
+		{
+			const FString AnimKey = std::format("{}_Anim_{}", MeshKey, AnimIndex);
+			RegisterAsset(AnimKey, AnimAssetArray[AnimIndex]);	// AnimationSequeuce 객체를 Asset으로 등록
+		}
 	}
 }
 
