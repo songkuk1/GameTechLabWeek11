@@ -11,7 +11,7 @@
 
 namespace
 {
-constexpr uint32 ModelBakeVersion = 1;
+constexpr uint32 ModelBakeVersion = 2;
 
 struct FModelBakeHeader
 {
@@ -140,6 +140,34 @@ void FModelBake::SerializeModelMesh(FStructuredArchive::FRecord& Record, FModelM
 	Record << SA_VALUE("SectionCount", Mesh.SectionCount);
 }
 
+void FModelBake::SerializeQuat(FStructuredArchive::FRecord& Record, FQuat& Quat)
+{
+	Record << SA_VALUE("X", Quat.X);
+	Record << SA_VALUE("Y", Quat.Y);
+	Record << SA_VALUE("Z", Quat.Z);
+	Record << SA_VALUE("W", Quat.W);
+}
+
+void FModelBake::SerializeModelAnimationTrack(FStructuredArchive::FRecord& Record, FModelAnimationTrack& Track)
+{
+	Record << SA_VALUE("Name", Track.Name);
+	Record << SA_VALUE("NodeIndex", Track.NodeIndex);
+	SerializeArray<FVector>(Record, "PosKeys", Track.PosKeys, [](FStructuredArchive::FRecord& ElementRecord, FVector& Value) {ElementRecord << SA_VALUE("Value", Value);});
+	SerializeArray<FQuat>(Record, "RotKeys", Track.RotKeys, [](FStructuredArchive::FRecord& ElementRecord, FQuat& Value) {ElementRecord << SA_VALUE("Value", Value);});
+	SerializeArray<FVector>(Record, "ScaleKeys", Track.ScaleKeys, [](FStructuredArchive::FRecord& ElementRecord, FVector& Value) {ElementRecord << SA_VALUE("Value", Value);});
+}
+
+void FModelBake::SerializeModelAnimation(FStructuredArchive::FRecord& Record, FModelAnimation& Animation)
+{
+	Record << SA_VALUE("Name", Animation.Name);
+	Record << SA_VALUE("PlayLength", Animation.PlayLength);
+	Record << SA_VALUE("FrameRateNumerator", Animation.FrameRateNumerator);
+	Record << SA_VALUE("FrameRateDenominator", Animation.FrameRateDenominator);
+	Record << SA_VALUE("NumberOfFrames", Animation.NumberOfFrames);
+	Record << SA_VALUE("NumberOfKeys", Animation.NumberOfKeys);
+	SerializeArray<FModelAnimationTrack>(Record, "Tracks", Animation.Tracks, SerializeModelAnimationTrack);
+}
+
 void FModelBake::SerializeModelVertexInfluences(FStructuredArchive::FRecord& Record, FModelVertexInfluences& Influences)
 {
 	FArchive& Ar = Record.GetUnderlyingArchive();
@@ -215,4 +243,5 @@ void FModelBake::SerializeModelData(FStructuredArchive::FRecord& Record, FModelD
 	SerializeArray<FModelBone>(Record, "Bones", ModelData.Bones, SerializeModelBone);
 	SerializeArray<FModelMesh>(Record, "Meshs", ModelData.Meshs, SerializeModelMesh);
 	SerializeArray<FModelVertexInfluences>(Record, "VertexInfluencesList", ModelData.VertexInfluencesList, SerializeModelVertexInfluences);
+	SerializeArray<FModelAnimation>(Record, "Animation", ModelData.Animations, SerializeModelAnimation);
 }

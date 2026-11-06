@@ -18,6 +18,12 @@ private:
 
 	static void SerializeModelMesh(FStructuredArchive::FRecord& Record, FModelMesh& Mesh);
 
+	static void SerializeQuat(FStructuredArchive::FRecord& Record, FQuat& Quat);
+
+	static void SerializeModelAnimationTrack(FStructuredArchive::FRecord& Record, FModelAnimationTrack& Track);
+
+	static void SerializeModelAnimation(FStructuredArchive::FRecord& Record, FModelAnimation& Animation);
+
 	static void SerializeModelVertexInfluences(FStructuredArchive::FRecord& Record, FModelVertexInfluences& Influences);
 
 	static void SerializeVertex(FStructuredArchive::FRecord& Record, FVertexPNCT& Vertex);

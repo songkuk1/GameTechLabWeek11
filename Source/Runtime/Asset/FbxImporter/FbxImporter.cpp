@@ -33,6 +33,134 @@ namespace
 
 		return EngineMatrix;
 	}
+	void ExtractAnimationTracksRecursive(fbxsdk::FbxNode* CurrentNode, const TMap<uint64, int32>& NodeToIndexMap, double StartSeconds, double PlayLength, int32 SampleRate, int32 FrameCount, FModelAnimation& OutAnimation)
+	{
+		if (!CurrentNode)
+		{
+			return;
+		}
+		const int32* FoundNodeIndex = NodeToIndexMap.Find(CurrentNode->GetUniqueID());
+		if (FoundNodeIndex)
+		{
+			FModelAnimationTrack& Track = OutAnimation.Tracks.AddDefaulted_GetRef();
+			Track.Name = FName(CurrentNode->GetName());
+			Track.NodeIndex = *FoundNodeIndex;
+			for (int32 FrameIndex = 0; FrameIndex < FrameCount; ++FrameIndex)
+			{
+				const double SampleOffset = std::min(static_cast<double>(FrameIndex) / SampleRate, PlayLength);
+				fbxsdk::FbxTime SampleTime;
+				SampleTime.SetSecondDouble(StartSeconds + SampleOffset);
+				const fbxsdk::FbxAMatrix LocalMatrix = CurrentNode->EvaluateLocalTransform(SampleTime);
+				const fbxsdk::FbxVector4 Translation = LocalMatrix.GetT();
+				const fbxsdk::FbxQuaternion Rotation = LocalMatrix.GetQ();
+				const fbxsdk::FbxVector4 Scale = LocalMatrix.GetS();
+
+				Track.PosKeys.Add(FVector(static_cast<float>(Translation[0]), static_cast<float>(-Translation[1]), static_cast<float>(Translation[2])));
+				Track.RotKeys.Add(FQuat(static_cast<float>(-Rotation[0]), static_cast<float>(Rotation[1]), static_cast<float>(-Rotation[2]), static_cast<float>(Rotation[3])).Normalized());
+				Track.ScaleKeys.Add(FVector(static_cast<float>(Scale[0]), static_cast<float>(Scale[1]), static_cast<float>(Scale[2])));
+			}
+			OutAnimation.NumberOfKeys += Track.PosKeys.Num() + Track.RotKeys.Num() + Track.ScaleKeys.Num();
+		}
+
+		for (int32 ChildIndex = 0; ChildIndex < CurrentNode->GetChildCount(); ++ChildIndex)
+		{
+			ExtractAnimationTracksRecursive(CurrentNode->GetChild(ChildIndex), NodeToIndexMap, StartSeconds, PlayLength, SampleRate, FrameCount, OutAnimation);
+		}
+	}
+
+	void ExtractAnimations(
+		fbxsdk::FbxScene* Scene,
+		const TMap<uint64, int32>& NodeToIndexMap,
+		TArray<FModelAnimation>& OutAnimations)
+	{
+		if (!Scene)
+		{
+			return;
+		}
+
+		constexpr int32 SampleRate = 30;
+
+		const int32 StackCount =
+			Scene->GetSrcObjectCount<fbxsdk::FbxAnimStack>();
+
+		for (int32 StackIndex = 0;
+			StackIndex < StackCount;
+			++StackIndex)
+		{
+			fbxsdk::FbxAnimStack* AnimStack =
+				Scene->GetSrcObject<fbxsdk::FbxAnimStack>(StackIndex);
+
+			if (!AnimStack)
+			{
+				continue;
+			}
+
+			// Animation Stack에 포함된 Layer 확인
+			const int32 LayerCount =
+				AnimStack->GetMemberCount<fbxsdk::FbxAnimLayer>();
+
+			if (LayerCount == 0)
+			{
+				continue;
+			}
+
+			// 이번에 평가할 Animation Stack 지정
+			Scene->SetCurrentAnimationStack(AnimStack);
+
+			// Animation 구간 가져오기
+			const fbxsdk::FbxTimeSpan TimeSpan =
+				AnimStack->GetLocalTimeSpan();
+
+			const fbxsdk::FbxTime StartTime = TimeSpan.GetStart();
+			const fbxsdk::FbxTime StopTime = TimeSpan.GetStop();
+
+			const double StartSeconds = StartTime.GetSecondDouble();
+
+			const double PlayLength =
+				(StopTime - StartTime).GetSecondDouble();
+
+			if (!std::isfinite(PlayLength) || PlayLength < 0.0)
+			{
+				continue;
+			}
+
+			// 시작 프레임과 마지막 프레임을 모두 포함
+			const int32 FrameCount =
+				std::max(1, static_cast<int32>(
+					std::ceil(PlayLength * SampleRate)) + 1);
+
+			FModelAnimation& Animation =
+				OutAnimations.AddDefaulted_GetRef();
+
+			Animation.Name = FName(AnimStack->GetName());
+			Animation.PlayLength = static_cast<float>(PlayLength);
+
+			Animation.FrameRateNumerator = SampleRate;
+			Animation.FrameRateDenominator = 1;
+
+			Animation.NumberOfFrames = FrameCount;
+			Animation.NumberOfKeys = 0;
+
+			ExtractAnimationTracksRecursive(
+				Scene->GetRootNode(),
+				NodeToIndexMap,
+				StartSeconds,
+				PlayLength,
+				SampleRate,
+				FrameCount,
+				Animation
+			);
+
+			HTR_LOG(
+				Info,
+				"[Animation] Imported: {} | Length: {:.3f}s | Frames: {} | Tracks: {}",
+				Animation.Name.ToString(),
+				Animation.PlayLength,
+				Animation.NumberOfFrames,
+				Animation.Tracks.Num()
+			);
+		}
+	}
 }
 
 bool FFbxImporter::LoadFromFile(const FString& Path, FModelData& OutModelData)
@@ -119,6 +247,10 @@ bool FFbxImporter::LoadFromFile(const FString& Path, FModelData& OutModelData)
 	}
 
 	OutModelData.IsSkeletal = OutModelData.Bones.Num();
+	if (OutModelData.IsSkeletal)
+	{
+		ExtractAnimations(Scene, NodeToIndexMap, OutModelData.Animations);
+	}
 	if (!OutModelData.IsSkeletal)
 	{
 		// 스켈레탈이 아니면 GlobalTransform을 계산해서 Vertex를 변환해 버린다.
