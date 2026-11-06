@@ -116,6 +116,96 @@ namespace
 	}
 }
 
+namespace
+{
+	bool ValidateImportedModelData(const FModelData& ModelData, FString& OutError)
+	{
+		if (!ModelData.MeshData.Validate(OutError))
+		{
+			return false;
+		}
+
+		if (!ModelData.IsSkeletal)
+		{
+			return true;
+		}
+
+		if (ModelData.Bones.IsEmpty())
+		{
+			OutError = "Skeletal mesh has no bones.";
+			return false;
+		}
+
+		if (ModelData.VertexInfluencesList.Num() != ModelData.MeshData.Vertices.Num())
+		{
+			OutError = "Vertex and skin influence counts do not match.";
+			return false;
+		}
+
+		for (const FModelBone& Bone : ModelData.Bones)
+		{
+			if (!ModelData.Nodes.IsValidIndex(Bone.NodeIndex))
+			{
+				OutError = "Bone has an invalid NodeIndex.";
+				return false;
+			}
+
+			for (int32 Row = 0; Row < 4; ++Row)
+			{
+				for (int32 Column = 0; Column < 4; ++Column)
+				{
+					if (!std::isfinite(Bone.InverseBindTransform.M[Row][Column]))
+					{
+						OutError = "Bone has an invalid InverseBindTransform.";
+						return false;
+					}
+				}
+			}
+		}
+
+		for (int32 VertexIndex = 0; VertexIndex < ModelData.VertexInfluencesList.Num(); ++VertexIndex)
+		{
+			const FModelVertexInfluences& Influence = ModelData.VertexInfluencesList[VertexIndex];
+
+			if (Influence.InfluenceCount <= 0 || Influence.InfluenceCount > MaxBoneInfluenceCount)
+			{
+				OutError = std::format("Invalid influence count at vertex {}.", VertexIndex);
+				return false;
+			}
+
+			float WeightSum = 0.0f;
+
+			for (int32 i = 0; i < Influence.InfluenceCount; ++i)
+			{
+				const int32 BoneIndex = Influence.BoneIndices[i];
+				const float Weight = Influence.Weights[i];
+
+				if (BoneIndex < 0 || BoneIndex >= ModelData.Bones.Num())
+				{
+					OutError = std::format("Invalid BoneIndex at vertex {}.", VertexIndex);
+					return false;
+				}
+
+				if (!std::isfinite(Weight) || Weight <= 0.0f)
+				{
+					OutError = std::format("Invalid BoneWeight at vertex {}.", VertexIndex);
+					return false;
+				}
+
+				WeightSum += Weight;
+			}
+
+			if (!std::isfinite(WeightSum) || std::fabs(WeightSum - 1.0f) > 0.001f)
+			{
+				OutError = std::format("BoneWeight sum is not 1.0 at vertex {}.", VertexIndex);
+				return false;
+			}
+		}
+
+		return true;
+	}
+}
+
 bool FFbxImporter::LoadFromFile(const FString& Path, FModelData& OutModelData)
 {
 	const FString BinPath = Path + ".bin";
@@ -123,7 +213,13 @@ bool FFbxImporter::LoadFromFile(const FString& Path, FModelData& OutModelData)
 	// .bin 파일 읽기
 	if (FModelBake::ReadBaked(BinPath, OutModelData))
 	{
-		return true;
+		FString ValidationError;
+		if (ValidateImportedModelData(OutModelData, ValidationError))
+		{
+			return true;
+		}
+		HTR_LOG(Warning, "[FBX] Invalid baked model data: {} | {}", BinPath, ValidationError);
+		OutModelData = FModelData{};
 	}
 
 	std::filesystem::path FbxPath = PathUtils::FromUtf8(Path);
@@ -194,6 +290,29 @@ bool FFbxImporter::LoadFromFile(const FString& Path, FModelData& OutModelData)
 	TArray<FMeshNode> MeshNodes;
 	BuildNodeHierarchy(-1, Scene->GetRootNode(), NodeToIndexMap, NodeIndexToBoneIndexMap, OutModelData.Nodes, OutModelData.Bones, MeshNodes);
 
+	TArray<FMatrix> NodeGlovalTransforms;
+	NodeGlovalTransforms.SetNum(OutModelData.Nodes.Num());
+	for (int32 i = 0; i < OutModelData.Nodes.Num(); ++i)
+	{
+		const FModelNode& Node = OutModelData.Nodes[i];
+		FMatrix ParentGlobal = FMatrix::Identity;
+		if (Node.ParentNodeIndex != -1)
+		{
+			ParentGlobal = NodeGlovalTransforms[Node.ParentNodeIndex];
+		}
+		NodeGlovalTransforms[i] = Node.LocalTransform * ParentGlobal;
+	}
+
+	for (FModelBone& Bone : OutModelData.Bones)
+	{
+		if (Bone.NodeIndex < 0 || Bone.NodeIndex >= NodeGlovalTransforms.Num())
+		{
+			HTR_LOG(Warning, "[FBX] Invalid Bone NodeIndex: {}", Bone.NodeIndex);
+			return false;
+		}
+		Bone.InverseBindTransform = NodeGlovalTransforms[Bone.NodeIndex].Inverse();
+	}
+
 	for (FMeshNode& MeshNode : MeshNodes)
 	{
 		ProcessMeshNode(FbxPath, NodeToIndexMap, NodeIndexToBoneIndexMap, OutModelData.Bones, MeshNode, OutModelData.MeshData, OutModelData.VertexInfluencesList, OutModelData.Meshs);
@@ -250,7 +369,18 @@ bool FFbxImporter::LoadFromFile(const FString& Path, FModelData& OutModelData)
 	OutModelData.MeshData.BuildAABB();
 	OutModelData.MeshData.BuildTriangleBVH();
 
-	FModelBake::WriteBaked(BinPath, OutModelData);
+	FString ValidationError;
+
+	if (!ValidateImportedModelData(OutModelData, ValidationError))
+	{
+		HTR_LOG(Warning, "[FBX] Import validation failed: {} | {}", Path, ValidationError);
+		return false;
+	}
+
+	if (!FModelBake::WriteBaked(BinPath, OutModelData))
+	{
+		HTR_LOG(Warning, "[FBX] Failed to write baked model: {}", BinPath);
+	}
 
 	// 리소스 정리
 	delete Converter;
@@ -312,7 +442,7 @@ void FFbxImporter::BuildNodeHierarchy(int32 ParentNodeIndex, fbxsdk::FbxNode* Cu
 
 void FFbxImporter::ProcessMeshNode(const std::filesystem::path& FbxPath, const TMap<uint64, int32>& NodeToIndexMap, const TMap<int32, int32>& NodeIndexToBoneIndexMap, TArray<FModelBone>& Bones, const FMeshNode& MeshNode, FModelMeshData& OutModelMeshData, TArray<FModelVertexInfluences>& OutVertexInfluencesList, TArray<FModelMesh>& OutMeshs)
 {
-	bool IsSkeletal = Bones.Num();
+	const bool bIsSkeletalAsset = !Bones.IsEmpty();
 
 	fbxsdk::FbxMesh* Mesh = MeshNode.FbxNode->GetMesh();
 
@@ -333,7 +463,7 @@ void FFbxImporter::ProcessMeshNode(const std::filesystem::path& FbxPath, const T
 	;		ModelMesh.FirstSection = OutModelMeshData.Sections.Num();
 	ModelMesh.SectionCount = 0;
 
-	FMatrix BindGlobalTransform;
+	FMatrix BindGlobalTransform = FMatrix::Identity;
 	ParseSkin(VertexToControlPoint, NodeToIndexMap, NodeIndexToBoneIndexMap, MeshNode, Bones, OutVertexInfluencesList, BindGlobalTransform);
 
 	FMatrix BindGlobalTransformForNormal = BindGlobalTransform.Inverse().GetTransposed();
@@ -376,7 +506,7 @@ void FFbxImporter::ProcessMeshNode(const std::filesystem::path& FbxPath, const T
 	{
 		FVertexPNCT Vertex = Vertices[i];
 
-		if (IsSkeletal)
+		if (bIsSkeletalAsset)
 		{
 			FVector4 Position = FVector4(Vertex.Position, 1.f) * BindGlobalTransform;
 			Vertex.Position = FVector(Position.X, Position.Y, Position.Z);
@@ -440,11 +570,17 @@ void FFbxImporter::ParseMaterial(const std::filesystem::path& ParentPath, fbxsdk
 	}
 
 	fbxsdk::FbxProperty NormalProperty = Material->FindProperty(fbxsdk::FbxSurfaceMaterial::sNormalMap);
-	if (DiffuseProperty.IsValid())
+
+	if (NormalProperty.IsValid())
 	{
-		for (int32 i = 0; i < NormalProperty.GetSrcObjectCount<FbxFileTexture>(); i++)
+		for (int32 i = 0; i < NormalProperty.GetSrcObjectCount<fbxsdk::FbxFileTexture>(); ++i)
 		{
 			fbxsdk::FbxFileTexture* Texture = NormalProperty.GetSrcObject<fbxsdk::FbxFileTexture>(i);
+
+			if (!Texture)
+			{
+				continue;
+			}
 			if (Texture->GetRelativeFileName())
 			{
 				OutMaterial.NormalTexturePath = PathUtils::ToUtf8(ParentPath / PathUtils::FromUtf8(Texture->GetRelativeFileName()));
@@ -479,6 +615,19 @@ void FFbxImporter::ParseMesh(const std::filesystem::path& FbxPath, fbxsdk::FbxMe
 	auto BinormalReferenceMode = BinormalElement ? BinormalElement->GetReferenceMode() : fbxsdk::FbxLayerElement::eDirect;
 
 	TMap<uint64, int32> MaterialIDToIndexMap;
+
+	int32 DefaultMaterialSlotIndex = -1;
+	auto GetDefaultMaterialSlotIndex = [&]() -> uint32
+		{
+			if (DefaultMaterialSlotIndex < 0)
+			{
+				DefaultMaterialSlotIndex = OutMaterials.Num();
+				FMeshMaterialSlot& DefaultSlot = OutMaterials.AddDefaulted_GetRef();
+				DefaultSlot.Name = "Default";
+			}
+			return static_cast<uint32>(DefaultMaterialSlotIndex);
+		};
+
 	for (int32 PolygonIndex = 0; PolygonIndex < Mesh->GetPolygonCount(); PolygonIndex++)
 	{
 		int32 PolygonSize = Mesh->GetPolygonSize(PolygonIndex);
@@ -607,7 +756,7 @@ void FFbxImporter::ParseMesh(const std::filesystem::path& FbxPath, fbxsdk::FbxMe
 		fbxsdk::FbxGeometryElementMaterial* MaterialElement = Mesh->GetElementMaterial();
 		if (MaterialElement)
 		{
-			fbxsdk::FbxLayerElement::EMappingMode MappingMode = MaterialElement->GetMappingMode();
+			const fbxsdk::FbxLayerElement::EMappingMode MappingMode = MaterialElement->GetMappingMode();
 
 			int32 ArrayIndex = -1;
 			switch (MappingMode)
@@ -617,27 +766,38 @@ void FFbxImporter::ParseMesh(const std::filesystem::path& FbxPath, fbxsdk::FbxMe
 			}
 
 			const auto& MaterialIndices = MaterialElement->GetIndexArray();
+
 			if (ArrayIndex >= 0 && ArrayIndex < MaterialIndices.GetCount())
 			{
-				int32 MaterialIndex = MaterialIndices.GetAt(ArrayIndex);
+				const int32 MaterialIndex = MaterialIndices.GetAt(ArrayIndex);
 
-				fbxsdk::FbxSurfaceMaterial* SurfaceMaterial = Node->GetMaterial(MaterialIndex);
-				fbxsdk::FbxUInt64 SurfaceMaterialID = SurfaceMaterial->GetUniqueID();
-
-				if (MaterialIDToIndexMap.Contains(SurfaceMaterialID))
+				if (MaterialIndex >= 0 && MaterialIndex < Node->GetMaterialCount())
 				{
-					MaterialSlotIndex = MaterialIDToIndexMap[SurfaceMaterialID];
-				}
-				else
-				{
-					MaterialSlotIndex = OutMaterials.Num();
+					fbxsdk::FbxSurfaceMaterial* SurfaceMaterial = Node->GetMaterial(MaterialIndex);
+					if (SurfaceMaterial)
+					{
+						const uint64 SurfaceMaterialID = SurfaceMaterial->GetUniqueID();
 
-					FMeshMaterialSlot& MaterialSlot = OutMaterials.AddDefaulted_GetRef();
-					ParseMaterial(FbxPath.parent_path(), SurfaceMaterial, MaterialSlot);
+						if (MaterialIDToIndexMap.Contains(SurfaceMaterialID))
+						{
+							MaterialSlotIndex = static_cast<uint32>(MaterialIDToIndexMap[SurfaceMaterialID]);
+						}
+						else
+						{
+							MaterialSlotIndex = static_cast<uint32>(OutMaterials.Num());
 
-					MaterialIDToIndexMap[SurfaceMaterialID] = MaterialSlotIndex;
+							FMeshMaterialSlot& MaterialSlot = OutMaterials.AddDefaulted_GetRef();
+							ParseMaterial(FbxPath.parent_path(), SurfaceMaterial, MaterialSlot);
+
+							MaterialIDToIndexMap[SurfaceMaterialID] = static_cast<int32>(MaterialSlotIndex);
+						}
+					}
 				}
 			}
+		}
+		if (MaterialSlotIndex == UINT32_MAX)
+		{
+			MaterialSlotIndex = GetDefaultMaterialSlotIndex();
 		}
 
 		Face.MaterialSlotIndex = MaterialSlotIndex;
@@ -646,134 +806,237 @@ void FFbxImporter::ParseMesh(const std::filesystem::path& FbxPath, fbxsdk::FbxMe
 
 void FFbxImporter::CompactSoftSkin(FSoftModelVertexInfluences& Skin)
 {
-	if (Skin.BoneIndices.Num() < MaxBoneInfluenceCount)
+	int32 InfluenceCount = FMath::Min(Skin.BoneIndices.Num(), Skin.Weights.Num());
+
+	for (int32 i = 0; i < InfluenceCount;)
 	{
+		const float Weight = Skin.Weights[i];
+		if (Skin.BoneIndices[i] < 0 || !std::isfinite(Weight) || Weight < 0.0f)
+		{
+			Skin.BoneIndices[i] = Skin.BoneIndices[InfluenceCount - 1];
+			Skin.Weights[i] = Skin.Weights[InfluenceCount - 1];
+			--InfluenceCount;
+			continue;
+		}
+		++i;
+	}
+	for (int32 i = 0; i < InfluenceCount; ++i)
+	{
+		for (int32 j = i + 1; j < InfluenceCount;)
+		{
+			if (Skin.BoneIndices[i] == Skin.BoneIndices[j])
+			{
+				Skin.Weights[i] += Skin.Weights[j];
+				Skin.BoneIndices[j] = Skin.BoneIndices[InfluenceCount - 1];
+				Skin.Weights[j] = Skin.Weights[InfluenceCount - 1];
+				--InfluenceCount;
+			}
+			else
+			{
+				++j;
+			}
+		}
+	}
+
+	for (int32 i = 0; i < InfluenceCount; ++i)
+	{
+		for (int32 j = i + 1; j < InfluenceCount; ++j)
+		{
+			if (Skin.Weights[i] < Skin.Weights[j])
+			{
+				std::swap(Skin.BoneIndices[i], Skin.BoneIndices[j]);
+				std::swap(Skin.Weights[i], Skin.Weights[j]);
+			}
+		}
+	}
+
+	const int32 FinalInfluenceCount = FMath::Min(InfluenceCount, MaxBoneInfluenceCount);
+	float WeightSum = 0.0f;
+	for (int32 i = 0; i < FinalInfluenceCount; ++i)
+	{
+		WeightSum += Skin.Weights[i];
+	}
+
+	if (!std::isfinite(WeightSum) || WeightSum <= 0.0f)
+	{
+		Skin.BoneIndices.Reset();
+		Skin.Weights.Reset();
 		return;
 	}
-
-	// 같은 본이 중복되면 합친다.
-	int32 InfluenceCount = Skin.BoneIndices.Num();
-	for (int32 i = 0; i < InfluenceCount; i++)
-	{
-		for (int32 j = i + 1; j < InfluenceCount; j++)
-		{
-			if (Skin.BoneIndices[i] != Skin.BoneIndices[j])
-			{
-				continue;
-			}
-
-			Skin.Weights[i] += Skin.Weights[j];
-			Skin.BoneIndices[j] = Skin.BoneIndices[InfluenceCount - 1];
-			Skin.Weights[j] = Skin.Weights[InfluenceCount - 1];
-			InfluenceCount--;
-			j--;
-		}
-	}
-
-	// 내림차순으로 정렬
-	for (int32 i = 0; i < InfluenceCount; i++)
-	{
-		for (int32 j = i + 1; j < InfluenceCount; j++)
-		{
-			if (Skin.Weights[i] >= Skin.Weights[j])
-			{
-				continue;
-			}
-
-			std::swap(Skin.BoneIndices[i], Skin.BoneIndices[j]);
-			std::swap(Skin.Weights[i], Skin.Weights[j]);
-		}
-	}
-
-	int32 FinalInfluenceCount = FMath::Min(InfluenceCount, MaxBoneInfluenceCount);
-
-	// 상위 Max개 합 계산
-	float Sum = 0;
-	for (int32 i = 0; i < FinalInfluenceCount; i++)
-	{
-		Sum += Skin.Weights[i];
-	}
-
-	// 합으로 나눠서 합이 1.0이 되게 하기
-	if (Sum > 0.f)
-	{
-		for (int32 i = 0; i < FinalInfluenceCount; i++)
-		{
-			Skin.Weights[i] /= Sum;
-		}
-	}
-
 	Skin.BoneIndices.SetNum(FinalInfluenceCount);
 	Skin.Weights.SetNum(FinalInfluenceCount);
+	for (int i = 0; i < FinalInfluenceCount; ++i)
+	{
+		Skin.Weights[i] /= WeightSum;
+	}
 }
 
 void FFbxImporter::ParseSkin(const TArray<int32>& VertexToControlPoints, const TMap<uint64, int32>& NodeToIndexMap, const TMap<int32, int32>& NodeIndexToBoneIndexMap, const FMeshNode& MeshNode, TArray<FModelBone>& Bones, TArray<FModelVertexInfluences>& OutVertexInfluencesList, FMatrix& OutBindGlobalTransform)
 {
 	fbxsdk::FbxMesh* Mesh = MeshNode.FbxNode->GetMesh();
 
-	TArray<FSoftModelVertexInfluences> SoftVerteInfluences;
-	for (int32 i = 0; i < Mesh->GetDeformerCount(fbxsdk::FbxDeformer::eSkin); i++)
+	if (!Mesh)
 	{
-		fbxsdk::FbxSkin* Skin = (fbxsdk::FbxSkin*)Mesh->GetDeformer(i, fbxsdk::FbxDeformer::eSkin);
-
-		for (int32 j = 0; j < Skin->GetClusterCount(); j++)
-		{
-			fbxsdk::FbxCluster* Cluster = Skin->GetCluster(j);
-			fbxsdk::FbxNode* Bone = Cluster->GetLink();
-
-			uint64 BoneID = Bone->GetUniqueID();
-			int32 BoneNodeIndex = NodeToIndexMap[BoneID];
-			int32 BoneIndex = NodeIndexToBoneIndexMap[BoneNodeIndex];
-
-			int32* CtrlPointIndices = Cluster->GetControlPointIndices();
-			double* CtrlPointWeights = Cluster->GetControlPointWeights();
-			for (int32 k = 0; k < Cluster->GetControlPointIndicesCount(); k++)
-			{
-				int32 CtrlPointIndex = CtrlPointIndices[k];
-				double CtrlPointWeight = CtrlPointWeights[k];
-
-				if (CtrlPointIndex >= SoftVerteInfluences.Num())
-				{
-					SoftVerteInfluences.SetNum(CtrlPointIndex + 1);
-				}
-
-				FSoftModelVertexInfluences& SoftVertexInflueces = SoftVerteInfluences[CtrlPointIndex];
-				SoftVertexInflueces.BoneIndices.Add(BoneIndex);
-				SoftVertexInflueces.Weights.Add(CtrlPointWeight);
-			}
-
-			if (i == 0 && j == 0)
-			{
-				fbxsdk::FbxAMatrix BindGlobalTransform;
-				Cluster->GetTransformMatrix(BindGlobalTransform);
-
-				OutBindGlobalTransform = ConvertMatrix(BindGlobalTransform);
-			}
-
-			fbxsdk::FbxAMatrix BoneTransform;
-			Cluster->GetTransformLinkMatrix(BoneTransform);
-
-			Bones[BoneIndex].InverseBindTransform = ConvertMatrix(BoneTransform.Inverse());
-		}
+		return;
 	}
+	OutBindGlobalTransform = FMatrix::Identity;
+	const int32 ControlPointCount = Mesh->GetControlPointsCount();
 
-	for (int32 i = 0; i < VertexToControlPoints.Num(); i++)
+	TArray<FSoftModelVertexInfluences> SoftVertexInfluences;
+	SoftVertexInfluences.SetNum(ControlPointCount);
+
+	bool bHasValidSkinCluster = false;
+
+	for (int32 i = 0; i < Mesh->GetDeformerCount(fbxsdk::FbxDeformer::eSkin); ++i)
 	{
-		int32 ControlPointIndex = VertexToControlPoints[i];
+		fbxsdk::FbxSkin* Skin = static_cast<fbxsdk::FbxSkin*>(Mesh->GetDeformer(i, fbxsdk::FbxDeformer::eSkin));
 
-		FModelVertexInfluences& VertexInfluences = OutVertexInfluencesList.AddDefaulted_GetRef();
-		if (ControlPointIndex >= SoftVerteInfluences.Num())
+		if (!Skin)
 		{
 			continue;
 		}
 
-		FSoftModelVertexInfluences& SoftVertexInfluences = SoftVerteInfluences[ControlPointIndex];
-		CompactSoftSkin(SoftVertexInfluences);
-
-		for (int32 j = 0; j < SoftVertexInfluences.BoneIndices.Num(); j++)
+		for (int32 j = 0; j < Skin->GetClusterCount(); j++)
 		{
-			VertexInfluences.BoneIndices[j] = SoftVertexInfluences.BoneIndices[j];
-			VertexInfluences.Weights[j] = SoftVertexInfluences.Weights[j];
+			fbxsdk::FbxCluster* Cluster = Skin->GetCluster(j);
+			if (!Cluster)
+			{
+				continue;
+			}
+
+			fbxsdk::FbxNode* BoneNode = Cluster->GetLink();
+
+			if (!BoneNode)
+			{
+				continue;
+			}
+
+			const int32* BoneNodeIndex = NodeToIndexMap.Find(BoneNode->GetUniqueID());
+
+			if (!BoneNodeIndex)
+			{
+				continue;
+			}
+
+			const int32* BoneIndexPtr = NodeIndexToBoneIndexMap.Find(*BoneNodeIndex);
+			if (!BoneIndexPtr || *BoneIndexPtr < 0 || *BoneIndexPtr >= Bones.Num())
+			{
+				continue;
+			}
+
+			const int32 BoneIndex = *BoneIndexPtr;
+
+			if (!bHasValidSkinCluster)
+			{
+				fbxsdk::FbxAMatrix MeshBindTransform;
+				Cluster->GetTransformMatrix(MeshBindTransform);
+				bHasValidSkinCluster = true;
+			}
+
+			fbxsdk::FbxAMatrix BoneBindTransform;
+			Cluster->GetTransformLinkMatrix(BoneBindTransform);
+			Bones[BoneIndex].InverseBindTransform = ConvertMatrix(BoneBindTransform.Inverse());
+
+			const int32 ClusterInfluenceCount = Cluster->GetControlPointIndicesCount();
+			int32* ControlPointIndices = Cluster->GetControlPointIndices();
+			double* ControlPointWeights = Cluster->GetControlPointWeights();
+			if (ClusterInfluenceCount <= 0 || !ControlPointIndices || !ControlPointWeights)
+			{
+				continue;
+			}
+
+			for (int32 k = 0; k < Cluster->GetControlPointIndicesCount(); ++k)
+			{
+				const int32 ControlPointIndex = ControlPointIndices[k];
+				const double Weight = ControlPointWeights[k];
+
+				if (ControlPointIndex < 0 || ControlPointIndex >= ControlPointCount)
+				{
+					continue;
+				}
+
+				if (!std::isfinite(Weight) || Weight <= 0.0)
+				{
+					continue;
+				}
+
+				FSoftModelVertexInfluences& Influence = SoftVertexInfluences[ControlPointIndex];
+				Influence.BoneIndices.Add(BoneIndex);
+				Influence.Weights.Add(static_cast<float>(Weight));
+			}
+		}
+	}
+
+	int32 RigidBoneIndex = -1;
+
+	if (!Bones.IsEmpty())
+	{
+		for (fbxsdk::FbxNode* ParentNode = MeshNode.FbxNode; ParentNode; ParentNode = ParentNode->GetParent())
+		{
+			const int32* NodeIndex = NodeToIndexMap.Find(ParentNode->GetUniqueID());
+			if (!NodeIndex)
+			{
+				continue;
+			}
+			const int32* BoneIndex = NodeIndexToBoneIndexMap.Find(*NodeIndex);
+			if (BoneIndex && *BoneIndex >= 0 && *BoneIndex < Bones.Num())
+			{
+				RigidBoneIndex = *BoneIndex;
+				break;
+			}
+		}
+		if (RigidBoneIndex < 0)
+		{
+			for (int32 i = 0; i < Bones.Num(); ++i)
+			{
+				if (Bones[i].ParentBoneIndex == -1)
+				{
+					RigidBoneIndex = i;
+					break;
+				}
+			}
+		}
+
+		if (RigidBoneIndex < 0)
+		{
+			RigidBoneIndex = 0;
+		}
+	}
+
+	if (!bHasValidSkinCluster && !Bones.IsEmpty())
+	{
+		const fbxsdk::FbxAMatrix MeshGlobalTransform = MeshNode.FbxNode->EvaluateGlobalTransform();
+		OutBindGlobalTransform = ConvertMatrix(MeshGlobalTransform);
+	}
+
+	if (!Bones.IsEmpty() && RigidBoneIndex >= 0)
+	{
+		for (int32 i = 0; i < ControlPointCount; ++i)
+		{
+			FSoftModelVertexInfluences& Influence = SoftVertexInfluences[i];
+			if (Influence.BoneIndices.IsEmpty())
+			{
+				Influence.BoneIndices.Add(RigidBoneIndex);
+				Influence.Weights.Add(1.0f);
+			}
+		}
+	}
+
+	for (int32 i = 0; i < VertexToControlPoints.Num(); ++i)
+	{
+		const int32 ControlPointIndex = VertexToControlPoints[i];
+		FModelVertexInfluences& VertexInfluences = OutVertexInfluencesList.AddDefaulted_GetRef();
+		if (ControlPointIndex < 0 || ControlPointIndex >= ControlPointCount)
+		{
+			continue;
+		}
+
+		FSoftModelVertexInfluences& SoftInfluence = SoftVertexInfluences[ControlPointIndex];
+		CompactSoftSkin(SoftInfluence);
+		for (int32 j = 0; j < SoftInfluence.BoneIndices.Num(); ++j)
+		{
+			VertexInfluences.BoneIndices[j] = SoftInfluence.BoneIndices[j];
+			VertexInfluences.Weights[j] = SoftInfluence.Weights[j];
 			VertexInfluences.InfluenceCount++;
 		}
 	}

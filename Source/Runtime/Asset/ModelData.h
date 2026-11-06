@@ -20,14 +20,14 @@ struct FModelNode
 
 struct FModelBone
 {
-	int32 NodeIndex;
-	int32 ParentBoneIndex;
-	FMatrix InverseBindTransform;
+	int32 NodeIndex = -1;
+	int32 ParentBoneIndex = -1;
+	FMatrix InverseBindTransform = FMatrix::Identity;
 };
 
 struct FModelMesh
 {
-	int32 NodeIndex;
+	int32 NodeIndex = -1;
 	int32 FirstSection = -1;
 	int32 SectionCount = 0;
 };
@@ -61,7 +61,7 @@ struct FModelAnimation
 
 struct FModelData
 {
-	bool IsSkeletal;
+	bool IsSkeletal = false;
 	FModelMeshData MeshData;
 	TArray<FModelVertexInfluences> VertexInfluencesList;
 	TArray<FModelNode> Nodes;
