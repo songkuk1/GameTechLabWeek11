@@ -10,6 +10,11 @@ class USkeletalMeshComponent : public USkinnedMeshComponent
 	DECLARE_CLASS(USkeletalMeshComponent, USkinnedMeshComponent)
 
 public:
+	USkeletalMeshComponent();
+	~USkeletalMeshComponent() override;
+	void SetAnimationSequence(UAnimSequence* Sequence);
+	UAnimSequence* GetAnimationSequence() const;
+
 	virtual const FModelMeshData* GetMeshData() const override;
 
 	void SubmitToRenderQueue(FRenderQueue& RenderQueue) override;

@@ -19,7 +19,7 @@ void UAnimationInstance::Tick(float deltaTime, TArray<FMatrix>& LocalPose)
 	UpdatePose(CurrentPlayTime, LocalPose);
 }
 
-void UAnimationInstance::UpdatePose(float deltaTime, TArray<FMatrix>& LocalPose)
+void UAnimationInstance::UpdatePose(float CurrentPlayTime, TArray<FMatrix>& LocalPose)
 {
-	Sequence->CalculateCurrentPose(deltaTime, LocalPose);
+	Sequence->CalculateCurrentPose(CurrentPlayTime, LocalPose);
 }

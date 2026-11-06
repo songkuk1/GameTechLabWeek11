@@ -10,6 +10,32 @@ USkeletalMeshComponent::USkeletalMeshComponent()
 	PrimaryComponentTick.bStartWithTickEnabled = true;
 }
 
+USkeletalMeshComponent::~USkeletalMeshComponent()
+{
+	delete AnimInstance;
+}
+
+UAnimSequence* USkeletalMeshComponent::GetAnimationSequence() const
+{
+	return AnimInstance ? AnimInstance->GetSequence() : nullptr;
+}
+
+void USkeletalMeshComponent::SetAnimationSequence(UAnimSequence* Sequence)
+{
+	if (Sequence)
+	{
+		if (!SkeletalMesh) return;
+		const FString Prefix = SkeletalMesh->GetPath() + "_Anim_";
+		if (Sequence->GetPath().compare(0, Prefix.size(), Prefix) != 0) return;
+	}
+	if (!AnimInstance) AnimInstance = NewObject<UAnimationInstance>(this);
+	AnimInstance->SetSequence(Sequence);
+	AnimInstance->SetCurrentPlayTime(0.0f);
+	ResetPose();
+	if (Sequence) Sequence->CalculateCurrentPose(0.0f, LocalPose);
+	UpdateBoneMatrices();
+}
+
 const FModelMeshData* USkeletalMeshComponent::GetMeshData() const
 {
 	if (!SkeletalMesh)
