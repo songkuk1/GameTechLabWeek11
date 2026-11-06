@@ -5,6 +5,7 @@
 #include <commdlg.h>
 
 #include "Editor/HitoriEd/EditorFileUtils.h"
+#include "Core/PathUtils.h"
 
 UScriptComponent* FLuaScriptEditor::CreateScript(AActor* Actor, FName Name)
 {
@@ -110,13 +111,13 @@ bool FLuaScriptEditor::CreateScriptFileAndOpen()
         return false;
     }
 
-    EditScript(SelectedPath.generic_string());
+    EditScript(PathUtils::ToUtf8(SelectedPath));
     return true;
 }
 
 void FLuaScriptEditor::EditScript(const FString& ScriptPath)
 {
-	const fs::path Path = fs::absolute(ScriptPath).lexically_normal();
+	const fs::path Path = fs::absolute(PathUtils::FromUtf8(ScriptPath)).lexically_normal();
 
 	HINSTANCE hInst = ShellExecute(
 		NULL, // 부모 윈도우 핸들 (NULL 사용 가능)

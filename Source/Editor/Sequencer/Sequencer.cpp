@@ -8,6 +8,7 @@
 #include "imgui_neo_sequencer.h"
 #include "imgui_internal.h"
 #include "Serialization/JsonArchive.h"
+#include "Core/PathUtils.h"
 #include "Camera/CameraActor.h"
 #include <algorithm>
 #include <cmath>
@@ -49,14 +50,14 @@ void FLevelSequencePanel::OpenSequenceFile(const FString& Path)
 	SetOpen(true);
 	bFocusRequested = true;
 	std::error_code Error;
-	const std::filesystem::path AbsolutePath = std::filesystem::absolute(Path, Error);
+	const std::filesystem::path AbsolutePath = std::filesystem::absolute(PathUtils::FromUtf8(Path), Error);
 	if (Error || Path.empty())
 	{
 		bFileError = true;
 		FileStatus = "Could not open the sequence path.";
 		return;
 	}
-	const FString FilePath = AbsolutePath.lexically_normal().generic_string();
+	const FString FilePath = PathUtils::ToUtf8(AbsolutePath.lexically_normal());
 	if (FilePath.size() >= sizeof(SequencePath))
 	{
 		bFileError = true;
