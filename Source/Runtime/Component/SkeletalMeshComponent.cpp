@@ -3,6 +3,52 @@
 
 #include "Engine/PrimitiveSceneProxy.h"
 #include "Render/RenderPacket.h"
+#include "Animation/Skeleton.h"
+void USkeletalMeshComponent::PlayAnimation(UAnimSequence* InSequence)
+{
+	AnimationPlayer.SetSequence(InSequence);
+	bPlayingAnimation = (InSequence != nullptr);
+	if (!bPlayingAnimation)
+	{
+		ResetPose();
+		UpdateBoneMatrices();
+		return;
+	}
+	TickAnimation(0.0f);
+}
+
+void USkeletalMeshComponent::TickAnimation(float DeltaSeconds)
+{
+	if (!bPlayingAnimation || !SkeletalMesh)
+	{
+		return;
+	}
+
+	USkeleton* Skeleton = SkeletalMesh->GetSkeleton();
+	if (!Skeleton)
+	{
+		return;
+	}
+
+	const TArray<FModelNode>& Nodes = Skeleton->GetNodes();
+	if (Nodes.IsEmpty())
+	{
+		return;
+	}
+	FPoseContext Output;
+	Output.Pose.SetNum(Nodes.Num());
+
+	for (int32 Index = 0; Index < Nodes.Num(); ++Index)
+	{
+		Output.Pose[Index] = Nodes[Index].LocalTransform;
+	}
+	FAnimationUpdateContext Context;
+	Context.DeltaTime = DeltaSeconds;
+	AnimationPlayer.Update(Context);
+	AnimationPlayer.Evaluate(Output);
+	LocalPose = Output.Pose;
+	UpdateBoneMatrices();
+}
 
 const FModelMeshData* USkeletalMeshComponent::GetMeshData() const
 {

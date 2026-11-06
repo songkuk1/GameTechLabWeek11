@@ -5,6 +5,7 @@
 #include "Editor/Viewports/PreviewViewportPanel.h"
 #include "GameFramework/Actor/SkeletalMeshActor.h"
 #include "Animation/Skeleton.h"
+#include "Animation/AnimSequence.h"
 #include "Input/InputSystem.h"
 #include "Camera/CameraTypes.h"
 #include "Core/PathUtils.h"
@@ -41,6 +42,18 @@ FSkeletalMeshPreviewTab::FSkeletalMeshPreviewTab(USkeletalMesh* InSkeletalMesh)
 	PreviewScene = MakeUnique<FPreviewScene>();
 	MeshActor = Cast<ASkeletalMeshActor>(PreviewScene->GetWorld()->SpawnActor(ASkeletalMeshActor::StaticClass()));
 	MeshActor->GetSkeletalMeshComponent()->SetSkeletalMesh(SkeletalMesh);
+	const FString AnimationPrefix = SkeletalMesh->GetPath() + "::";
+	for (TObjectIterator<UAnimSequence> It; It; ++It)
+	{
+		UAnimSequence* Animation = *It;
+		if (Animation && Animation->GetPath().find(AnimationPrefix) == 0)
+		{
+			MeshActor->GetSkeletalMeshComponent()->PlayAnimation(Animation);
+			HTR_LOG(Info, "[Animation Preview] Playing: {}", Animation->GetPath());
+			break;
+
+		}
+	}
 	if (const USkeleton* Skeleton = SkeletalMesh->GetSkeleton())
 	{
 		PoseSavePath = Skeleton->GetPosePath();
@@ -157,7 +170,7 @@ void FSkeletalMeshPreviewTab::SavePose()
 void FSkeletalMeshPreviewTab::Tick(float DeltaTime)
 {
 	FEditorTab::Tick(DeltaTime);
-
+	MeshActor->GetSkeletalMeshComponent()->TickAnimation(DeltaTime);
 	// 화면 비율이 정해진 뒤(뷰포트가 처음 보일 때) 한 번만 카메라를 맞춘다
 	if (!bFramed && ViewportPanel->GetViewport()->IsVisible())
 	{
@@ -168,6 +181,8 @@ void FSkeletalMeshPreviewTab::Tick(float DeltaTime)
 	// 부모 본을 돌리면 자식 본도 움직이므로 매 프레임 따라간다. 드래그 중에는 Gizmo가 대상을 쥐고 있어 건드리지 않는다
 	if (SelectedBone >= 0 && !BoneGizmo.IsUsing())
 		UpdateBoneGizmoTarget();
+
+	UpdateBoneGizmo(false);
 
 	// Preview 월드는 엔진이 Tick하지 않는다. 에디터 월드처럼 트랜스폼만 렌더 전에 씬에 반영한다
 	GetWorld()->GetScene().UpdateAllTransforms();
