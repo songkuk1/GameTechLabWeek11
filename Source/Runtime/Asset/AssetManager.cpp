@@ -22,6 +22,7 @@
 
 #include "Asset/FbxImporter/FbxImporter.h"
 #include "Animation/Skeleton.h"
+#include "Animation/AnimSequence.h"
 #include "Render/SkeletalMesh.h"
 #include "Core/PathUtils.h"
 
@@ -563,6 +564,32 @@ void UAssetManager::LoadFbxModel(const FString& Path)
 		RegisterAsset(SkeletonKey, Skeleton);
 
 		RegisterAsset(MeshKey, Mesh);
+
+		for (const FModelAnimation& ModelAnimation : ModelData.Animations)
+		{
+			UAnimSequence* AnimSequence = NewObject<UAnimSequence>();
+			AnimSequence->SetName(ModelAnimation.Name);
+			UAnimDataModel* AnimDataModel = AnimSequence->GetDataModel();
+			assert(AnimDataModel != nullptr);
+			AnimDataModel->PlayLength = ModelAnimation.PlayLength;
+			AnimDataModel->FrameRate.Numerator = ModelAnimation.FrameRateNumerator;
+			AnimDataModel->FrameRate.Denominator = ModelAnimation.FrameRateDenominator;
+			AnimDataModel->NumberOfFrames = ModelAnimation.NumberOfFrames;
+			AnimDataModel->NumberOfKeys = ModelAnimation.NumberOfKeys;
+
+			for (const FModelAnimationTrack& ModelTrack : ModelAnimation.Tracks)
+			{
+				FBoneAnimationTrack BoneTrack;
+				BoneTrack.Name = ModelTrack.Name;
+				BoneTrack.NodeIndex = ModelTrack.NodeIndex;
+				BoneTrack.InternalTrack.PosKeys = ModelTrack.PosKeys;
+				BoneTrack.InternalTrack.RotKeys = ModelTrack.RotKeys;
+				BoneTrack.InternalTrack.ScaleKeys = ModelTrack.ScaleKeys;
+				AnimDataModel->BoneAnimationTracks.Add(std::move(BoneTrack));
+			}
+			const FString AnimationKey = MeshKey + "::" + ModelAnimation.Name.ToString();
+			RegisterAsset(AnimationKey, AnimSequence);
+		}
 	}
 	else
 	{

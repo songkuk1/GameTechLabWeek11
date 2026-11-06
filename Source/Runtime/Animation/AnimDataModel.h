@@ -51,7 +51,7 @@ public:
 	TArray<FBoneAnimationTrack> BoneAnimationTracks;
 	float PlayLength = 0.0f;
 	FFrameRate FrameRate;
-	int32 NumberofFrames = 0;
+	int32 NumberOfFrames = 0;
 	int32 NumberOfKeys = 0;
 	FAnimationCurveData CurveData;
 	virtual const TArray<FBoneAnimationTrack>& GetBoneAnimationTracks() const override { return BoneAnimationTracks; }
