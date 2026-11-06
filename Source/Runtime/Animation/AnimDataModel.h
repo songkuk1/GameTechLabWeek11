@@ -33,7 +33,9 @@ struct FFrameRate
 
 // 애니메이션 커브 데이터
 struct FAnimationCurveData
-{ };
+{ 
+
+};
 
 //애니메이션 데이터 접근 인터페이스
 class IAnimationDataModel
