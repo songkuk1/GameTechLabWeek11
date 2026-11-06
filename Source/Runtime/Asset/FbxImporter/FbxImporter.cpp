@@ -68,97 +68,50 @@ namespace
 		}
 	}
 
-	void ExtractAnimations(
-		fbxsdk::FbxScene* Scene,
-		const TMap<uint64, int32>& NodeToIndexMap,
-		TArray<FModelAnimation>& OutAnimations)
+	void ExtractAnimations(fbxsdk::FbxScene* Scene, const TMap<uint64, int32>& NodeToIndexMap, TArray<FModelAnimation>& OutAnimations)
 	{
 		if (!Scene)
 		{
 			return;
 		}
-
 		constexpr int32 SampleRate = 30;
+		const int32 StackCount = Scene->GetSrcObjectCount<fbxsdk::FbxAnimStack>();
 
-		const int32 StackCount =
-			Scene->GetSrcObjectCount<fbxsdk::FbxAnimStack>();
-
-		for (int32 StackIndex = 0;
-			StackIndex < StackCount;
-			++StackIndex)
+		for (int32 StackIndex = 0; StackIndex < StackCount; ++StackIndex)
 		{
-			fbxsdk::FbxAnimStack* AnimStack =
-				Scene->GetSrcObject<fbxsdk::FbxAnimStack>(StackIndex);
-
+			fbxsdk::FbxAnimStack* AnimStack = Scene->GetSrcObject<fbxsdk::FbxAnimStack>(StackIndex);
 			if (!AnimStack)
 			{
 				continue;
 			}
-
-			// Animation Stack에 포함된 Layer 확인
-			const int32 LayerCount =
-				AnimStack->GetMemberCount<fbxsdk::FbxAnimLayer>();
-
+			const int32 LayerCount = AnimStack->GetMemberCount<fbxsdk::FbxAnimLayer>();
 			if (LayerCount == 0)
 			{
 				continue;
 			}
 
-			// 이번에 평가할 Animation Stack 지정
 			Scene->SetCurrentAnimationStack(AnimStack);
-
-			// Animation 구간 가져오기
-			const fbxsdk::FbxTimeSpan TimeSpan =
-				AnimStack->GetLocalTimeSpan();
-
+			const fbxsdk::FbxTimeSpan TimeSpan = AnimStack->GetLocalTimeSpan();
 			const fbxsdk::FbxTime StartTime = TimeSpan.GetStart();
 			const fbxsdk::FbxTime StopTime = TimeSpan.GetStop();
-
 			const double StartSeconds = StartTime.GetSecondDouble();
-
-			const double PlayLength =
-				(StopTime - StartTime).GetSecondDouble();
-
+			const double PlayLength = (StopTime - StartTime).GetSecondDouble();
 			if (!std::isfinite(PlayLength) || PlayLength < 0.0)
 			{
 				continue;
 			}
+			const int32 FrameCount = std::max(1, static_cast<int32>(std::ceil(PlayLength * SampleRate)) + 1);
 
-			// 시작 프레임과 마지막 프레임을 모두 포함
-			const int32 FrameCount =
-				std::max(1, static_cast<int32>(
-					std::ceil(PlayLength * SampleRate)) + 1);
-
-			FModelAnimation& Animation =
-				OutAnimations.AddDefaulted_GetRef();
-
+			FModelAnimation& Animation = OutAnimations.AddDefaulted_GetRef();
 			Animation.Name = FName(AnimStack->GetName());
 			Animation.PlayLength = static_cast<float>(PlayLength);
-
 			Animation.FrameRateNumerator = SampleRate;
 			Animation.FrameRateDenominator = 1;
-
 			Animation.NumberOfFrames = FrameCount;
 			Animation.NumberOfKeys = 0;
+			ExtractAnimationTracksRecursive(Scene->GetRootNode(), NodeToIndexMap, StartSeconds, PlayLength, SampleRate, FrameCount, Animation);
 
-			ExtractAnimationTracksRecursive(
-				Scene->GetRootNode(),
-				NodeToIndexMap,
-				StartSeconds,
-				PlayLength,
-				SampleRate,
-				FrameCount,
-				Animation
-			);
-
-			HTR_LOG(
-				Info,
-				"[Animation] Imported: {} | Length: {:.3f}s | Frames: {} | Tracks: {}",
-				Animation.Name.ToString(),
-				Animation.PlayLength,
-				Animation.NumberOfFrames,
-				Animation.Tracks.Num()
-			);
+			HTR_LOG(Info, "[Animation] Imported: {} | Length: {:.3f}s | Frames: {} | Tracks: {}", Animation.Name.ToString(), Animation.PlayLength, Animation.NumberOfFrames, Animation.Tracks.Num());
 		}
 	}
 }

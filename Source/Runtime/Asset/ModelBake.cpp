@@ -153,7 +153,7 @@ void FModelBake::SerializeModelAnimationTrack(FStructuredArchive::FRecord& Recor
 	Record << SA_VALUE("Name", Track.Name);
 	Record << SA_VALUE("NodeIndex", Track.NodeIndex);
 	SerializeArray<FVector>(Record, "PosKeys", Track.PosKeys, [](FStructuredArchive::FRecord& ElementRecord, FVector& Value) {ElementRecord << SA_VALUE("Value", Value);});
-	SerializeArray<FQuat>(Record, "RotKeys", Track.RotKeys, [](FStructuredArchive::FRecord& ElementRecord, FQuat& Value) {ElementRecord << SA_VALUE("Value", Value);});
+	SerializeArray<FQuat>(Record, "RotKeys", Track.RotKeys, [](FStructuredArchive::FRecord& ElementRecord, FQuat& Value) {FModelBake::SerializeQuat(ElementRecord, Value);});
 	SerializeArray<FVector>(Record, "ScaleKeys", Track.ScaleKeys, [](FStructuredArchive::FRecord& ElementRecord, FVector& Value) {ElementRecord << SA_VALUE("Value", Value);});
 }
 
