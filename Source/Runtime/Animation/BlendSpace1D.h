@@ -37,6 +37,7 @@ public:
 	void ClearSamples() { Samples.Empty(); }
 	bool SetSkeleton(USkeleton* InSkeleton);
 	USkeleton* GetSkeleton() const { return Skeleton; }
+	virtual void Serialize(FStructuredArchive::FRecord Record) override;
 private:
 	FBlendSpaceAxis1D Axis;
 	TArray<FBlendSample1D> Samples;

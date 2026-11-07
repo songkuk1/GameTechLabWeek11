@@ -1,6 +1,7 @@
 #include "EnginePCH.h"
 #include "Animation/BlendSpace1D.h"
 #include "Animation/AnimSequence.h"
+#include "Animation/Skeleton.h"
 
 #include <algorithm>
 #include <cmath>
@@ -153,4 +154,62 @@ bool UBlendSpace1D::SetSkeleton(USkeleton* InSkeleton)
     }
     Skeleton = InSkeleton;
     return true;
+}
+
+void UBlendSpace1D::Serialize(FStructuredArchive::FRecord Record)
+{
+    Super::Serialize(Record);
+    FArchive& Archive = Record.GetUnderlyingArchive();
+    const bool bIsLoading = Archive.IsLoading();
+    FName AxisName = Axis.Name;
+    float MinValue = Axis.MinValue;
+    float MaxValue = Axis.MaxValue;
+    int32 GridDivisions = Axis.GridDivisions;
+    Record << SA_VALUE("AxisName", AxisName);
+    Record << SA_VALUE("MinValue", MinValue);
+    Record << SA_VALUE("MaxValue", MaxValue);
+    Record << SA_VALUE("GridDivisions", GridDivisions);
+
+    if (bIsLoading)
+    {
+        FBlendSpaceAxis1D LoadedAxis;
+        LoadedAxis.Name = AxisName;
+        LoadedAxis.MinValue = MinValue;
+        LoadedAxis.MaxValue = MaxValue;
+        LoadedAxis.GridDivisions = GridDivisions;
+        if (!SetAxis(LoadedAxis))
+        {
+            HTR_LOG(Warning, "BlendSpace: invalid axis data");
+        }
+    }
+    UObject* SkeletonObject = Skeleton;
+    Record << SA_VALUE("Skeleton", SkeletonObject);
+    if (bIsLoading)
+    {
+        Skeleton = Cast<USkeleton>(SkeletonObject);
+    }
+    int32 SampleCount = Samples.Num();
+    FStructuredArchive::FArray SampleArray = Record.EnterArray("Samples", SampleCount);
+    if (bIsLoading)
+    {
+        Samples.Empty();
+    }
+    for (int32 Index = 0; Index < SampleCount; ++Index)
+    {
+        FStructuredArchive::FRecord SampleRecord = SampleArray.EnterElement().EnterRecord();
+        float SampleValue = bIsLoading ? 0.0f : Samples[Index].SampleValue;
+        float RateScale = bIsLoading ? 1.0f : Samples[Index].RateScale;
+        UObject* AnimationObject = bIsLoading ? nullptr : Samples[Index].Animation;
+        SampleRecord << SA_VALUE("SampleValue", SampleValue);
+        SampleRecord << SA_VALUE("RateScale", RateScale);
+        SampleRecord << SA_VALUE("Animation", AnimationObject);
+        if (bIsLoading)
+        {
+            UAnimSequence* Animation = Cast<UAnimSequence>(AnimationObject);
+            if (!AddSample(SampleValue, Animation, RateScale))
+            {
+                HTR_LOG(Warning, "BlendSpace: invalid sample at index {}", Index);
+            }
+        }
+    }
 }

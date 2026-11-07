@@ -453,7 +453,7 @@ void FAnimationSequenceViewerTab::SelectNotify(int32 Index)
 
 void FAnimationSequenceViewerTab::DrawBlendSpaceControls(USkeletalMeshComponent* Component)
 {
-	if (PreviewBlendSpace || !Component)
+	if (!PreviewBlendSpace || !Component)
 	{
 		return;
 	}
