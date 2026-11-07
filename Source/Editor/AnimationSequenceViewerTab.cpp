@@ -82,6 +82,10 @@ FAnimationSequenceViewerTab::FAnimationSequenceViewerTab(USkeletalMesh* InSkelet
 
 	PreviewBlendSpace = NewObject<UBlendSpace1D>();
 
+	const bool bSkeletonSet = PreviewBlendSpace->SetSkeleton(SkeletalMesh->GetSkeleton());
+
+	assert(bSkeletonSet);
+
 	RebuildPreviewBlendSpace();
 
 	ViewportPanel = AddPanel<FPreviewViewportPanel>(GetWorld(), FString("AnimationViewport##") + Animation->GetPath(), [this]() {DrawToolbar();});

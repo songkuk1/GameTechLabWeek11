@@ -5,22 +5,94 @@
 #include <algorithm>
 #include <cmath>
 
-bool UBlendSpace1D::AddSample(float SampleValue, UAnimSequence* Animation)
+bool UBlendSpace1D::SetAxis(const FBlendSpaceAxis1D& InAxis)
 {
-    if (!Animation || !std::isfinite(SampleValue))
+    if (InAxis.Name.IsNone() || !std::isfinite(InAxis.MinValue) || !std::isfinite(InAxis.MaxValue) || InAxis.MinValue >= InAxis.MaxValue || InAxis.GridDivisions <= 0)
     {
         return false;
     }
-    for (FBlendSample1D& Sample : Samples)
+
+    Axis = InAxis;
+    return true;
+}
+
+bool UBlendSpace1D::AddSample(float SampleValue, UAnimSequence* Animation, float RateScale)
+{
+    if (!Skeleton || !Animation ||  Animation->GetSkeleton() != Skeleton || !std::isfinite(SampleValue) || !std::isfinite(RateScale) || RateScale <= 0.0f)
     {
-        if (std::abs(Sample.SampleValue - SampleValue) < 1.e-4f)
+        return false;
+    }
+
+    constexpr float Tolerance = 1.e-4f;
+    for (const FBlendSample1D& Sample : Samples)
+    {
+        if (std::abs(Sample.SampleValue - SampleValue) < Tolerance)
         {
-            Sample.Animation = Animation;
-            return true;
+            return false;
         }
     }
-    Samples.Add({ SampleValue, Animation });
-    std::sort(Samples.begin(), Samples.end(), [](const FBlendSample1D& A, const FBlendSample1D& B) {return A.SampleValue < B.SampleValue;});
+    FBlendSample1D NewSample;
+    NewSample.SampleValue = SampleValue;
+    NewSample.Animation = Animation;
+    NewSample.RateScale = RateScale;
+    Samples.Add(std::move(NewSample));
+    std::sort(Samples.begin(), Samples.end(), [](const FBlendSample1D& A, const FBlendSample1D& B){ return A.SampleValue < B.SampleValue; });
+
+    return true;
+}
+
+bool UBlendSpace1D::RemoveSample(int32 SampleIndex)
+{
+    if (!Samples.IsValidIndex(SampleIndex))
+    {
+        return false;
+    }
+
+    Samples.RemoveAt(SampleIndex);
+    return true;
+}
+
+bool UBlendSpace1D::SetSampleValue(int32 SampleIndex, float SampleValue)
+{
+    if (!Samples.IsValidIndex(SampleIndex) || !std::isfinite(SampleValue))
+    {
+        return false;
+    }
+    constexpr float Tolerance = 1.e-4f;
+    for (int32 Index = 0; Index < Samples.Num(); ++Index)
+    {
+        if (Index == SampleIndex)
+        {
+            continue;
+        }
+        if (std::abs(Samples[Index].SampleValue - SampleIndex) < Tolerance)
+        {
+            return false;
+        }
+    }
+    Samples[SampleIndex].SampleValue = SampleValue;
+    std::sort(Samples.begin(), Samples.end(), [](const FBlendSample1D& A, const FBlendSample1D& B){ return A.SampleValue < B.SampleValue; });
+
+    return true;
+}
+
+bool UBlendSpace1D::ReplaceSampleAnimation(int32 SampleIndex, UAnimSequence* Animation)
+{
+    if (!Samples.IsValidIndex(SampleIndex) || !Animation)
+    {
+        return false;
+    }
+    Samples[SampleIndex].Animation = Animation;
+    return true;
+}
+
+bool UBlendSpace1D::SetSampleRateScale(int32 SampleIndex, float RateScale)
+{
+    if (!Samples.IsValidIndex(SampleIndex) || !std::isfinite(RateScale) || RateScale <= 0.0f)
+    {
+        return false;
+    }
+    Samples[SampleIndex].RateScale = RateScale;
     return true;
 }
 
@@ -64,4 +136,21 @@ bool UBlendSpace1D::GetBlendSamples(float Input, int32& OutIndexA, int32& OutInd
         }
     }
     return false;
+}
+
+bool UBlendSpace1D::SetSkeleton(USkeleton* InSkeleton)
+{
+    if (!InSkeleton)
+    {
+        return false;
+    }
+    for (const FBlendSample1D& Sample : Samples)
+    {
+        if (!Sample.Animation || Sample.Animation->GetSkeleton() != InSkeleton)
+        {
+            return false;
+        }
+    }
+    Skeleton = InSkeleton;
+    return true;
 }

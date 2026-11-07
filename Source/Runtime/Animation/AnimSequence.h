@@ -3,6 +3,8 @@
 #include "Animation/AnimationAsset.h"
 #include "Animation/AnimDataModel.h"
 
+class USkeleton;
+
 struct FAnimNotifyEvent
 {
 	float TriggerTime = 0.0f;
@@ -18,6 +20,7 @@ class UAnimSequenceBase : public UAnimationAsset
 	REFLECT_END()
 protected:
 	UAnimDataModel* DataModel = nullptr;
+	USkeleton* Skeleton = nullptr;
 	TArray<FAnimNotifyEvent> Notifies;
 public:
 	UAnimSequenceBase();
@@ -42,6 +45,8 @@ public:
 		Notifies.RemoveAt(static_cast<uint32>(Index));
 		return true;
 	}
+	void SetSkeleton(USkeleton* InSkeleton) { Skeleton = InSkeleton; }
+	USkeleton* GetSkeleton() const { return Skeleton; }
 };
 
 class UAnimSequence : public UAnimSequenceBase

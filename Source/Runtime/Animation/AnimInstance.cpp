@@ -105,85 +105,62 @@ bool UAnimSingleNodeInstance::IsLooping() const
 
 UAnimTwoWayBlendInstance::UAnimTwoWayBlendInstance()
 {
-	BlendNode.SetSourceNodes(&SequencePlayerA, &SequencePlayerB);
-	RootNode = &BlendNode;
+	RootNode = &BlendPlayer;
 }
 
 void UAnimTwoWayBlendInstance::SetAnimations(UAnimSequence* InSequenceA, UAnimSequence* InSequenceB)
 {
-	SequencePlayerA.SetSequence(InSequenceA);
-	SequencePlayerB.SetSequence(InSequenceB);
-	SetPlayRate(PlayRate);
+	BlendPlayer.SetAnimations(InSequenceA, InSequenceB);
 }
 
 void UAnimTwoWayBlendInstance::SetAlpha(float InAlpha)
 {
-	BlendNode.SetAlpha(InAlpha);
+	BlendPlayer.SetAlpha(InAlpha);
 }
 
 float UAnimTwoWayBlendInstance::GetAlpha() const
 {
-	return BlendNode.GetAlpha();
+	return BlendPlayer.GetAlpha();
 }
 
 void UAnimTwoWayBlendInstance::SetPlaybackPosition(float InTime)
 {
-	const float LengthA = SequencePlayerA.GetPlayLength();
-	const float LengthB = SequencePlayerB.GetPlayLength();
-	if (LengthA <= 0.0f || LengthB <= 0.0f)
-	{
-		return;
-	}
-	const float Progress = std::clamp(InTime / LengthA, 0.0f, 1.0f);
-	SequencePlayerA.SetPlaybackPosition(Progress * LengthA);
-	SequencePlayerB.SetPlaybackPosition(Progress * LengthB);
+	BlendPlayer.SetPlaybackPosition(InTime);
 }
 
 float UAnimTwoWayBlendInstance::GetCurrentTime() const
 {
-	return SequencePlayerA.GetCurrentTime();
+	return BlendPlayer.GetCurrentTime();
 }
 
 float UAnimTwoWayBlendInstance::GetPlayLength() const
 {
-	return SequencePlayerA.GetPlayLength();
+	return BlendPlayer.GetPlayLength();
 }
 
 float UAnimTwoWayBlendInstance::GetFrameRate() const
 {
-	return SequencePlayerA.GetFrameRate();
+	return BlendPlayer.GetFrameRate();
 }
 
 void UAnimTwoWayBlendInstance::SetPlayRate(float InPlayRate)
 {
-	PlayRate = std::isfinite(InPlayRate) ? InPlayRate : 1.0f;
-	const float LengthA = SequencePlayerA.GetPlayLength();
-	const float LengthB = SequencePlayerB.GetPlayLength();
-	SequencePlayerA.SetPlayRate(PlayRate);
-	if (LengthA > 0.0f && LengthB > 0.0f)
-	{
-		SequencePlayerB.SetPlayRate(PlayRate * (LengthB / LengthA));
-	}
-	else
-	{
-		SequencePlayerB.SetPlayRate(PlayRate);
-	}
+	BlendPlayer.SetPlayRate(InPlayRate);
 }
 
 float UAnimTwoWayBlendInstance::GetPlayRate() const
 {
-	return SequencePlayerA.GetPlayRate();
+	return BlendPlayer.GetPlayRate();
 }
 
 void UAnimTwoWayBlendInstance::SetLooping(bool bInLoop)
 {
-	SequencePlayerA.SetLooping(bInLoop);
-	SequencePlayerB.SetLooping(bInLoop);
+	BlendPlayer.SetLooping(bInLoop);
 }
 
 bool UAnimTwoWayBlendInstance::IsLooping() const
 {
-	return SequencePlayerA.IsLooping();
+	return BlendPlayer.IsLooping();
 }
 
 UAnimBlendSpaceInstance::UAnimBlendSpaceInstance()

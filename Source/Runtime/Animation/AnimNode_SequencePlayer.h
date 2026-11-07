@@ -4,21 +4,23 @@
 
 class UAnimSequence;
 
-struct FAnimNode_SequencePlayer : public FAnimNode_Base
+struct FAnimNode_SequencePlayer : public FAnimNode_Base, public IAnimPlaybackControl
 {
 	UAnimSequence* Sequence = nullptr;
 	float CurrentTime = 0.0f;
 	float PlayRate = 1.0f;
 	bool bLoop = true;
 	void SetSequence(UAnimSequence* InSequence);
-	void SetPlaybackPosition(float InTime);
-	float GetCurrentTime() const { return CurrentTime; }
-	float GetPlayLength() const;
-	float GetFrameRate() const;
-	void SetPlayRate(float InPlayRate);
-	float GetPlayRate() const { return PlayRate; }
-	void SetLooping(bool bInLoop) { bLoop = bInLoop; }
-	bool IsLooping() const { return bLoop; }
+	void SetPlaybackPosition(float InTime) override;
+	float GetCurrentTime() const override { return CurrentTime; }
+	float GetPlayLength() const override;
+	float GetFrameRate() const override;
+	void SetPlayRate(float InPlayRate) override;
+	float GetPlayRate() const override { return PlayRate; }
+	void SetLooping(bool bInLoop) override { bLoop = bInLoop; }
+	bool IsLooping() const override { return bLoop; }
 	virtual void Update(const FAnimationUpdateContext& Context) override;
 	virtual void Evaluate(FPoseContext& Output) override;
+	IAnimPlaybackControl* GetPlaybackControl() override { return this; }
+	const IAnimPlaybackControl* GetPlaybackControl() const override { return this; }
 };

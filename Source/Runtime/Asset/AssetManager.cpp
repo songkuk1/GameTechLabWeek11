@@ -569,6 +569,7 @@ void UAssetManager::LoadFbxModel(const FString& Path)
 		{
 			UAnimSequence* AnimSequence = NewObject<UAnimSequence>();
 			AnimSequence->SetName(ModelAnimation.Name);
+			AnimSequence->SetSkeleton(Skeleton);
 			UAnimDataModel* AnimDataModel = AnimSequence->GetDataModel();
 			assert(AnimDataModel != nullptr);
 			AnimDataModel->PlayLength = ModelAnimation.PlayLength;

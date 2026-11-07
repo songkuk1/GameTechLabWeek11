@@ -19,6 +19,8 @@ public:
 	void EvaluateAnimation(FPoseContext& Output);
 	USkeletalMeshComponent* GetOwningComponent() const { return OwningComponent; }
 	AActor* GetOwningActor() const;
+	IAnimPlaybackControl* GetPlaybackControl() { return RootNode ? RootNode->GetPlaybackControl() : nullptr; }
+	const IAnimPlaybackControl* GetPlaybackControl() const { return RootNode ? RootNode->GetPlaybackControl() : nullptr; }
 protected:
 	FAnimNode_Base* RootNode = nullptr;
 private:
@@ -61,10 +63,7 @@ public:
 	void SetLooping(bool bInLoop);
 	bool IsLooping() const;
 private:
-	FAnimNode_SequencePlayer SequencePlayerA;
-	FAnimNode_SequencePlayer SequencePlayerB;
-	FAnimNode_TwoWayBlend BlendNode;
-	float PlayRate = 1.0f;
+	FAnimNode_TwoWayBlendPlayer BlendPlayer;
 };
 
 class UAnimBlendSpaceInstance : public UAnimInstance
