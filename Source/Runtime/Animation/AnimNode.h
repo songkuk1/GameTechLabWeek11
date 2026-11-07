@@ -3,6 +3,13 @@
 #include "EnginePCH.h"
 #include "PoseContext.h"
 
+enum NodeType
+{
+	SequencePlayer,
+	TwoWayBlend,
+	BlendSpace1D
+};
+
 class AnimNode
 {
 public:

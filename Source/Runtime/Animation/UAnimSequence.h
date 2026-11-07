@@ -17,6 +17,8 @@ public:
 
 	void CalculateCurrentPose(float CurrentTime, bool bLoop, TArray<PoseTransform>& OutPoseTrans);
 
+	
+
 private:
 	FAnimSeqData AnimData;
 };

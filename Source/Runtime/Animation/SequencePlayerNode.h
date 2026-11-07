@@ -4,6 +4,7 @@
 #include "AnimNode.h"
 #include "UAnimSequence.h"
 #include "PoseContext.h"
+#include "Asset/AssetManager.h"
 
 class SequencePlayerNode : public AnimNode
 {
@@ -30,6 +31,13 @@ public:
 	void SetCurrentPlayTime(float Time) { CurrentPlayTime = Time; }
 	void SetSequence(UAnimSequence* AnimSeq) { Sequence = AnimSeq; }
 	void SetLoop(bool InLoop) { bLooping = InLoop; }
+
+	void InitializeNode(bool bLoop, const FString& Path)
+	{
+		SetCurrentPlayTime(0);
+		SetLoop(bLoop);
+		SetSequence(UAssetManager::GetAssetByPath<UAnimSequence>(Path));
+	}
 
 	void EvaluatePose(PoseContext& Context) override
 	{

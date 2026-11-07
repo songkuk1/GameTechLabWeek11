@@ -29,6 +29,13 @@ public:
 		BlendTwoPosesTogether(ContextA.LocalPoseTrans, ContextB.LocalPoseTrans, Alpha, Context.LocalPoseTrans);
 	}
 
+	void InitializeNode(AnimNode* A, AnimNode* B, float Alphaval)
+	{
+		InputA = A;
+		InputB = B;
+		Alpha = Alphaval;
+	}
+
 	void BlendTwoPosesTogether(const TArray<PoseTransform>& APoseTrans, const TArray<PoseTransform>& BPoseTrans, float Alphaval, TArray<PoseTransform>& OutLocalPoseTrans)
 	{
 		for (int i = 0;i < OutLocalPoseTrans.Num();i++)

@@ -8,6 +8,7 @@ USkeletalMeshComponent::USkeletalMeshComponent()
 {
 	PrimaryComponentTick.bCanEverTick = true;
 	PrimaryComponentTick.bStartWithTickEnabled = true;
+	AnimInstance = NewObject<UAnimationInstance>(this);
 }
 
 USkeletalMeshComponent::~USkeletalMeshComponent()
