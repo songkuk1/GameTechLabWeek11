@@ -1,0 +1,19 @@
+#pragma once
+
+#include "Containers/Array.h"
+#include "Math/Matrix.h"
+#include "Math/Vector.h"
+#include "Math/Quat.h"
+
+struct PoseTransform
+{
+	FVector Translation;
+	FQuat Rotation;
+	FVector Scale;
+};
+
+struct PoseContext
+{
+	const TArray<PoseTransform>& ReferencePose;
+	TArray<PoseTransform> LocalPoseTrans;
+};

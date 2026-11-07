@@ -99,6 +99,7 @@ void USkinnedMeshComponent::SetSkeletalMesh(USkeletalMesh* InMesh)
 void USkinnedMeshComponent::ResetPose()
 {
 	LocalPose.Reset();
+	ReferencePose.Reset();
 	USkeleton* Skeleton = SkeletalMesh ? SkeletalMesh->GetSkeleton() : nullptr;
 	if (!Skeleton)
 		return;
@@ -107,6 +108,13 @@ void USkinnedMeshComponent::ResetPose()
 	LocalPose.SetNum(Nodes.Num());
 	for (int32 i = 0; i < Nodes.Num(); i++)
 		LocalPose[i] = Nodes[i].LocalTransform;
+
+	ReferencePose.SetNum(Nodes.Num());
+	for (int32 i = 0; i < Nodes.Num(); i++)
+	{
+		PoseTransform& RefPose = ReferencePose[i];
+		Nodes[i].LocalTransform.Decompose(RefPose.Translation, RefPose.Rotation, RefPose.Scale);
+	}
 }
 
 void USkinnedMeshComponent::SetBoneComponentMatrix(const int32 BoneIndex, const FMatrix& ComponentMatrix)

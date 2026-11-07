@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <cmath>
 
-void UAnimSequence::CalculateCurrentPose(float CurrentTime, TArray<FMatrix>& OutPose, bool bLoop)
+void UAnimSequence::CalculateCurrentPose(float CurrentTime, bool bLoop, TArray<PoseTransform>& OutPoseTrans)
 {
 	if (AnimData.NumberOfKeys <= 0 || !std::isfinite(CurrentTime)
 		|| !std::isfinite(AnimData.FrameRate) || AnimData.FrameRate <= 0.0f
@@ -23,7 +23,7 @@ void UAnimSequence::CalculateCurrentPose(float CurrentTime, TArray<FMatrix>& Out
 	{
 		const auto& Track = AnimData.BoneAnimationTracks[i].InternalTrack;
 		// OutPose는 호출자가 대상 Skeleton의 기본 로컬 자세로 준비한다.
-		if (Track.NodeIndex >= static_cast<uint32>(OutPose.Num())
+		if (Track.NodeIndex >= static_cast<uint32>(OutPoseTrans.Num())
 			|| Track.PosKeys.Num() < AnimData.NumberOfKeys
 			|| Track.RotKeys.Num() < AnimData.NumberOfKeys
 			|| Track.ScaleKeys.Num() < AnimData.NumberOfKeys)

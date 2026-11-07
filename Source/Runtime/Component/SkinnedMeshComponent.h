@@ -2,6 +2,7 @@
 
 #include "Component/MeshComponent.h"
 #include "Render/SkeletalMesh.h"
+#include "Animation/PoseContext.h"
 
 class FLineBatcher;
 
@@ -50,4 +51,5 @@ protected:
 	TArray<FMatrix> LocalPose;
 	TArray<FMatrix> BoneMatrices;
 	TArray<FMatrix> NodeGlobalTransforms;
+	TArray<PoseTransform> ReferencePose;
 };

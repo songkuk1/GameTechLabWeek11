@@ -6,6 +6,7 @@
 struct FVector;
 struct FVector4;
 struct FRotator;
+struct FQuat;
 
 // Row Vector sys
 struct FMatrix {
@@ -42,6 +43,7 @@ public:
 	FMatrix ApplyScale(float Scale) const;
 	FMatrix GetTransposed() const;
 	FMatrix Inverse() const;
+	bool Decompose(FVector& OutTranslation, FQuat& OutRotation, FVector& OutScale) const;
 
 	FMatrix Multiply(const FMatrix& Other) const;
 

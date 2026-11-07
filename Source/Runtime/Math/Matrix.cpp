@@ -1,6 +1,70 @@
 #include "EnginePCH.h"
 #include "Matrix.h"
 #include "EngineMath.h"
+#include "Quat.h"
+#include <cmath>
+
+bool FMatrix::Decompose(FVector& OutTranslation, FQuat& OutRotation, FVector& OutScale) const
+{
+	constexpr float Tolerance = 1.e-4f;
+	for (const auto& Row : M)
+		for (float Value : Row)
+			if (!std::isfinite(Value)) return false;
+	if (std::abs(M[0][3]) > Tolerance || std::abs(M[1][3]) > Tolerance
+		|| std::abs(M[2][3]) > Tolerance || std::abs(M[3][3] - 1.0f) > Tolerance)
+		return false;
+
+	FVector X(M[0][0], M[0][1], M[0][2]);
+	FVector Y(M[1][0], M[1][1], M[1][2]);
+	FVector Z(M[2][0], M[2][1], M[2][2]);
+	FVector Scale(X.Size(), Y.Size(), Z.Size());
+	if (!std::isfinite(Scale.X) || !std::isfinite(Scale.Y) || !std::isfinite(Scale.Z)
+		|| Scale.X <= SMALL_NUMBER || Scale.Y <= SMALL_NUMBER || Scale.Z <= SMALL_NUMBER)
+		return false;
+	X = X / Scale.X;
+	Y = Y / Scale.Y;
+	Z = Z / Scale.Z;
+	// SRT로 표현할 수 없는 shear는 거부한다.
+	if (std::abs(X.X * Y.X + X.Y * Y.Y + X.Z * Y.Z) > Tolerance
+		|| std::abs(X.X * Z.X + X.Y * Z.Y + X.Z * Z.Z) > Tolerance
+		|| std::abs(Y.X * Z.X + Y.Y * Z.Y + Y.Z * Z.Z) > Tolerance)
+		return false;
+	// 반사가 있으면 X 스케일에 부호를 옮겨 순수 회전을 얻는다.
+	if (X.X * (Y.Y * Z.Z - Y.Z * Z.Y) - X.Y * (Y.X * Z.Z - Y.Z * Z.X)
+		+ X.Z * (Y.X * Z.Y - Y.Y * Z.X) < 0.0f)
+	{
+		Scale.X = -Scale.X;
+		X = X * -1.0f;
+	}
+
+	// FQuat::ToFMatrix와 같은 행 벡터 규약의 역변환.
+	FQuat Rotation;
+	const float Trace = X.X + Y.Y + Z.Z;
+	if (Trace > 0.0f)
+	{
+		const float S = std::sqrt(Trace + 1.0f) * 2.0f;
+		Rotation = FQuat((Y.Z - Z.Y) / S, (Z.X - X.Z) / S, (X.Y - Y.X) / S, 0.25f * S);
+	}
+	else if (X.X > Y.Y && X.X > Z.Z)
+	{
+		const float S = std::sqrt(1.0f + X.X - Y.Y - Z.Z) * 2.0f;
+		Rotation = FQuat(0.25f * S, (X.Y + Y.X) / S, (X.Z + Z.X) / S, (Y.Z - Z.Y) / S);
+	}
+	else if (Y.Y > Z.Z)
+	{
+		const float S = std::sqrt(1.0f + Y.Y - X.X - Z.Z) * 2.0f;
+		Rotation = FQuat((X.Y + Y.X) / S, 0.25f * S, (Y.Z + Z.Y) / S, (Z.X - X.Z) / S);
+	}
+	else
+	{
+		const float S = std::sqrt(1.0f + Z.Z - X.X - Y.Y) * 2.0f;
+		Rotation = FQuat((X.Z + Z.X) / S, (Y.Z + Z.Y) / S, 0.25f * S, (X.Y - Y.X) / S);
+	}
+	OutTranslation = FVector(M[3][0], M[3][1], M[3][2]);
+	OutRotation = Rotation.Normalized();
+	OutScale = Scale;
+	return true;
+}
 
 /* Constructor */
 

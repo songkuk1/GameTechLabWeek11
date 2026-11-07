@@ -3,6 +3,7 @@
 #include "EnginePCH.h"
 #include "UAnimationAsset.h"
 #include "AnimationData.h"
+#include "PoseContext.h"
 
 class UAnimSequence : public UAnimationAsset
 {
@@ -14,7 +15,7 @@ public:
 
 	void SetAnimData(FAnimSeqData InAnimData) { AnimData = InAnimData; }
 
-	void CalculateCurrentPose(float CurrentTime, TArray<FMatrix>& OutPose, bool bLoop = false);
+	void CalculateCurrentPose(float CurrentTime, bool bLoop, TArray<PoseTransform>& OutPoseTrans);
 
 private:
 	FAnimSeqData AnimData;

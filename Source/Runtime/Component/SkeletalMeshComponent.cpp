@@ -15,50 +15,10 @@ USkeletalMeshComponent::~USkeletalMeshComponent()
 	delete AnimInstance;
 }
 
-void USkeletalMeshComponent::Serialize(FStructuredArchive::FRecord Record)
+void USkeletalMeshComponent::SetAnimationInstance(UAnimationInstance* InInstance)
 {
-	Super::Serialize(Record);
-
-	FArchive& Ar = Record.GetUnderlyingArchive();
-	if (Ar.HasAnyPortFlags(EPropertyPortFlags::PPF_DuplicateForPIE))
-	{
-		// 에셋은 공유하고, 재생 상태는 Play 컴포넌트에 새로 만든다.
-		UObject* Sequence = GetAnimationSequence();
-		Record << SA_VALUE("AnimationSequence", Sequence);
-		bool bLoop = IsAnimationLooping();
-		Record << SA_VALUE("AnimationLooping", bLoop);
-		if (Ar.IsLoading())
-		{
-			SetAnimationSequence(Cast<UAnimSequence>(Sequence));
-			SetAnimationLooping(bLoop);
-		}
-	}
-}
-
-UAnimSequence* USkeletalMeshComponent::GetAnimationSequence() const
-{
-	return AnimInstance ? AnimInstance->GetSequence() : nullptr;
-}
-
-void USkeletalMeshComponent::SetAnimationLooping(bool bLoop)
-{
-	if (!AnimInstance) AnimInstance = NewObject<UAnimationInstance>(this);
-	AnimInstance->SetLoop(bLoop);
-}
-
-void USkeletalMeshComponent::SetAnimationSequence(UAnimSequence* Sequence)
-{
-	if (Sequence)
-	{
-		if (!SkeletalMesh) return;
-		const FString Prefix = SkeletalMesh->GetPath() + "_Anim_";
-		if (Sequence->GetPath().compare(0, Prefix.size(), Prefix) != 0) return;
-	}
-	if (!AnimInstance) AnimInstance = NewObject<UAnimationInstance>(this);
-	AnimInstance->SetSequence(Sequence);
-	AnimInstance->SetCurrentPlayTime(0.0f);
+	if (InInstance) AnimInstance = InInstance;
 	ResetPose();
-	if (Sequence) Sequence->CalculateCurrentPose(0.0f, LocalPose);
 	UpdateBoneMatrices();
 }
 
@@ -113,10 +73,26 @@ FPrimitiveSceneProxy* USkeletalMeshComponent::CreateSceneProxy()
 void USkeletalMeshComponent::TickComponent(float DeltaTime)
 {
 	Super::TickComponent(DeltaTime);
-
-	if (!SkeletalMesh || !AnimInstance || !AnimInstance->GetSequence())
+	if (!SkeletalMesh || !AnimInstance || ReferencePose.IsEmpty())
 		return;
 
-	AnimInstance->Tick(DeltaTime, LocalPose);
+	PoseContext Context{ ReferencePose, ReferencePose };
+	AnimInstance->Tick(DeltaTime, Context);
+	if (Context.LocalPoseTrans.Num() != ReferencePose.Num())
+		return;
+	LocalPose.SetNum(Context.LocalPoseTrans.Num());
+	for (int i = 0;i < Context.LocalPoseTrans.Num();i++)
+	{
+		const PoseTransform& Transform = Context.LocalPoseTrans[i];
+		FMatrix Matrix = Transform.Rotation.ToFMatrix();
+		for (int Axis = 0; Axis < 3; ++Axis)
+		{
+			Matrix[0][Axis] *= Transform.Scale.X;
+			Matrix[1][Axis] *= Transform.Scale.Y;
+			Matrix[2][Axis] *= Transform.Scale.Z;
+		}
+		Matrix.SetOrigin(Transform.Translation);
+		LocalPose[i] = Matrix;
+	}
 	UpdateBoneMatrices();
 }
