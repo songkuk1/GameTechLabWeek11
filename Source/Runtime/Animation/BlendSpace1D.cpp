@@ -8,9 +8,17 @@
 
 bool UBlendSpace1D::SetAxis(const FBlendSpaceAxis1D& InAxis)
 {
-    if (InAxis.Name.IsNone() || !std::isfinite(InAxis.MinValue) || !std::isfinite(InAxis.MaxValue) || InAxis.MinValue >= InAxis.MaxValue || InAxis.GridDivisions <= 0)
+    if (InAxis.Name.IsNone() || !std::isfinite(InAxis.MinValue) || !std::isfinite(InAxis.MaxValue) || InAxis.MinValue >= InAxis.MaxValue || InAxis.GridDivisions < 1 || InAxis.GridDivisions > 64)
     {
         return false;
+    }
+
+    for (const FBlendSample1D& Sample : Samples)
+    {
+        if (!std::isfinite(Sample.SampleValue) || Sample.SampleValue < InAxis.MinValue || Sample.SampleValue > InAxis.MaxValue)
+        {
+            return false;
+        }
     }
 
     Axis = InAxis;
@@ -19,7 +27,7 @@ bool UBlendSpace1D::SetAxis(const FBlendSpaceAxis1D& InAxis)
 
 bool UBlendSpace1D::AddSample(float SampleValue, UAnimSequence* Animation, float RateScale)
 {
-    if (!Skeleton || !Animation ||  Animation->GetSkeleton() != Skeleton || !std::isfinite(SampleValue) || !std::isfinite(RateScale) || RateScale <= 0.0f)
+    if (!Skeleton || !Animation ||  Animation->GetSkeleton() != Skeleton || !std::isfinite(SampleValue) || !std::isfinite(RateScale) || RateScale <= 0.0f || SampleValue < Axis.MinValue || SampleValue > Axis.MaxValue)
     {
         return false;
     }
@@ -55,7 +63,7 @@ bool UBlendSpace1D::RemoveSample(int32 SampleIndex)
 
 bool UBlendSpace1D::SetSampleValue(int32 SampleIndex, float SampleValue)
 {
-    if (!Samples.IsValidIndex(SampleIndex) || !std::isfinite(SampleValue))
+    if (!Samples.IsValidIndex(SampleIndex) || !std::isfinite(SampleValue) || SampleValue < Axis.MinValue || SampleValue > Axis.MaxValue)
     {
         return false;
     }
@@ -174,7 +182,7 @@ bool UBlendSpace1D::IsBlendSpaceDataValid() const
         return false;
     }
 
-    if (Axis.Name.IsNone() || !std::isfinite(Axis.MinValue) || !std::isfinite(Axis.MaxValue) || Axis.MinValue >= Axis.MaxValue || Axis.GridDivisions <= 0)
+    if (Axis.Name.IsNone() || !std::isfinite(Axis.MinValue) || !std::isfinite(Axis.MaxValue) || Axis.MinValue >= Axis.MaxValue || Axis.GridDivisions < 1 || Axis.GridDivisions > 64)
     {
         return false;
     }
@@ -186,7 +194,7 @@ bool UBlendSpace1D::IsBlendSpaceDataValid() const
 
     for (const FBlendSample1D& Sample : Samples)
     {
-        if (!Sample.Animation || Sample.Animation->GetSkeleton() != Skeleton || !std::isfinite(Sample.SampleValue) || !std::isfinite(Sample.RateScale) || Sample.RateScale <= 0.0f)
+        if (!Sample.Animation || Sample.Animation->GetSkeleton() != Skeleton || !std::isfinite(Sample.SampleValue) || !std::isfinite(Sample.RateScale) || Sample.RateScale <= 0.0f || Sample.SampleValue < Axis.MinValue || Sample.SampleValue > Axis.MaxValue)
         {
             return false;
         }

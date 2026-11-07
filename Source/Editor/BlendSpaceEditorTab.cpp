@@ -19,6 +19,7 @@
 #include "Engine/World.h"
 #include <algorithm>
 #include <cmath>
+#include <cstdio>
 
 namespace
 {
@@ -55,6 +56,12 @@ FBlendSpaceEditorTab::FBlendSpaceEditorTab(UBlendSpace1D* InBlendSpace) : FEdito
     {
         return;
     }
+
+    EditableAxis = BlendSpace->GetAxis();
+
+    const FString InitialAxisName = EditableAxis.Name.ToString();
+
+    std::snprintf(AxisNameBuffer, sizeof(AxisNameBuffer), "%s", InitialAxisName.c_str());
 
     PreviewScene = MakeUnique<FPreviewScene>();
 
@@ -336,7 +343,80 @@ void FBlendSpaceEditorTab::DrawToolbar()
 
     const FBlendSpaceAxis1D& Axis = BlendSpace->GetAxis();
 
-    ImGui::Text("Axis: %s (%.1f ~ %.1f)", Axis.Name.ToString().c_str(), Axis.MinValue, Axis.MaxValue);
+    // Axis 설정
+    if (ImGui::CollapsingHeader("Axis Settings", ImGuiTreeNodeFlags_DefaultOpen))
+    {
+        ImGui::InputText("Axis Name", AxisNameBuffer, sizeof(AxisNameBuffer));
+        ImGui::InputFloat("Minimum Value", &EditableAxis.MinValue, 1.0f, 10.0f,  "%.1f");
+        ImGui::InputFloat("Maximum Value", &EditableAxis.MaxValue, 1.0f, 10.0f, "%.1f");
+        ImGui::InputInt("Grid Divisions", &EditableAxis.GridDivisions);
+
+        if (ImGui::Button("Apply Axis"))
+        {
+            FBlendSpaceAxis1D NewAxis = EditableAxis;
+            NewAxis.Name = FName(AxisNameBuffer);
+            if (NewAxis.Name.IsNone() || !std::isfinite(NewAxis.MinValue) || !std::isfinite(NewAxis.MaxValue) || NewAxis.MinValue >= NewAxis.MaxValue ||  NewAxis.GridDivisions < 1 || NewAxis.GridDivisions > 64)
+            {
+                ErrorMessage = "Invalid Axis settings. Grid Divisions must be 1~64.";
+            }
+            else
+            {
+                bool bSamplesOutsideRange = false;
+
+                for (const FBlendSample1D& Sample : BlendSpace->GetSamples())
+                {
+                    if (Sample.SampleValue < NewAxis.MinValue || Sample.SampleValue > NewAxis.MaxValue)
+                    {
+                        bSamplesOutsideRange = true;
+                        break;
+                    }
+                }
+
+                if (bSamplesOutsideRange)
+                {
+                    ErrorMessage = "Move or remove samples outside the new Axis range first.";
+                }
+                else
+                {
+                    const bool bAxisChanged = NewAxis.Name != Axis.Name || NewAxis.MinValue != Axis.MinValue || NewAxis.MaxValue != Axis.MaxValue || NewAxis.GridDivisions != Axis.GridDivisions;
+
+                    if (BlendSpace->SetAxis(NewAxis))
+                    {
+                        EditableAxis = NewAxis;
+
+                        if (bAxisChanged)
+                        {
+                            bDirty = true;
+                        }
+
+                        BlendInput = std::clamp(BlendInput, NewAxis.MinValue, NewAxis.MaxValue);
+
+                        NewSampleValue = std::clamp(NewSampleValue, NewAxis.MinValue, NewAxis.MaxValue);
+
+                        if (PreviewActor)
+                        {
+                            USkeletalMeshComponent* Component = PreviewActor->GetSkeletalMeshComponent();
+
+                            if (Component)
+                            {
+                                Component->SetAnimationBlendInput(BlendInput);
+                            }
+                        }
+
+                        ErrorMessage.clear();
+                    }
+                    else
+                    {
+                        ErrorMessage = "Failed to apply Axis settings.";
+                    }
+                }
+            }
+        }
+    }
+
+    const FString AxisName = Axis.Name.ToString();
+
+    ImGui::Text("Current Axis: %s (%.1f ~ %.1f)", AxisName.c_str(), Axis.MinValue, Axis.MaxValue);
 
     if (!SkeletalMesh || !PreviewActor)
     {
@@ -437,10 +517,11 @@ void FBlendSpaceEditorTab::DrawToolbar()
 
     // BlendSpace 1D Graph
     ImGui::Separator();
-    ImGui::Text("Blend Graph  |  Input: %.1f", BlendInput);
+    const FString GraphAxisName = Axis.Name.ToString();
 
+    ImGui::Text("Blend Graph  |  %s  |  Input: %.1f",  GraphAxisName.c_str(), BlendInput);
     const float GraphWidth = std::max(1.0f, ImGui::GetContentRegionAvail().x);
-    constexpr float GraphHeight = 72.0f;
+    constexpr float GraphHeight = 96.0f;
 
     ImGui::InvisibleButton("##BlendSpaceGraph", ImVec2(GraphWidth, GraphHeight));
 
@@ -474,12 +555,22 @@ void FBlendSpaceEditorTab::DrawToolbar()
 
     DrawList->AddLine(ImVec2(TrackLeft, TrackY), ImVec2(TrackRight, TrackY), IM_COL32(150, 150, 150, 255), 2.0f);
 
+    const int32 LabelStep = std::max(1, Axis.GridDivisions / 6);
+
     for (int32 Index = 0; Index <= Axis.GridDivisions; ++Index)
     {
         const float Alpha = static_cast<float>(Index) / Axis.GridDivisions;
         const float X = TrackLeft + TrackWidth * Alpha;
+        DrawList->AddLine(ImVec2(X, TrackY - 8.0f), ImVec2(X, TrackY + 8.0f), IM_COL32(110, 115, 125, 255), 1.0f);
 
-        DrawList->AddLine(ImVec2(X, TrackY - 8.0f), ImVec2(X, TrackY + 8.0f), IM_COL32(90, 95, 105, 255), 1.0f);
+        if (Index % LabelStep == 0 || Index == Axis.GridDivisions)
+        {
+            const float TickValue = Axis.MinValue + AxisRange * Alpha;
+            char TickLabel[32];
+            std::snprintf(TickLabel, sizeof(TickLabel), "%.1f", TickValue);
+            const ImVec2 TextSize = ImGui::CalcTextSize(TickLabel);
+            DrawList->AddText(ImVec2(X - TextSize.x * 0.5f, TrackY + 12.0f), IM_COL32(190, 195, 205, 255), TickLabel);
+        }
     }
 
     const TArray<FBlendSample1D>& GraphSamples = BlendSpace->GetSamples();
@@ -580,13 +671,51 @@ void FBlendSpaceEditorTab::DrawToolbar()
 
         const float X = ValueToScreenX(Value);
 
-        const ImU32 MarkerColor = Index == DraggingSampleIndex ? IM_COL32(80, 200, 255, 255) : IM_COL32(255, 190, 70, 255);
+        const ImVec2 MousePosition = ImGui::GetIO().MousePos;
 
-        DrawList->AddCircleFilled(ImVec2(X, TrackY), 6.0f, MarkerColor);
+        const bool bSelected = Index == DraggingSampleIndex;
+
+        const bool bMarkerHovered = bGraphHovered && std::abs(MousePosition.x - X) <= 9.0f && std::abs(MousePosition.y - TrackY) <= 12.0f;
+
+        const ImU32 MarkerColor = bSelected ? IM_COL32(80, 200, 255, 255) : bMarkerHovered ? IM_COL32(255, 225, 130, 255) : IM_COL32(255, 190, 70, 255);
+
+        DrawList->AddCircleFilled(ImVec2(X, TrackY), bSelected || bMarkerHovered ? 7.0f : 6.0f, MarkerColor);
+
+        char SampleLabel[16];
+
+        std::snprintf(SampleLabel, sizeof(SampleLabel), "S%d", Index + 1);
+
+        const ImVec2 LabelSize = ImGui::CalcTextSize(SampleLabel);
+
+        float LabelX = X - LabelSize.x * 0.5f;
+
+        if (LabelX < GraphMin.x + 2.0f)
+        {
+            LabelX = GraphMin.x + 2.0f;
+        }
+
+        if (LabelX + LabelSize.x > GraphMax.x - 2.0f)
+        {
+            LabelX = GraphMax.x - LabelSize.x - 2.0f;
+        }
+
+        DrawList->AddText(ImVec2(LabelX, TrackY - 27.0f), MarkerColor, SampleLabel);
+
+        if (bMarkerHovered)
+        {
+            const FString AnimationPath = Sample.Animation ? Sample.Animation->GetPath() : "None";
+            ImGui::SetTooltip("%s\nPosition: %.1f\nRate Scale: %.2fx", AnimationPath.c_str(), Value, Sample.RateScale);
+        }
     }
 
     const float InputX = ValueToScreenX(BlendInput);
-    DrawList->AddLine(ImVec2(InputX, GraphMin.y + 5.0f), ImVec2(InputX, GraphMax.y - 5.0f), IM_COL32(255, 75, 75, 255), 2.0f);
+
+    const ImU32 InputColor = IM_COL32(255, 75, 75, 255);
+
+    // 현재 입력 위치
+    DrawList->AddLine(ImVec2(InputX, GraphMin.y + 5.0f), ImVec2(InputX, GraphMax.y - 5.0f), InputColor, 2.5f);
+
+    DrawList->AddCircleFilled(ImVec2(InputX, GraphMin.y + 7.0f), 5.0f, InputColor);
 
     ImGui::Separator();
 

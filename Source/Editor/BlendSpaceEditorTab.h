@@ -49,6 +49,8 @@ private:
     float BlendInput = 0.0f;
     int32 DraggingSampleIndex = -1;
     float DraggingSampleValue = 0.0f;
+    FBlendSpaceAxis1D EditableAxis;
+    char AxisNameBuffer[64] = "Speed";
     bool bDraggingBlendInput = false;
     bool bFramed = false;
     bool bPlaying = true;

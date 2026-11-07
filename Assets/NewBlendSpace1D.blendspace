@@ -6,7 +6,23 @@
         "MinValue": 0.0,
         "PreviewMesh": "Models/UAL1_Standard.fbx",
         "Properties": {},
-        "Samples": [],
+        "Samples": [
+            {
+                "Animation": "Models/UAL1_Standard.fbx::Armature|Idle_Loop",
+                "RateScale": 1.0,
+                "SampleValue": 0.0
+            },
+            {
+                "Animation": "Models/UAL1_Standard.fbx::Armature|Walk_Loop",
+                "RateScale": 1.0,
+                "SampleValue": 300.0
+            },
+            {
+                "Animation": "Models/UAL1_Standard.fbx::Armature|Sprint_Loop",
+                "RateScale": 1.0,
+                "SampleValue": 600.0
+            }
+        ],
         "Skeleton": "Models/UAL1_Standard_Skeleton"
     },
     "Version": 1
