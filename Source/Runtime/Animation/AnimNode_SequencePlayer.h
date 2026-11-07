@@ -8,7 +8,7 @@ struct FAnimNode_SequencePlayer : public FAnimNode_Base
 {
 	UAnimSequence* Sequence = nullptr;
 	float CurrentTime = 0.0f;
-	float PlayRate = 0.0f;
+	float PlayRate = 1.0f;
 	bool bLoop = true;
 	void SetSequence(UAnimSequence* InSequence);
 	void SetPlaybackPosition(float InTime);

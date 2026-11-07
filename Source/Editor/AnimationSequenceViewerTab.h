@@ -24,6 +24,9 @@ public:
 private:
 	void DrawToolbar();
 	void FrameMesh();
+	void DrawNotifyTrack(float Duration);
+	void DrawNotifyDetails(float Duration);
+	void SelectNotify(int32 Index);
 private:
 	USkeletalMesh* SkeletalMesh = nullptr;
 	UAnimSequence* Animation = nullptr;
@@ -31,6 +34,9 @@ private:
 	ASkeletalMeshActor* PreviewActor = nullptr;
 	FPreviewViewportPanel* ViewportPanel = nullptr;
 	int32 PlaybackSpeedIndex = 2;
+	int32 SelectedNotifyIndex = -1;
+	bool bDraggingNotify = false;
+	char NotifyNameBuffer[128] = {};
 	bool bLooping = true;
 	bool bPlaying = true;
 	bool bFramed = false;

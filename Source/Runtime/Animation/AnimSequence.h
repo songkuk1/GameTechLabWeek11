@@ -24,6 +24,24 @@ public:
 	UAnimDataModel* GetDataModel() { return DataModel; }
 	const UAnimDataModel* GetDataModel() const { return DataModel; }
 	const TArray<FAnimNotifyEvent>& GetNotifies() const { return Notifies; }
+	TArray<FAnimNotifyEvent>& GetMutableNotifies() { return Notifies; }
+	int32 AddNotify(float TriggerTime, float Duration, const FName& NotifyName)
+	{
+		FAnimNotifyEvent NewNotify;
+		NewNotify.TriggerTime = TriggerTime;
+		NewNotify.Duration = Duration;
+		NewNotify.NotifyName = NotifyName;
+		return static_cast<int32>(Notifies.Add(std::move(NewNotify)));
+	}
+	bool RemoveNotify(int32 Index)
+	{
+		if (!Notifies.IsValidIndex(Index))
+		{
+			return false;
+		}
+		Notifies.RemoveAt(static_cast<uint32>(Index));
+		return true;
+	}
 };
 
 class UAnimSequence : public UAnimSequenceBase

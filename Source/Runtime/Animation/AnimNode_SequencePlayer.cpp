@@ -81,7 +81,7 @@ void FAnimNode_SequencePlayer::Update(const FAnimationUpdateContext& Context)
         return;
     }
 
-    if (!std::isfinite(Context.DeltaTime) || Context.DeltaTime <= 0.0f || Context.DeltaTime == 0.0f || PlayRate == 0.0f)
+    if (!std::isfinite(Context.DeltaTime) || Context.DeltaTime <= 0.0f || PlayRate == 0.0f)
     {
         return;
     }
