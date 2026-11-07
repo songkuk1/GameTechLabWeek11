@@ -41,6 +41,9 @@
 #include "Text/Font.h"
 #include "Text/TextRenderer.h"
 
+class UAnimSequence;
+class USkeletalMesh;
+
 class UEditorEngine : public UEngine
 {
 	DECLARE_CLASS(UEditorEngine, UEngine)
@@ -113,7 +116,7 @@ private:
 	FSceneRenderSettings MakeSceneRenderSettings() const;
 
 	void OpenSkeletalMeshViewer(USkeletalMesh* SkeletalMesh);
-
+	void OpenAnimationSequenceViewer(USkeletalMesh* SkeletalMesh, UAnimSequence* Animation);
 	//Overlay Pass
 	void RenderOverlayPass(const FViewport& Viewport, FEditorViewportClient* OverlayClient, UWorld& ViewWorld, const FSceneView& View, FRenderQueue& RenderQueue, const FGizmo* ViewGizmo);
 
@@ -169,6 +172,8 @@ private:
 
 	//Detail 패널에서 Open Preview를 요청받은 SkeletalMesh
 	USkeletalMesh* PendingPreviewMesh = nullptr;
+	USkeletalMesh* PendingAnimationViewerMesh = nullptr;
+	UAnimSequence* PendingAnimationViewerAnimation = nullptr;
 
 	UWorld* EditorWorld = nullptr;
 	UWorld* PlayWorld = nullptr;

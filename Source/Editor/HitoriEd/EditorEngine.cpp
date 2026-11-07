@@ -47,6 +47,7 @@
 #include "Component/SkinnedMeshComponent.h"
 #include "Engine/GameViewportClient.h"
 #include "Editor/SkeletalMeshPreviewTab.h"
+#include "Editor/AnimationSequenceViewerTab.h"
 
 namespace
 {
@@ -632,6 +633,14 @@ void UEditorEngine::UpdateEditorTabs()
 		PendingPreviewMesh = nullptr;
 	}
 
+	if (PendingAnimationViewerMesh && PendingAnimationViewerAnimation)
+	{
+		USkeletalMesh* Mesh = PendingAnimationViewerMesh;
+		UAnimSequence* Animation = PendingAnimationViewerAnimation;
+		PendingAnimationViewerMesh = nullptr;
+		PendingAnimationViewerAnimation = nullptr;
+		OpenAnimationSequenceViewer(Mesh, Animation);
+	}
 }
 
 FSceneView UEditorEngine::MakeSceneView(const FViewport& Viewport) const
@@ -725,7 +734,27 @@ void UEditorEngine::OpenSkeletalMeshViewer(USkeletalMesh* SkeletalMesh)
 	}
 
 
-	EditorUI->AddTab<FSkeletalMeshPreviewTab>(SkeletalMesh)->RequestFocus();
+	FSkeletalMeshPreviewTab* PreviewTab = EditorUI->AddTab<FSkeletalMeshPreviewTab>(SkeletalMesh);
+	PreviewTab->SetOpenAnimationSequenceViewerCallback([this](USkeletalMesh* Mesh, UAnimSequence* Animation) {PendingAnimationViewerMesh = Mesh; PendingAnimationViewerAnimation = Animation;});
+	PreviewTab->RequestFocus();
+}
+
+void UEditorEngine::OpenAnimationSequenceViewer(USkeletalMesh* SkeletalMesh, UAnimSequence* Animation)
+{
+	if (!SkeletalMesh || !Animation)
+	{
+		return;
+	}
+	for (const TUniquePtr<FEditorTab>& Tab : EditorUI->GetTabs())
+	{
+		if (Tab->GetEditingAsset() == Animation)
+		{
+			Tab->RequestFocus();
+			return;
+		}
+	}
+	FAnimationSequenceViewerTab* NewTab = EditorUI->AddTab<FAnimationSequenceViewerTab>(SkeletalMesh, Animation);
+	NewTab->RequestFocus();
 }
 
 FWorldContext& UEditorEngine::GetEditorWorldContext()

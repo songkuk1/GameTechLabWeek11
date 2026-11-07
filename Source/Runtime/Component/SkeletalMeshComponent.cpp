@@ -19,35 +19,14 @@ void USkeletalMeshComponent::PlayAnimation(UAnimSequence* InSequence)
 
 void USkeletalMeshComponent::TickAnimation(float DeltaSeconds)
 {
-	if (!bPlayingAnimation || !SkeletalMesh)
+	if (!bPlayingAnimation)
 	{
 		return;
-	}
-
-	USkeleton* Skeleton = SkeletalMesh->GetSkeleton();
-	if (!Skeleton)
-	{
-		return;
-	}
-
-	const TArray<FModelNode>& Nodes = Skeleton->GetNodes();
-	if (Nodes.IsEmpty())
-	{
-		return;
-	}
-	FPoseContext Output;
-	Output.Pose.SetNum(Nodes.Num());
-
-	for (int32 Index = 0; Index < Nodes.Num(); ++Index)
-	{
-		Output.Pose[Index] = Nodes[Index].LocalTransform;
 	}
 	FAnimationUpdateContext Context;
 	Context.DeltaTime = DeltaSeconds;
 	AnimationPlayer.Update(Context);
-	AnimationPlayer.Evaluate(Output);
-	LocalPose = Output.Pose;
-	UpdateBoneMatrices();
+	EvaluateAnimationPose();
 }
 
 const FModelMeshData* USkeletalMeshComponent::GetMeshData() const
@@ -96,4 +75,50 @@ void USkeletalMeshComponent::SubmitToRenderQueue(FRenderQueue& RenderQueue)
 FPrimitiveSceneProxy* USkeletalMeshComponent::CreateSceneProxy()
 {
 	return new FSkeletalMeshSceneProxy(this);
+}
+
+void USkeletalMeshComponent::SetAnimationPlaybackTime(float InTime)
+{
+	if (!bPlayingAnimation)
+	{
+		return;
+	}
+	AnimationPlayer.SetPlaybackPosition(InTime);
+	EvaluateAnimationPose();
+}
+
+void USkeletalMeshComponent::EvaluateAnimationPose()
+{
+	if (!bPlayingAnimation || !SkeletalMesh)
+	{
+		return;
+	}
+
+	USkeleton* Skeleton = SkeletalMesh->GetSkeleton();
+
+	if (!Skeleton)
+	{
+		return;
+	}
+
+	const TArray<FModelNode>& Nodes = Skeleton->GetNodes();
+
+	if (Nodes.IsEmpty())
+	{
+		return;
+	}
+
+	FPoseContext Output;
+	Output.Pose.SetNum(Nodes.Num());
+
+	for (int32 Index = 0; Index < Nodes.Num(); ++Index)
+	{
+		Output.Pose[Index] = Nodes[Index].LocalTransform;
+	}
+
+	AnimationPlayer.Evaluate(Output);
+
+	LocalPose = Output.Pose;
+
+	UpdateBoneMatrices();
 }

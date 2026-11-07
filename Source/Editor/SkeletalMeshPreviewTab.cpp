@@ -117,6 +117,15 @@ void FSkeletalMeshPreviewTab::DrawToolbar()
 		}
 		ImGui::EndCombo();
 	}
+
+	ImGui::SameLine();
+	ImGui::BeginDisabled(SelectedAnimation == nullptr || !OpenAnimationSequenceViewer);
+	if (ImGui::Button("Open Animation Viewer"))
+	{
+		OpenAnimationSequenceViewer(SkeletalMesh, SelectedAnimation);
+	}
+	ImGui::EndDisabled();
+
 	ImGui::BeginDisabled(PoseSavePath.empty() || BoneGizmo.IsUsing());
 	const FString FileEntry = PathUtils::ToUtf8(PoseSavePath.filename()) + " ...###PoseFile";
 	if (ImGui::Button(FileEntry.c_str()))

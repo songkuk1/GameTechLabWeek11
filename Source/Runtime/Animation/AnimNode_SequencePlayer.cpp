@@ -24,23 +24,68 @@ void FAnimNode_SequencePlayer::SetSequence(UAnimSequence* InSequence)
     CurrentTime = 0.0f;
 }
 
+void FAnimNode_SequencePlayer::SetPlaybackPosition(float InTime)
+{
+    const float PlayLength = GetPlayLength();
+    if (PlayLength <= 0.0f || !std::isfinite(InTime))
+    {
+        CurrentTime = 0.0f;
+        return;
+    }
+    CurrentTime = std::clamp(InTime, 0.0f, PlayLength);
+}
+
+float FAnimNode_SequencePlayer::GetPlayLength() const
+{
+    if (!Sequence || !Sequence->GetDataModel())
+    {
+        return 0.0f;
+    }
+    const float PlayLength = Sequence->GetDataModel()->PlayLength;
+    if (!std::isfinite(PlayLength) || PlayLength <= 0.0f)
+    {
+        return 0.0f;
+    }
+    return PlayLength;
+}
+
+float FAnimNode_SequencePlayer::GetFrameRate() const
+{
+    if (!Sequence || !Sequence->GetDataModel())
+    {
+        return 0.0f;
+    }
+    const float FrameRate = Sequence->GetDataModel()->FrameRate.AsDecimal();
+    if (!std::isfinite(FrameRate) || FrameRate <= 0.0f)
+    {
+        return 0.0f;
+    }
+    return FrameRate;
+}
+
+void FAnimNode_SequencePlayer::SetPlayRate(float InPlayRate)
+{
+    PlayRate = std::isfinite(InPlayRate) ? InPlayRate : 1.0f;
+}
+
 void FAnimNode_SequencePlayer::Update(const FAnimationUpdateContext& Context)
 {
     if (!Sequence || !Sequence->GetDataModel())
     {
         return;
     }
-    const float PlayLength = Sequence->GetDataModel()->PlayLength;
-    if (!std::isfinite(PlayLength) || PlayLength <= 0.0f)
+    const float PlayLength = GetPlayLength();
+    if (PlayLength <= 0.0f)
     {
         CurrentTime = 0.0f;
         return;
     }
-    if (!std::isfinite(Context.DeltaTime) || Context.DeltaTime <= 0.0f)
+
+    if (!std::isfinite(Context.DeltaTime) || Context.DeltaTime <= 0.0f || Context.DeltaTime == 0.0f || PlayRate == 0.0f)
     {
         return;
     }
-    CurrentTime += Context.DeltaTime;
+    CurrentTime += Context.DeltaTime * PlayRate;
     if (bLoop)
     {
         CurrentTime = std::fmod(CurrentTime, PlayLength);
@@ -51,7 +96,7 @@ void FAnimNode_SequencePlayer::Update(const FAnimationUpdateContext& Context)
     }
     else
     {
-        CurrentTime = std::min(CurrentTime, PlayLength);
+        CurrentTime = std::clamp(CurrentTime, 0.0f, PlayLength);
     }
 }
 
@@ -62,7 +107,7 @@ void FAnimNode_SequencePlayer::Evaluate(FPoseContext& Output)
         return;
     }
     const UAnimDataModel* DataModel = Sequence->GetDataModel();
-    const float FrameRate = DataModel->FrameRate.AsDecimal();
+    const float FrameRate = GetFrameRate();
     if (FrameRate <= 0.0f)
     {
         return;

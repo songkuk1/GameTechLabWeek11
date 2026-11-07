@@ -5,6 +5,7 @@
 #include "Render/SkeletalMesh.h"
 
 #include <filesystem>
+#include <functional>
 
 class ASkeletalMeshActor;
 class AActor;
@@ -36,6 +37,7 @@ public:
 	void UpdateBoneGizmo(bool bInputEnabled);
 	UWorld* GetWorld() const override { return PreviewScene->GetWorld(); }
 	virtual const UObject* GetEditingAsset() const { return SkeletalMesh; };
+	void SetOpenAnimationSequenceViewerCallback(std::function<void(USkeletalMesh*, UAnimSequence*)> InCallback) { OpenAnimationSequenceViewer = std::move(InCallback); }
 private:
 	void DrawToolbar();
 	void SelectPosePath();
@@ -63,4 +65,5 @@ private:
 	int32 SelectedBone = -1;
 	TArray<UAnimSequence*> Animations;
 	UAnimSequence* SelectedAnimation = nullptr;
+	std::function<void(USkeletalMesh*, UAnimSequence*)> OpenAnimationSequenceViewer;
 };
