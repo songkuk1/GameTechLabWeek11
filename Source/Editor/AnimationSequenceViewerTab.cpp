@@ -576,6 +576,10 @@ void FAnimationSequenceViewerTab::DrawBlendSpaceControls(
 				BlendInput
 			);
 
+			Component->SetAnimationPlayRate(
+				SpeedValues[PlaybackSpeedIndex]
+			);
+
 			Component->SetAnimationLooping(bLooping);
 		}
 		else

@@ -17,7 +17,7 @@ class UBlendSpace1D : public UAnimationAsset
 public:
 	bool AddSample(float SampleValue, UAnimSequence* Animation);
 	const TArray<FBlendSample1D>& GetSamples() const { return Samples; }
-	bool GetBlendSamples(float Input, int32& OutIndexA, int32 OutIndexB, float& OutAlpha) const;
+	bool GetBlendSamples(float Input, int32& OutIndexA, int32& OutIndexB, float& OutAlpha) const;
 	void ClearSamples() { Samples.Empty(); }
 private:
 	TArray<FBlendSample1D> Samples;

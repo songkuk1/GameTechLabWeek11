@@ -24,7 +24,7 @@ bool UBlendSpace1D::AddSample(float SampleValue, UAnimSequence* Animation)
     return true;
 }
 
-bool UBlendSpace1D::GetBlendSamples(float Input, int32& OutIndexA, int32 OutIndexB, float& OutAlpha) const
+bool UBlendSpace1D::GetBlendSamples(float Input, int32& OutIndexA, int32& OutIndexB, float& OutAlpha) const
 {
     if (Samples.IsEmpty())
     {
