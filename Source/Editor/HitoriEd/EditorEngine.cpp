@@ -624,6 +624,14 @@ void UEditorEngine::UpdateEditorTabs()
 		{
 			continue;
 		}
+
+		if (!Tabs[Index]->CanCloseNow())
+		{
+			Tabs[Index]->SetOpen(true);
+			Tabs[Index]->RequestFocus();
+			continue;
+		}
+
 		EditorUI->RemoveTab(Index);
 	}
 

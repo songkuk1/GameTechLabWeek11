@@ -335,10 +335,10 @@ bool FContentDrawerPanel::CreateBlendSpaceFile(USkeletalMesh* InSkeletalMesh)
 	}
 	const FString FilePath = PathUtils::ToUtf8(Path);
 	UBlendSpace1D* NewBlendSpace = NewObject<UBlendSpace1D>();
-	if (!NewBlendSpace->SetSkeleton(InSkeletalMesh->GetSkeleton()))
+	if (!NewBlendSpace->SetSkeleton(InSkeletalMesh->GetSkeleton()) || !NewBlendSpace->SetPreviewMesh(InSkeletalMesh))
 	{
 		delete NewBlendSpace;
-		CreateAssetError = "Could not set the BlendSpace Skeleton.";
+		CreateAssetError = "Could not set the BlendSpace Skeleton or Preview Mesh.";
 		return false;
 	}
 

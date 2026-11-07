@@ -71,7 +71,14 @@ void FPreviewViewportPanel::OnRender()
 		return;
 	}
 
-	DrawToolbar();
+	const ImVec2 AvailableBeforeToolbar = ImGui::GetContentRegionAvail();
+	const float ToolbarHeight = std::max(1.0f, std::min(280.0f, AvailableBeforeToolbar.y * 0.4f));
+	ImGui::BeginChild("PreviewToolbar", ImVec2(0.0f, ToolbarHeight), true);
+	if (DrawToolbar)
+	{
+		DrawToolbar();
+	}
+	ImGui::EndChild();
 	bHovered = false;
 	const ImVec2 Avail = ImGui::GetContentRegionAvail();
 	RequestedSize = { std::max(0.0f, std::floor(Avail.x)), std::max(0.0f, std::floor(Avail.y)) };

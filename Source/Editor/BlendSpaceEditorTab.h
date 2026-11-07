@@ -26,7 +26,12 @@ private:
     void DrawToolbar();
     void FrameMesh();
     void RefreshPreview(float PreviousTime);
+    bool CanCloseNow() override;
+    bool SaveBlendSpaceAsset();
 
+    FString ErrorMessage;
+
+    bool bShowClosePopup = false;
     UBlendSpace1D* BlendSpace = nullptr;
     USkeletalMesh* SkeletalMesh = nullptr;
 

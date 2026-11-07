@@ -80,6 +80,11 @@ public:
 	//엔진에게 "이 탭에서 그릴 화면"을 알려 줌
 	virtual void CollectViews(TArray<FEditorTabView>& OutViews) {};
 
+	// 탭을 실제로 제거해도 되는지 확인한다.
+	virtual bool CanCloseNow() { return true; }
+
+	// 닫기 요청을 보류한 탭을 다시 표시할 때 사용한다.
+	void SetOpen(bool bInOpen){ bOpen = bInOpen; }
 protected:
 	// imgui.ini에 이 탭의 배치가 없을 때 한 번 부른다. 기본은 모든 패널을 한 노드에 겹친다
 	// DockBuilder로 DockSpaceRoot를 나누고 패널 창 이름으로 배치한다

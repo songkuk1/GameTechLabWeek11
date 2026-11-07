@@ -376,6 +376,12 @@ bool FJsonArchive::LoadBlendSpaceFromBytes(UBlendSpace1D* BlendSpace, const TArr
 
 	Ar.Close();
 
-	return !Reader.IsError();
+	if (Reader.IsError() || !BlendSpace->IsBlendSpaceDataValid())
+	{
+		HTR_LOG(Error, "Load: invalid BlendSpace asset");
+		return false;
+	}
+
+	return true;
 }
 

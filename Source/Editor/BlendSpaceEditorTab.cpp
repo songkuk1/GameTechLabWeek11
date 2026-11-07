@@ -58,54 +58,84 @@ FBlendSpaceEditorTab::FBlendSpaceEditorTab(UBlendSpace1D* InBlendSpace) : FEdito
 
     PreviewScene = MakeUnique<FPreviewScene>();
 
-    for (TObjectIterator<USkeletalMesh> It; It; ++It)
-    {
-        USkeletalMesh* Candidate = *It;
+    SkeletalMesh = BlendSpace->GetPreviewMesh();
 
-        if (Candidate &&  Candidate->GetSkeleton() == BlendSpace->GetSkeleton())
+    if (!SkeletalMesh)
+    {
+        for (TObjectIterator<USkeletalMesh> It; It; ++It)
         {
-            SkeletalMesh = Candidate;
-            break;
+            USkeletalMesh* Candidate = *It;
+
+            if (Candidate && Candidate->GetSkeleton() == BlendSpace->GetSkeleton())
+            {
+                SkeletalMesh = Candidate;
+                break;
+            }
+        }
+
+        if (SkeletalMesh && BlendSpace->SetPreviewMesh(SkeletalMesh))
+        {
+            bDirty = true;
         }
     }
 
     if (SkeletalMesh)
     {
-        PreviewActor = Cast<ASkeletalMeshActor>(GetWorld()->SpawnActor(ASkeletalMeshActor::StaticClass()));
-
-        USkeletalMeshComponent* Component = PreviewActor->GetSkeletalMeshComponent();
-
-        Component->SetSkeletalMesh(SkeletalMesh);
-
-        for (TObjectIterator<UAnimSequence> It; It; ++It)
+        if (UWorld* PreviewWorld = GetWorld())
         {
-            UAnimSequence* Animation = *It;
+            PreviewActor = Cast<ASkeletalMeshActor>(PreviewWorld->SpawnActor(ASkeletalMeshActor::StaticClass()));
+        }
 
-            if (Animation && Animation->GetSkeleton() == BlendSpace->GetSkeleton())
+        if (PreviewActor)
+        {
+            USkeletalMeshComponent* Component = PreviewActor->GetSkeletalMeshComponent();
+
+            if (Component)
             {
-                AvailableAnimations.Add(Animation);
+                Component->SetSkeletalMesh(SkeletalMesh);
             }
         }
+    }
 
-        std::sort(AvailableAnimations.begin(), AvailableAnimations.end(), [](const UAnimSequence* A, const UAnimSequence* B) { return A->GetPath() < B->GetPath(); });
+    for (TObjectIterator<UAnimSequence> It; It; ++It)
+    {
+        UAnimSequence* Animation = *It;
 
-        if (!AvailableAnimations.IsEmpty())
+        if (Animation && Animation->GetSkeleton() == BlendSpace->GetSkeleton())
         {
-            NewSampleAnimation = AvailableAnimations[0];
+            AvailableAnimations.Add(Animation);
         }
+    }
 
-        const FBlendSpaceAxis1D& Axis = BlendSpace->GetAxis();
-        NewSampleValue = (Axis.MinValue + Axis.MaxValue) * 0.5f;
-        BlendInput = Axis.MinValue;
+    std::sort(AvailableAnimations.begin(),  AvailableAnimations.end(), [](const UAnimSequence* A, const UAnimSequence* B) { return A->GetPath() < B->GetPath(); });
 
-        if (!BlendSpace->GetSamples().IsEmpty())
+    if (!AvailableAnimations.IsEmpty())
+    {
+        NewSampleAnimation = AvailableAnimations[0];
+    }
+
+    const FBlendSpaceAxis1D& Axis = BlendSpace->GetAxis();
+
+    NewSampleValue = (Axis.MinValue + Axis.MaxValue) * 0.5f;
+    BlendInput = Axis.MinValue;
+
+    if (PreviewActor && !BlendSpace->GetSamples().IsEmpty())
+    {
+        USkeletalMeshComponent* Component = PreviewActor->GetSkeletalMeshComponent();
+
+        if (Component)
         {
             Component->PlayBlendSpace(BlendSpace, BlendInput);
+            bPlaying = true;
         }
         else
         {
             bPlaying = false;
         }
+    }
+    else
+    {
+        bPlaying = false;
     }
 
     ViewportPanel = AddPanel<FPreviewViewportPanel>(GetWorld(), FString("BlendSpaceViewport##") + BlendSpace->GetPath(), [this]() { DrawToolbar(); });
@@ -224,12 +254,82 @@ void FBlendSpaceEditorTab::RefreshPreview(float PreviousTime)
     Component->SetAnimationPlaybackTime(PreviousTime);
 }
 
+bool FBlendSpaceEditorTab::CanCloseNow()
+{
+    if (!bDirty)
+    {
+        return true;
+    }
+
+    bShowClosePopup = true;
+    return false;
+}
+
+bool FBlendSpaceEditorTab::SaveBlendSpaceAsset()
+{
+    if (!BlendSpace || BlendSpace->GetPath().empty())
+    {
+        ErrorMessage = "Invalid BlendSpace asset path.";
+        return false;
+    }
+
+    const FString FilePath = PathUtils::ToUtf8(fs::path("Assets") / PathUtils::FromUtf8(BlendSpace->GetPath()));
+
+    if (!FJsonArchive::SaveBlendSpace(BlendSpace, FilePath))
+    {
+        ErrorMessage = "Could not save the BlendSpace file.";
+        return false;
+    }
+
+    bDirty = false;
+    ErrorMessage.clear();
+
+    return true;
+}
+
 void FBlendSpaceEditorTab::DrawToolbar()
 {
     if (!BlendSpace)
     {
         ImGui::TextUnformatted("No BlendSpace asset.");
         return;
+    }
+
+    if (bShowClosePopup)
+    {
+        ImGui::OpenPopup("Unsaved BlendSpace Changes");
+        bShowClosePopup = false;
+    }
+
+    if (ImGui::BeginPopupModal("Unsaved BlendSpace Changes", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+    {
+        ImGui::TextUnformatted("There are unsaved changes.");
+        ImGui::TextUnformatted("Do you want to save before closing?");
+        if (!ErrorMessage.empty())
+        {
+            ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.35f, 1.0f), "%s", ErrorMessage.c_str());
+        }
+        if (ImGui::Button("Save"))
+        {
+            if (SaveBlendSpaceAsset())
+            {
+                SetOpen(false);
+                ImGui::CloseCurrentPopup();
+            }
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Discard"))
+        {
+            bDirty = false;
+            SetOpen(false);
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Cancel"))
+        {
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
     }
 
     ImGui::TextUnformatted("BlendSpace 1D");
@@ -277,10 +377,61 @@ void FBlendSpaceEditorTab::DrawToolbar()
 
     if (ImGui::Button("Add Sample"))
     {
-        if (BlendSpace->AddSample(NewSampleValue, NewSampleAnimation, NewSampleRateScale))
+        ErrorMessage.clear();
+
+        const bool bWasEmpty = BlendSpace->GetSamples().IsEmpty();
+
+        if (!NewSampleAnimation)
         {
+            ErrorMessage = "Select an Animation before adding a sample.";
+        }
+        else if (BlendSpace->AddSample(NewSampleValue, NewSampleAnimation, NewSampleRateScale))
+        {
+            if (bWasEmpty)
+            {
+                bPlaying = true;
+            }
+
             bSamplesChanged = true;
             bDirty = true;
+
+            const TArray<FBlendSample1D>& UpdatedSamples = BlendSpace->GetSamples();
+
+            float PreviousValue = Axis.MinValue;
+            float BestGap = -1.0f;
+            float NextSampleValue = (Axis.MinValue + Axis.MaxValue) * 0.5f;
+
+            for (const FBlendSample1D& Sample : UpdatedSamples)
+            {
+                const float Value = std::clamp(Sample.SampleValue, Axis.MinValue, Axis.MaxValue);
+
+                const float Gap = Value - PreviousValue;
+
+                if (Gap > BestGap)
+                {
+                    BestGap = Gap;
+                    NextSampleValue = (PreviousValue + Value) * 0.5f;
+                }
+
+                PreviousValue = std::max(PreviousValue, Value);
+            }
+
+            const float LastGap = Axis.MaxValue - PreviousValue;
+
+            if (LastGap > BestGap)
+            {
+                BestGap = LastGap;
+                NextSampleValue = (PreviousValue + Axis.MaxValue) * 0.5f;
+            }
+
+            if (BestGap > 2.0e-4f)
+            {
+                NewSampleValue = NextSampleValue;
+            }
+        }
+        else
+        {
+            ErrorMessage = "Could not add sample. Check the position, Skeleton and Rate Scale.";
         }
     }
 
@@ -366,11 +517,20 @@ void FBlendSpaceEditorTab::DrawToolbar()
             bSamplesChanged = true;
             bDirty = true;
         }
+        else
+        {
+            ErrorMessage = "Another sample already uses this position.";
+        }
     }
 
     if (bSamplesChanged)
     {
         RefreshPreview(PreviousTime);
+    }
+
+    if (!ErrorMessage.empty())
+    {
+        ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.35f, 1.0f), "%s", ErrorMessage.c_str());
     }
 
     ImGui::Separator();
@@ -402,12 +562,7 @@ void FBlendSpaceEditorTab::DrawToolbar()
 
     if (ImGui::Button("Save BlendSpace"))
     {
-        const FString FilePath = PathUtils::ToUtf8(fs::path("Assets") / PathUtils::FromUtf8(BlendSpace->GetPath()));
-
-        if (FJsonArchive::SaveBlendSpace(BlendSpace, FilePath))
-        {
-            bDirty = false;
-        }
+        SaveBlendSpaceAsset();
     }
 
     ImGui::EndDisabled();

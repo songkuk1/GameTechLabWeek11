@@ -5,6 +5,7 @@
 
 class UAnimSequence;
 class USkeleton;
+class USkeletalMesh;
 
 struct FBlendSample1D
 {
@@ -37,9 +38,15 @@ public:
 	void ClearSamples() { Samples.Empty(); }
 	bool SetSkeleton(USkeleton* InSkeleton);
 	USkeleton* GetSkeleton() const { return Skeleton; }
+	bool SetPreviewMesh(USkeletalMesh* InPreviewMesh);
+	USkeletalMesh* GetPreviewMesh() const { return PreviewMesh; }
+
+	bool IsBlendSpaceDataValid() const;
 	virtual void Serialize(FStructuredArchive::FRecord Record) override;
 private:
 	FBlendSpaceAxis1D Axis;
 	TArray<FBlendSample1D> Samples;
 	USkeleton* Skeleton = nullptr;
+	USkeletalMesh* PreviewMesh = nullptr;
+	bool bSerializationValid = true;
 };

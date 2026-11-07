@@ -2,7 +2,7 @@
 #include "Animation/BlendSpace1D.h"
 #include "Animation/AnimSequence.h"
 #include "Animation/Skeleton.h"
-
+#include "Render/SkeletalMesh.h"
 #include <algorithm>
 #include <cmath>
 
@@ -156,11 +156,56 @@ bool UBlendSpace1D::SetSkeleton(USkeleton* InSkeleton)
     return true;
 }
 
+bool UBlendSpace1D::SetPreviewMesh(USkeletalMesh* InPreviewMesh)
+{
+    if (!Skeleton || !InPreviewMesh || InPreviewMesh->GetSkeleton() != Skeleton)
+    {
+        return false;
+    }
+
+    PreviewMesh = InPreviewMesh;
+    return true;
+}
+
+bool UBlendSpace1D::IsBlendSpaceDataValid() const
+{
+    if (!bSerializationValid || !Skeleton)
+    {
+        return false;
+    }
+
+    if (Axis.Name.IsNone() || !std::isfinite(Axis.MinValue) || !std::isfinite(Axis.MaxValue) || Axis.MinValue >= Axis.MaxValue || Axis.GridDivisions <= 0)
+    {
+        return false;
+    }
+
+    if (PreviewMesh && PreviewMesh->GetSkeleton() != Skeleton)
+    {
+        return false;
+    }
+
+    for (const FBlendSample1D& Sample : Samples)
+    {
+        if (!Sample.Animation || Sample.Animation->GetSkeleton() != Skeleton || !std::isfinite(Sample.SampleValue) || !std::isfinite(Sample.RateScale) || Sample.RateScale <= 0.0f)
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 void UBlendSpace1D::Serialize(FStructuredArchive::FRecord Record)
 {
     Super::Serialize(Record);
     FArchive& Archive = Record.GetUnderlyingArchive();
     const bool bIsLoading = Archive.IsLoading();
+    if (bIsLoading)
+    {
+        bSerializationValid = true;
+        Samples.Empty();
+        PreviewMesh = nullptr;
+    }
     FName AxisName = Axis.Name;
     float MinValue = Axis.MinValue;
     float MaxValue = Axis.MaxValue;
@@ -179,6 +224,7 @@ void UBlendSpace1D::Serialize(FStructuredArchive::FRecord Record)
         LoadedAxis.GridDivisions = GridDivisions;
         if (!SetAxis(LoadedAxis))
         {
+            bSerializationValid = false;
             HTR_LOG(Warning, "BlendSpace: invalid axis data");
         }
     }
@@ -187,7 +233,28 @@ void UBlendSpace1D::Serialize(FStructuredArchive::FRecord Record)
     if (bIsLoading)
     {
         Skeleton = Cast<USkeleton>(SkeletonObject);
+
+        if (!Skeleton)
+        {
+            bSerializationValid = false;
+        }
     }
+    UObject* PreviewMeshObject = PreviewMesh;
+    Record << SA_VALUE("PreviewMesh", PreviewMeshObject);
+    if (bIsLoading)
+    {
+        PreviewMesh = Cast<USkeletalMesh>(PreviewMeshObject);
+        if (PreviewMeshObject && !PreviewMesh)
+        {
+            bSerializationValid = false;
+        }
+        if (PreviewMesh && PreviewMesh->GetSkeleton() != Skeleton)
+        {
+            PreviewMesh = nullptr;
+            bSerializationValid = false;
+        }
+    }
+
     int32 SampleCount = Samples.Num();
     FStructuredArchive::FArray SampleArray = Record.EnterArray("Samples", SampleCount);
     if (bIsLoading)
@@ -208,6 +275,7 @@ void UBlendSpace1D::Serialize(FStructuredArchive::FRecord Record)
             UAnimSequence* Animation = Cast<UAnimSequence>(AnimationObject);
             if (!AddSample(SampleValue, Animation, RateScale))
             {
+                bSerializationValid = false;
                 HTR_LOG(Warning, "BlendSpace: invalid sample at index {}", Index);
             }
         }
