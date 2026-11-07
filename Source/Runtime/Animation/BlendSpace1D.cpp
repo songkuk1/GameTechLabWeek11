@@ -65,7 +65,7 @@ bool UBlendSpace1D::SetSampleValue(int32 SampleIndex, float SampleValue)
         {
             continue;
         }
-        if (std::abs(Samples[Index].SampleValue - SampleIndex) < Tolerance)
+        if (std::abs(Samples[Index].SampleValue - SampleValue) < Tolerance)
         {
             return false;
         }
@@ -78,7 +78,7 @@ bool UBlendSpace1D::SetSampleValue(int32 SampleIndex, float SampleValue)
 
 bool UBlendSpace1D::ReplaceSampleAnimation(int32 SampleIndex, UAnimSequence* Animation)
 {
-    if (!Samples.IsValidIndex(SampleIndex) || !Animation)
+    if (!Samples.IsValidIndex(SampleIndex) || !Animation || !Skeleton || Animation->GetSkeleton() != Skeleton)
     {
         return false;
     }

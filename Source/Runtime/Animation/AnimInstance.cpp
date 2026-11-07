@@ -53,6 +53,103 @@ AActor* UAnimInstance::GetOwningActor() const
 	return OwningComponent ? OwningComponent->GetOwner() : nullptr;
 }
 
+void UAnimInstance::PlayAnimation(UAnimSequence* InSequence)
+{
+	SequencePlayer.SetSequence(InSequence);
+	RootNode = &SequencePlayer;
+}
+
+void UAnimInstance::PlayBlendAnimation(UAnimSequence* InSequenceA, UAnimSequence* InSequenceB, float InAlpha)
+{
+	TwoWayBlendPlayer.SetAnimations(InSequenceA, InSequenceB);
+	TwoWayBlendPlayer.SetAlpha(InAlpha);
+	RootNode = &TwoWayBlendPlayer;
+}
+
+void UAnimInstance::PlayBlendSpace(UBlendSpace1D* InBlendSpace, float InInput)
+{
+	BlendSpacePlayer.SetBlendSpace(InBlendSpace);
+	BlendSpacePlayer.SetBlendInput(InInput);
+	RootNode = &BlendSpacePlayer;
+}
+
+void UAnimInstance::SetAnimationBlendAlpha(float InAlpha)
+{
+	TwoWayBlendPlayer.SetAlpha(InAlpha);
+}
+
+float UAnimInstance::GetAnimationBlendAlpha() const
+{
+	return RootNode == &TwoWayBlendPlayer ? TwoWayBlendPlayer.GetAlpha() : 0.0f;
+}
+
+void UAnimInstance::SetAnimationBlendInput(float InInput)
+{
+	if (RootNode == &BlendSpacePlayer)
+	{
+		BlendSpacePlayer.SetBlendInput(InInput);
+	}
+}
+
+float UAnimInstance::GetAnimationBlendInput() const
+{
+	return RootNode == &BlendSpacePlayer ? BlendSpacePlayer.GetBlendInput() : 0.0f;
+}
+
+void UAnimInstance::SetPlaybackPosition(float InTime)
+{
+	if (IAnimPlaybackControl* Control = GetPlaybackControl())
+	{
+		Control->SetPlaybackPosition(InTime);
+	}
+}
+
+float UAnimInstance::GetCurrentTime() const
+{
+	const IAnimPlaybackControl* Control = GetPlaybackControl();
+	return Control ? Control->GetCurrentTime() : 0.0f;
+}
+
+float UAnimInstance::GetPlayLength() const
+{
+	const IAnimPlaybackControl* Control = GetPlaybackControl();
+	return Control ? Control->GetPlayLength() : 0.0f;
+}
+
+float UAnimInstance::GetFrameRate() const
+{
+	const IAnimPlaybackControl* Control = GetPlaybackControl();
+	return Control ? Control->GetFrameRate() : 0.0f;
+}
+
+void UAnimInstance::SetPlayRate(float InPlayRate)
+{
+	if (IAnimPlaybackControl* Control = GetPlaybackControl())
+	{
+		Control->SetPlayRate(InPlayRate);
+	}
+}
+
+float UAnimInstance::GetPlayRate() const
+{
+	const IAnimPlaybackControl* Control = GetPlaybackControl();
+	return Control ? Control->GetPlayRate() : 1.0f;
+}
+
+void UAnimInstance::SetLooping(bool bInLoop)
+{
+	if (IAnimPlaybackControl* Control = GetPlaybackControl())
+	{
+		Control->SetLooping(bInLoop);
+	}
+}
+
+bool UAnimInstance::IsLooping() const
+{
+	const IAnimPlaybackControl* Control = GetPlaybackControl();
+	return Control ? Control->IsLooping() : true;
+}
+
 UAnimSingleNodeInstance::UAnimSingleNodeInstance()
 {
 	RootNode = &SequencePlayer;

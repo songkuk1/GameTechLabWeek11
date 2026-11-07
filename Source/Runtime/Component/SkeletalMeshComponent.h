@@ -50,13 +50,10 @@ public:
     bool IsAnimationLooping() const;
 
 private:
-    UAnimSingleNodeInstance* GetSingleNodeAnimationInstance() const;
-    UAnimTwoWayBlendInstance* GetTwoWayBlendAnimationInstance() const;
-    UAnimBlendSpaceInstance* GetBlendSpaceAnimationInstance() const;
+    bool EnsureAnimInstance();
     void EvaluateAnimationPose();
 
 private:
     UAnimInstance* AnimInstance = nullptr;
-
     bool bPlayingAnimation = false;
 };
