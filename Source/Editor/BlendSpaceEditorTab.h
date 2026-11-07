@@ -47,7 +47,9 @@ private:
     float NewSampleValue = 300.0f;
     float NewSampleRateScale = 1.0f;
     float BlendInput = 0.0f;
-
+    int32 DraggingSampleIndex = -1;
+    float DraggingSampleValue = 0.0f;
+    bool bDraggingBlendInput = false;
     bool bFramed = false;
     bool bPlaying = true;
     bool bDirty = false;

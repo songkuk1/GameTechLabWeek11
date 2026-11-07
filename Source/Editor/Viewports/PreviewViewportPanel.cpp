@@ -71,19 +71,17 @@ void FPreviewViewportPanel::OnRender()
 		return;
 	}
 
-	const ImVec2 AvailableBeforeToolbar = ImGui::GetContentRegionAvail();
-	const float ToolbarHeight = std::max(1.0f, std::min(280.0f, AvailableBeforeToolbar.y * 0.4f));
-	ImGui::BeginChild("PreviewToolbar", ImVec2(0.0f, ToolbarHeight), true);
-	if (DrawToolbar)
-	{
-		DrawToolbar();
-	}
-	ImGui::EndChild();
-	bHovered = false;
-	const ImVec2 Avail = ImGui::GetContentRegionAvail();
-	RequestedSize = { std::max(0.0f, std::floor(Avail.x)), std::max(0.0f, std::floor(Avail.y)) };
+	const ImVec2 Available = ImGui::GetContentRegionAvail();
 
+	const float ToolbarHeight = std::max(1.0f, std::min(280.0f, Available.y * 0.4f));
+
+	const float ViewportHeight = std::max(0.0f, Available.y - ToolbarHeight - ImGui::GetStyle().ItemSpacing.y);
+
+	RequestedSize = {std::max(0.0f, std::floor(Available.x)), std::max(0.0f, std::floor(ViewportHeight))};
+
+	bHovered = false;
 	ImageSize = {};
+
 	if (Viewport->IsVisible() && Viewport->GetColorTarget())
 	{
 		ImGui::Image((ImTextureID)Viewport->GetColorTarget()->GetSRV(), { RequestedSize.X, RequestedSize.Y });
@@ -91,5 +89,17 @@ void FPreviewViewportPanel::OnRender()
 		ImageSize = ImGui::GetItemRectSize();
 		bHovered = ImGui::IsItemHovered();
 	}
+	else
+	{
+		ImGui::Dummy({ RequestedSize.X, RequestedSize.Y });
+	}
+
+	ImGui::BeginChild("PreviewToolbar", ImVec2(0.0f, ToolbarHeight), true);
+
+	if (DrawToolbar)
+	{
+		DrawToolbar();
+	}
+	ImGui::EndChild();
 	ImGui::End();
 }

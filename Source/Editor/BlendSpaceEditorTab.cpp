@@ -435,9 +435,163 @@ void FBlendSpaceEditorTab::DrawToolbar()
         }
     }
 
+    // BlendSpace 1D Graph
+    ImGui::Separator();
+    ImGui::Text("Blend Graph  |  Input: %.1f", BlendInput);
+
+    const float GraphWidth = std::max(1.0f, ImGui::GetContentRegionAvail().x);
+    constexpr float GraphHeight = 72.0f;
+
+    ImGui::InvisibleButton("##BlendSpaceGraph", ImVec2(GraphWidth, GraphHeight));
+
+    const ImVec2 GraphMin = ImGui::GetItemRectMin();
+    const ImVec2 GraphMax = ImGui::GetItemRectMax();
+
+    const bool bGraphHovered = ImGui::IsItemHovered();
+    const bool bGraphActive = ImGui::IsItemActive();
+    ImDrawList* DrawList = ImGui::GetWindowDrawList();
+
+    const float TrackLeft = GraphMin.x + 12.0f;
+    const float TrackRight = GraphMax.x - 12.0f;
+    const float TrackWidth = std::max(1.0f, TrackRight - TrackLeft);
+    const float TrackY = (GraphMin.y + GraphMax.y) * 0.5f;
+
+    const float AxisRange = Axis.MaxValue - Axis.MinValue;
+
+    auto ValueToScreenX = [&](float Value)
+        {
+            const float Alpha = std::clamp((Value - Axis.MinValue) / AxisRange, 0.0f, 1.0f);
+            return TrackLeft + TrackWidth * Alpha;
+        };
+
+    auto ScreenXToValue = [&](float X)
+        {
+            const float Alpha = std::clamp((X - TrackLeft) / TrackWidth, 0.0f, 1.0f);
+            return Axis.MinValue + AxisRange * Alpha;
+        };
+
+    DrawList->AddRectFilled(GraphMin, GraphMax, IM_COL32(35, 38, 44, 255), 4.0f);
+
+    DrawList->AddLine(ImVec2(TrackLeft, TrackY), ImVec2(TrackRight, TrackY), IM_COL32(150, 150, 150, 255), 2.0f);
+
+    for (int32 Index = 0; Index <= Axis.GridDivisions; ++Index)
+    {
+        const float Alpha = static_cast<float>(Index) / Axis.GridDivisions;
+        const float X = TrackLeft + TrackWidth * Alpha;
+
+        DrawList->AddLine(ImVec2(X, TrackY - 8.0f), ImVec2(X, TrackY + 8.0f), IM_COL32(90, 95, 105, 255), 1.0f);
+    }
+
+    const TArray<FBlendSample1D>& GraphSamples = BlendSpace->GetSamples();
+
+    if (bGraphHovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+    {
+        const ImVec2 MousePos = ImGui::GetIO().MousePos;
+        const float InputX = ValueToScreenX(BlendInput);
+
+        if (std::abs(MousePos.x - InputX) <= 8.0f)
+        {
+            bDraggingBlendInput = true;
+            DraggingSampleIndex = -1;
+        }
+        else
+        {
+            int32 NearestIndex = -1;
+            float NearestDistance = 10.0f;
+
+            for (int32 Index = 0; Index < GraphSamples.Num(); ++Index)
+            {
+                const float X = ValueToScreenX(GraphSamples[Index].SampleValue);
+                const float Distance = std::abs(MousePos.x - X);
+
+                if (Distance < NearestDistance)
+                {
+                    NearestDistance = Distance;
+                    NearestIndex = Index;
+                }
+            }
+
+            if (NearestIndex != -1)
+            {
+                DraggingSampleIndex = NearestIndex;
+                DraggingSampleValue = GraphSamples[NearestIndex].SampleValue;
+            }
+        }
+    }
+
+    if (bDraggingBlendInput)
+    {
+        if (ImGui::IsMouseDown(ImGuiMouseButton_Left) && bGraphActive)
+        {
+            BlendInput = ScreenXToValue(ImGui::GetIO().MousePos.x);
+
+            if (PreviewActor)
+            {
+                USkeletalMeshComponent* Component = PreviewActor->GetSkeletalMeshComponent();
+
+                if (Component)
+                {
+                    Component->SetAnimationBlendInput(BlendInput);
+                }
+            }
+        }
+        else if (!ImGui::IsMouseDown(ImGuiMouseButton_Left))
+        {
+            bDraggingBlendInput = false;
+        }
+    }
+
+    if (DraggingSampleIndex != -1)
+    {
+        if (ImGui::IsMouseDown(ImGuiMouseButton_Left) && ImGui::IsItemActive())
+        {
+            DraggingSampleValue = ScreenXToValue(ImGui::GetIO().MousePos.x);
+        }
+        else if (!ImGui::IsMouseDown(ImGuiMouseButton_Left))
+        {
+            if (GraphSamples.IsValidIndex(DraggingSampleIndex))
+            {
+                const float OriginalValue = GraphSamples[DraggingSampleIndex].SampleValue;
+
+                if (std::abs(OriginalValue - DraggingSampleValue) > 1.0e-4f)
+                {
+                    if (BlendSpace->SetSampleValue(DraggingSampleIndex, DraggingSampleValue))
+                    {
+                        bSamplesChanged = true;
+                        bDirty = true;
+                        ErrorMessage.clear();
+                    }
+                    else
+                    {
+                        ErrorMessage = "Another sample already uses this position.";
+                    }
+                }
+            }
+
+            DraggingSampleIndex = -1;
+        }
+    }
+
+    for (int32 Index = 0; Index < GraphSamples.Num(); ++Index)
+    {
+        const FBlendSample1D& Sample = GraphSamples[Index];
+
+        const float Value = Index == DraggingSampleIndex ? DraggingSampleValue : Sample.SampleValue;
+
+        const float X = ValueToScreenX(Value);
+
+        const ImU32 MarkerColor = Index == DraggingSampleIndex ? IM_COL32(80, 200, 255, 255) : IM_COL32(255, 190, 70, 255);
+
+        DrawList->AddCircleFilled(ImVec2(X, TrackY), 6.0f, MarkerColor);
+    }
+
+    const float InputX = ValueToScreenX(BlendInput);
+    DrawList->AddLine(ImVec2(InputX, GraphMin.y + 5.0f), ImVec2(InputX, GraphMax.y - 5.0f), IM_COL32(255, 75, 75, 255), 2.0f);
+
     ImGui::Separator();
 
     ImGui::Text("Samples: %d", BlendSpace->GetSamples().Num());
+    ImGui::Separator();
 
     int32 PendingRemoveIndex = -1;
     int32 PendingPositionIndex = -1;
