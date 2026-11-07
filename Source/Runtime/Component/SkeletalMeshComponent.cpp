@@ -75,7 +75,7 @@ void USkeletalMeshComponent::PlayBlendAnimation(UAnimSequence* InSequenceA, UAni
         return;
     }
 
-    if (GetTwoWayBlendAnimationInstance())
+    if (!GetTwoWayBlendAnimationInstance())
     {
         delete AnimInstance;
         AnimInstance = nullptr;
@@ -200,6 +200,10 @@ void USkeletalMeshComponent::SetAnimationPlayRate(float InPlayRate)
     {
         SingleNode->SetPlayRate(InPlayRate);
     }
+    else if (UAnimTwoWayBlendInstance* BlendInstance = GetTwoWayBlendAnimationInstance())
+    {
+        BlendInstance->SetPlayRate(InPlayRate);
+    }
 }
 
 float USkeletalMeshComponent::GetAnimationPlayRate() const
@@ -214,7 +218,7 @@ float USkeletalMeshComponent::GetAnimationPlayRate() const
         return BlendInstance->GetPlayRate();
     }
 
-    return 0.0f;
+    return 1.0f;
 }
 
 void USkeletalMeshComponent::SetAnimationLooping(bool bInLoop)
@@ -223,13 +227,25 @@ void USkeletalMeshComponent::SetAnimationLooping(bool bInLoop)
     {
         SingleNode->SetLooping(bInLoop);
     }
+    else if (UAnimTwoWayBlendInstance* BlendInstance = GetTwoWayBlendAnimationInstance())
+    {
+        BlendInstance->SetLooping(bInLoop);
+    }
 }
 
 bool USkeletalMeshComponent::IsAnimationLooping() const
 {
-    const UAnimSingleNodeInstance* SingleNode = GetSingleNodeAnimationInstance();
+    if (const UAnimSingleNodeInstance* SingleNode = GetSingleNodeAnimationInstance())
+    {
+        return SingleNode->IsLooping();
+    }
 
-    return SingleNode ? SingleNode->IsLooping() : true;
+    if (const UAnimTwoWayBlendInstance* BlendInstance = GetTwoWayBlendAnimationInstance())
+    {
+        return BlendInstance->IsLooping();
+    }
+
+    return true;
 }
  
 const FModelMeshData* USkeletalMeshComponent::GetMeshData() const

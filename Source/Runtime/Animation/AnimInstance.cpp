@@ -113,6 +113,7 @@ void UAnimTwoWayBlendInstance::SetAnimations(UAnimSequence* InSequenceA, UAnimSe
 {
 	SequencePlayerA.SetSequence(InSequenceA);
 	SequencePlayerB.SetSequence(InSequenceB);
+	SetPlayRate(PlayRate);
 }
 
 void UAnimTwoWayBlendInstance::SetAlpha(float InAlpha)
@@ -127,8 +128,15 @@ float UAnimTwoWayBlendInstance::GetAlpha() const
 
 void UAnimTwoWayBlendInstance::SetPlaybackPosition(float InTime)
 {
-	SequencePlayerA.SetPlaybackPosition(InTime);
-	SequencePlayerB.SetPlaybackPosition(InTime);
+	const float LengthA = SequencePlayerA.GetPlayLength();
+	const float LengthB = SequencePlayerB.GetPlayLength();
+	if (LengthA <= 0.0f || LengthB <= 0.0f)
+	{
+		return;
+	}
+	const float Progress = std::clamp(InTime / LengthA, 0.0f, 1.0f);
+	SequencePlayerA.SetPlaybackPosition(Progress * LengthA);
+	SequencePlayerB.SetPlaybackPosition(Progress * LengthB);
 }
 
 float UAnimTwoWayBlendInstance::GetCurrentTime() const
@@ -148,8 +156,18 @@ float UAnimTwoWayBlendInstance::GetFrameRate() const
 
 void UAnimTwoWayBlendInstance::SetPlayRate(float InPlayRate)
 {
-	SequencePlayerA.SetPlayRate(InPlayRate);
-	SequencePlayerB.SetPlayRate(InPlayRate);
+	PlayRate = std::isfinite(InPlayRate) ? InPlayRate : 1.0f;
+	const float LengthA = SequencePlayerA.GetPlayLength();
+	const float LengthB = SequencePlayerB.GetPlayLength();
+	SequencePlayerA.SetPlayRate(PlayRate);
+	if (LengthA > 0.0f && LengthB > 0.0f)
+	{
+		SequencePlayerB.SetPlayRate(PlayRate * (LengthB / LengthA));
+	}
+	else
+	{
+		SequencePlayerB.SetPlayRate(PlayRate);
+	}
 }
 
 float UAnimTwoWayBlendInstance::GetPlayRate() const

@@ -63,4 +63,5 @@ private:
 	FAnimNode_SequencePlayer SequencePlayerA;
 	FAnimNode_SequencePlayer SequencePlayerB;
 	FAnimNode_TwoWayBlend BlendNode;
+	float PlayRate = 1.0f;
 };
