@@ -5,9 +5,12 @@
 #include "Math/Quat.h"
 #include "Math/Matrix.h"
 
+class UAnimInstance;
+
 struct FAnimationUpdateContext
 {
     float DeltaTime = 0.0f;
+    UAnimInstance* AnimInstance = nullptr;
 };
 
 struct FPoseContext

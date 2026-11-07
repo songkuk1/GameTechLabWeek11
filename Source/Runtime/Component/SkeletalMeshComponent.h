@@ -1,43 +1,51 @@
 #pragma once
 
 #include "Component/SkinnedMeshComponent.h"
-#include "Animation/AnimNode_SequencePlayer.h"
+#include "Animation/AnimInstance.h"
+
 class USkeleton;
 
 class USkeletalMeshComponent : public USkinnedMeshComponent
 {
-	DECLARE_CLASS(USkeletalMeshComponent, USkinnedMeshComponent)
+    DECLARE_CLASS(USkeletalMeshComponent, USkinnedMeshComponent)
 
 public:
-	void PlayAnimation(UAnimSequence* InSequence);
-	void TickAnimation(float DeltaSeconds);
-	
-	virtual const FModelMeshData* GetMeshData() const override;
+    virtual ~USkeletalMeshComponent() override;
 
-	void SubmitToRenderQueue(FRenderQueue& RenderQueue) override;
+    void PlayAnimation(UAnimSequence* InSequence);
+    void TickAnimation(float DeltaSeconds);
 
-	FPrimitiveSceneProxy* CreateSceneProxy() override;
+    virtual const FModelMeshData* GetMeshData() const override;
 
-	// 애니메이션 재생 위치
-	void SetAnimationPlaybackTime(float InTime);
-	float GetAnimationPlaybackTime() const { return AnimationPlayer.GetCurrentTime(); }
+    void SubmitToRenderQueue(FRenderQueue& RenderQueue) override;
 
-	// 애니메이션 정보
-	float GetAnimationPlayLength() const { return AnimationPlayer.GetPlayLength(); }
-	float GetAnimationFrameRate() const { return AnimationPlayer.GetFrameRate(); }
+    FPrimitiveSceneProxy* CreateSceneProxy() override;
 
-	// 재생 속도
-	void SetAnimationPlayRate(float InPlayRate) { AnimationPlayer.SetPlayRate(InPlayRate); }
-	float GetAnimationPlayRate() const { return AnimationPlayer.GetPlayRate(); }
+    UAnimInstance* GetAnimInstance() const { return AnimInstance; }
 
-	// 반복 재생
-	void SetAnimationLooping(bool bInLoop) { AnimationPlayer.SetLooping(bInLoop); }
-	bool IsAnimationLooping() const { return AnimationPlayer.IsLooping(); }
+    // 애니메이션 재생 위치
+    void SetAnimationPlaybackTime(float InTime);
+    float GetAnimationPlaybackTime() const;
+
+    // 애니메이션 정보
+    float GetAnimationPlayLength() const;
+    float GetAnimationFrameRate() const;
+
+    // 재생 속도
+    void SetAnimationPlayRate(float InPlayRate);
+    float GetAnimationPlayRate() const;
+
+    // 반복 재생
+    void SetAnimationLooping(bool bInLoop);
+    bool IsAnimationLooping() const;
 
 private:
-	void EvaluateAnimationPose();
+    UAnimSingleNodeInstance* GetSingleNodeAnimationInstance() const;
 
-	USkeleton* Skeleton = nullptr;
-	FAnimNode_SequencePlayer AnimationPlayer;
-	bool bPlayingAnimation = false;
+    void EvaluateAnimationPose();
+
+private:
+    UAnimInstance* AnimInstance = nullptr;
+
+    bool bPlayingAnimation = false;
 };
