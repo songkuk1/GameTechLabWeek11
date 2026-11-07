@@ -16,10 +16,11 @@ UAnimationInstance::~UAnimationInstance()
 void UAnimationInstance::Tick(float deltaTime, TArray<FMatrix>& LocalPose)
 {
 	CurrentPlayTime += deltaTime;
-	UpdatePose(CurrentPlayTime, LocalPose);
+	UpdatePose(CurrentPlayTime, LocalPose, bLooping);
+
 }
 
-void UAnimationInstance::UpdatePose(float CurrentPlayTime, TArray<FMatrix>& LocalPose)
+void UAnimationInstance::UpdatePose(float CurrentPlayTime, TArray<FMatrix>& LocalPose, bool bLoop)
 {
-	Sequence->CalculateCurrentPose(CurrentPlayTime, LocalPose);
+	if (Sequence) Sequence->CalculateCurrentPose(CurrentPlayTime, LocalPose, bLoop);
 }

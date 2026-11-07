@@ -12,8 +12,11 @@ class USkeletalMeshComponent : public USkinnedMeshComponent
 public:
 	USkeletalMeshComponent();
 	~USkeletalMeshComponent() override;
+	void Serialize(FStructuredArchive::FRecord Record) override;
 	void SetAnimationSequence(UAnimSequence* Sequence);
 	UAnimSequence* GetAnimationSequence() const;
+	void SetAnimationLooping(bool bLoop);
+	bool IsAnimationLooping() const { return AnimInstance && AnimInstance->IsLooping(); }
 
 	virtual const FModelMeshData* GetMeshData() const override;
 

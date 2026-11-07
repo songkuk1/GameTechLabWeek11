@@ -15,9 +15,35 @@ USkeletalMeshComponent::~USkeletalMeshComponent()
 	delete AnimInstance;
 }
 
+void USkeletalMeshComponent::Serialize(FStructuredArchive::FRecord Record)
+{
+	Super::Serialize(Record);
+
+	FArchive& Ar = Record.GetUnderlyingArchive();
+	if (Ar.HasAnyPortFlags(EPropertyPortFlags::PPF_DuplicateForPIE))
+	{
+		// 에셋은 공유하고, 재생 상태는 Play 컴포넌트에 새로 만든다.
+		UObject* Sequence = GetAnimationSequence();
+		Record << SA_VALUE("AnimationSequence", Sequence);
+		bool bLoop = IsAnimationLooping();
+		Record << SA_VALUE("AnimationLooping", bLoop);
+		if (Ar.IsLoading())
+		{
+			SetAnimationSequence(Cast<UAnimSequence>(Sequence));
+			SetAnimationLooping(bLoop);
+		}
+	}
+}
+
 UAnimSequence* USkeletalMeshComponent::GetAnimationSequence() const
 {
 	return AnimInstance ? AnimInstance->GetSequence() : nullptr;
+}
+
+void USkeletalMeshComponent::SetAnimationLooping(bool bLoop)
+{
+	if (!AnimInstance) AnimInstance = NewObject<UAnimationInstance>(this);
+	AnimInstance->SetLoop(bLoop);
 }
 
 void USkeletalMeshComponent::SetAnimationSequence(UAnimSequence* Sequence)

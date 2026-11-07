@@ -11,7 +11,7 @@
 
 namespace
 {
-constexpr uint32 ModelBakeVersion = 1;
+constexpr uint32 ModelBakeVersion = 2;
 
 struct FModelBakeHeader
 {
@@ -203,6 +203,31 @@ void FModelBake::SerializeMaterialSlot(FStructuredArchive::FRecord& Record, FMes
 	Record << SA_VALUE("SpecularColor", Slot.SpecularColor);
 }
 
+void FModelBake::SerializeBoneAnimTrack(FStructuredArchive::FRecord& Record, FBoneAnimTrack& Track)
+{
+	Record << SA_VALUE("Name", Track.Name);
+	Record << SA_VALUE("NodeIndex", Track.InternalTrack.NodeIndex);
+	SerializeArray<FVector>(Record, "PosKeys", Track.InternalTrack.PosKeys,
+		[](FStructuredArchive::FRecord& KeyRecord, FVector& Value) { KeyRecord << SA_VALUE("Position", Value); });
+	SerializeArray<FQuat>(Record, "RotKeys", Track.InternalTrack.RotKeys,
+		[](FStructuredArchive::FRecord& KeyRecord, FQuat& Value)
+		{
+			KeyRecord << SA_VALUE("X", Value.X) << SA_VALUE("Y", Value.Y)
+				<< SA_VALUE("Z", Value.Z) << SA_VALUE("W", Value.W);
+		});
+	SerializeArray<FVector>(Record, "ScaleKeys", Track.InternalTrack.ScaleKeys,
+		[](FStructuredArchive::FRecord& KeyRecord, FVector& Value) { KeyRecord << SA_VALUE("Scale", Value); });
+}
+
+void FModelBake::SerializeAnimSeqData(FStructuredArchive::FRecord& Record, FAnimSeqData& AnimData)
+{
+	Record << SA_VALUE("PlayLength", AnimData.PlayLength);
+	Record << SA_VALUE("FrameRate", AnimData.FrameRate);
+	Record << SA_VALUE("NumberOfFrames", AnimData.NumberOfFrames);
+	Record << SA_VALUE("NumberOfKeys", AnimData.NumberOfKeys);
+	SerializeArray<FBoneAnimTrack>(Record, "BoneAnimationTracks", AnimData.BoneAnimationTracks, SerializeBoneAnimTrack);
+}
+
 void FModelBake::SerializeModelData(FStructuredArchive::FRecord& Record, FModelData& ModelData)
 {
 	Record << SA_VALUE("IsSkeletal", ModelData.IsSkeletal);
@@ -215,4 +240,5 @@ void FModelBake::SerializeModelData(FStructuredArchive::FRecord& Record, FModelD
 	SerializeArray<FModelBone>(Record, "Bones", ModelData.Bones, SerializeModelBone);
 	SerializeArray<FModelMesh>(Record, "Meshs", ModelData.Meshs, SerializeModelMesh);
 	SerializeArray<FModelVertexInfluences>(Record, "VertexInfluencesList", ModelData.VertexInfluencesList, SerializeModelVertexInfluences);
+	SerializeArray<FAnimSeqData>(Record, "AnimData", ModelData.AnimData, SerializeAnimSeqData);
 }

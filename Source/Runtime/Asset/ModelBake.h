@@ -26,6 +26,10 @@ private:
 
 	static void SerializeMaterialSlot(FStructuredArchive::FRecord& Record, FMeshMaterialSlot& Slot);
 
+	static void SerializeBoneAnimTrack(FStructuredArchive::FRecord& Record, FBoneAnimTrack& Track);
+
+	static void SerializeAnimSeqData(FStructuredArchive::FRecord& Record, FAnimSeqData& AnimData);
+
 	template <typename ElementType, typename ElementSerializer>
 	static void SerializeArray(FStructuredArchive::FRecord& Record, const char* Name, TArray<ElementType>& Array, ElementSerializer Serializer);
 

@@ -12,10 +12,11 @@ public:
 	~UAnimationInstance();
 
 	void Tick(float deltaTime, TArray<FMatrix>& LocalPose);
-	void UpdatePose(float deltaTime, TArray<FMatrix>& LocalPose);
+	void UpdatePose(float deltaTime, TArray<FMatrix>& LocalPose,bool bLoop);
 
 	float GetCurrentPlayTime() const { return CurrentPlayTime; }
 	UAnimSequence* GetSequence() const { return Sequence; }
+	bool IsLooping() const { return bLooping; }
 
 	void SetCurrentPlayTime(float Time) { CurrentPlayTime = Time; }
 	void SetSequence(UAnimSequence* AnimSeq) { Sequence = AnimSeq; }
