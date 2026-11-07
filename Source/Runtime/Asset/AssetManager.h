@@ -17,6 +17,7 @@ class UStaticMesh;
 class USkeletalMesh;
 class ULevelSequence;
 class FShader;
+class UBlendSpace1D;
 
 namespace fs = std::filesystem;
 
@@ -69,6 +70,7 @@ public:
 	static UStaticMesh* LoadObjStaticMesh(const FString& Path);
 	void LoadFbxModel(const FString& Path);
 	static ULevelSequence* LoadLevelSequence(const FString& Path);
+	static UBlendSpace1D* LoadBlendSpace(const FString& Path);
 
 	FLODGenerateResult GenerateStaticMeshLODs(UStaticMesh& Mesh,const FLODGenerateRequest& Request);
 

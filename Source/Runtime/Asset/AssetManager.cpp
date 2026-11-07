@@ -23,6 +23,7 @@
 #include "Asset/FbxImporter/FbxImporter.h"
 #include "Animation/Skeleton.h"
 #include "Animation/AnimSequence.h"
+#include "Animation/BlendSpace1D.h"
 #include "Render/SkeletalMesh.h"
 #include "Core/PathUtils.h"
 
@@ -202,16 +203,18 @@ void UAssetManager::Init(const FAssetLoadProgress& OnProgress)
 	Get().CreateDecalMaterial();
 }
 
-void UAssetManager::ScanAssets(const fs::path& AssetRoot, const FAssetLoadProgress& OnProgress)
+void UAssetManager::ScanAssets(
+	const fs::path& AssetRoot,
+	const FAssetLoadProgress& OnProgress)
 {
 	if (!fs::exists(AssetRoot))
 	{
-		// Assets는 사용자 콘텐츠라 없어도 엔진은 Resources만으로 뜬다
 		HTR_LOG(Warning, "Asset root not found: {}", AssetRoot.generic_string());
 		return;
 	}
 
 	TArray<fs::path> Files;
+
 	for (const fs::directory_entry& Entry : fs::recursive_directory_iterator(AssetRoot))
 	{
 		if (Entry.is_regular_file())
@@ -221,16 +224,37 @@ void UAssetManager::ScanAssets(const fs::path& AssetRoot, const FAssetLoadProgre
 	}
 
 	const int32 Total = Files.Num();
-	for (int32 i = 0; i < Total; ++i)
-	{
-		FString Key = PathUtils::ToUtf8(fs::relative(Files[i], AssetRoot));
-		FString Path = PathUtils::ToUtf8(Files[i]);
-		AssetPathMap.Add(Key, Path);
-		LoadAsset(Key, Path);
+	int32 Completed = 0;
 
+	TArray<fs::path> BlendSpaceFiles;
+
+	for (const fs::path& FilePath : Files)
+	{
+		const FString Key = PathUtils::ToUtf8(fs::relative(FilePath, AssetRoot));
+		const FString Path = PathUtils::ToUtf8(FilePath);
+		AssetPathMap.Add(Key, Path);
+		if (FilePath.extension() == ".blendspace")
+		{
+			BlendSpaceFiles.Add(FilePath);
+			continue;
+		}
+		LoadAsset(Key, Path);
+		++Completed;
 		if (OnProgress)
 		{
-			OnProgress(i + 1, Total, Key);
+			OnProgress(Completed, Total, Key);
+		}
+	}
+
+	for (const fs::path& FilePath : BlendSpaceFiles)
+	{
+		const FString Key = PathUtils::ToUtf8(fs::relative(FilePath, AssetRoot));
+		const FString Path = PathUtils::ToUtf8(FilePath);
+		LoadAsset(Key, Path);
+		++Completed;
+		if (OnProgress)
+		{
+			OnProgress(Completed, Total, Key);
 		}
 	}
 }
@@ -264,6 +288,10 @@ void UAssetManager::LoadAsset(const FString& Key, const FString& Path)
 	else if (Extension == ".sequence")
 	{
 		LoadLevelSequence(Path);
+	}
+	else if (Extension == ".blendspace")
+	{
+		LoadBlendSpace(Path);
 	}
 }
 
@@ -618,6 +646,26 @@ ULevelSequence* UAssetManager::LoadLevelSequence(const FString& Path)
 	Get().RegisterAsset(Key, LevelSequence);
 
 	return LevelSequence;
+}
+
+UBlendSpace1D* UAssetManager::LoadBlendSpace(const FString& Path)
+{
+	const FString Key = MakeAssetKey(Path);
+	if (UBlendSpace1D* Cached = GetAssetByPath<UBlendSpace1D>(Key))
+	{
+		return Cached;
+	}
+	UBlendSpace1D* BlendSpace = NewObject<UBlendSpace1D>();
+	if (!FJsonArchive::LoadBlendSpace(BlendSpace, Path))
+	{
+		HTR_LOG(Warning, "Can't load BlendSpace: {}", Path);
+		delete BlendSpace;
+		return nullptr;
+	}
+
+	Get().RegisterAsset(Key, BlendSpace);
+
+	return BlendSpace;
 }
 
 bool UAssetManager::ReorientStaticMesh(UStaticMesh& Mesh, const std::function<FVector(const FVector&)>& Rotate)

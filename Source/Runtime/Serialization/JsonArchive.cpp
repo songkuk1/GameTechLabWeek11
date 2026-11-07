@@ -10,6 +10,7 @@
 #include "TypeSerializer.h"
 #include "Asset/AssetManager.h"
 #include "Sequence/MovieSceneSequence.h"
+#include "Animation/BlendSpace1D.h"
 #include "Core/PathUtils.h"
 
 #include "Serialization/MemoryWriter.h"
@@ -23,6 +24,7 @@ namespace
 {
 	constexpr int32 SceneVersion = 4;   // 포맷이 바뀌었으므로 올린다
 	constexpr int32 SequenceVersion = 2;
+	constexpr int32 BlendSpaceVersion = 1;
 }
 
 bool FJsonArchive::SaveWorldToBytes(UWorld* World, TArray<uint8>& OutBytes)
@@ -279,6 +281,99 @@ bool FJsonArchive::LoadSequenceFromBytes(UMovieSceneSequence* Sequence, const TA
 	}
 
 	Sequence->Serialize(Root.EnterRecord("Sequence"));
+	Ar.Close();
+
+	return !Reader.IsError();
+}
+
+bool FJsonArchive::SaveBlendSpace(UBlendSpace1D* BlendSpace, const FString& Path)
+{
+	TArray<uint8> Bytes;
+	if (!SaveBlendSpaceToBytes(BlendSpace, Bytes))
+	{
+		return false;
+	}
+	std::ofstream File(PathUtils::FromUtf8(Path), std::ios::binary);
+	if (!File.is_open())
+	{
+		return false;
+	}
+	File.write(reinterpret_cast<const char*>(Bytes.GetData()), Bytes.Num());
+	return !File.fail();
+}
+
+bool FJsonArchive::SaveBlendSpaceToBytes(UBlendSpace1D* BlendSpace, TArray<uint8>& OutBytes)
+{
+	if (!BlendSpace)
+	{
+		return false;
+	}
+	FMemoryWriter Writer(OutBytes);
+
+	{
+		FJsonArchiveOutputFormatter Formatter(Writer);
+		FStructuredArchive Ar(Formatter);
+
+		FStructuredArchive::FRecord Root = Ar.Open().EnterRecord();
+		int32 Version = BlendSpaceVersion;
+		Root << SA_VALUE("Version", Version);
+		BlendSpace->Serialize(Root.EnterRecord("BlendSpace"));
+		Ar.Close();
+	}
+	return !Writer.IsError();
+}
+
+bool FJsonArchive::LoadBlendSpace(UBlendSpace1D* BlendSpace, const FString& Path)
+{
+	const std::filesystem::path FilePath = PathUtils::FromUtf8(Path);
+	if (!std::filesystem::exists(FilePath))
+	{
+		HTR_LOG(Warning, "{} is Not Exist!", Path);
+		return false;
+	}
+	std::ifstream File(FilePath, std::ios::binary);
+	if (!File.is_open())
+	{
+		return false;
+	}
+	TArray<uint8> Bytes;
+	Bytes.SetNum(static_cast<int32>(std::filesystem::file_size(FilePath)));
+	File.read(reinterpret_cast<char*>(Bytes.GetData()), Bytes.Num());
+	if (File.fail())
+	{
+		return false;
+	}
+
+	return LoadBlendSpaceFromBytes(BlendSpace, Bytes);
+}
+
+bool FJsonArchive::LoadBlendSpaceFromBytes(UBlendSpace1D* BlendSpace, const TArray<uint8>& Bytes)
+{
+	if (!BlendSpace)
+	{
+		return false;
+	}
+	FMemoryReader Reader(Bytes);
+	FJsonArchiveInputFormatter Formatter(Reader);
+	if (Reader.IsError())
+	{
+		HTR_LOG(Error, "Load: invalid BlendSpace data");
+		return false;
+	}
+
+	FStructuredArchive Ar(Formatter);
+	FStructuredArchive::FRecord Root = Ar.Open().EnterRecord();
+	int32 Version = 0;
+	Root << SA_VALUE("Version", Version);
+
+	if (Version != BlendSpaceVersion)
+	{
+		HTR_LOG(Error, "Load: BlendSpace version {} is not supported (expected {})", Version, BlendSpaceVersion);
+		return false;
+	}
+
+	BlendSpace->Serialize(Root.EnterRecord("BlendSpace"));
+
 	Ar.Close();
 
 	return !Reader.IsError();

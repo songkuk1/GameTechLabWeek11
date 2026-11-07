@@ -3,6 +3,7 @@
 class UWorld;
 class AActor;
 class UMovieSceneSequence;
+class UBlendSpace1D;
 
 class FJsonArchive
 {
@@ -22,4 +23,10 @@ public:
 
 	static bool LoadSequence(UMovieSceneSequence* Sequence, const FString& Path);
 	static bool LoadSequenceFromBytes(UMovieSceneSequence* Sequence, const TArray<uint8>& Bytes);
+
+	static bool SaveBlendSpace(UBlendSpace1D* BlendSpace, const FString& Path);
+	static bool SaveBlendSpaceToBytes(UBlendSpace1D* BlendSpace, TArray<uint8>& OutBytes);
+
+	static bool LoadBlendSpace(UBlendSpace1D* BlendSpace, const FString& Path);
+	static bool LoadBlendSpaceFromBytes(UBlendSpace1D* BlendSpace, const TArray<uint8>& Bytes);
 };
