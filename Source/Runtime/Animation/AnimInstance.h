@@ -3,6 +3,7 @@
 #include "UObject/Class.h"
 #include "Animation/AnimNode_SequencePlayer.h"
 #include "Animation/AnimNode_TwoWayBlend.h"
+#include "Animation/AnimNode_BlendSpacePlayer.h"
 
 class USkeletalMeshComponent;
 class AActor;
@@ -64,4 +65,26 @@ private:
 	FAnimNode_SequencePlayer SequencePlayerB;
 	FAnimNode_TwoWayBlend BlendNode;
 	float PlayRate = 1.0f;
+};
+
+class UAnimBlendSpaceInstance : public UAnimInstance
+{
+	DECLARE_CLASS(UAnimBlendSpaceInstance, UAnimInstance)
+public:
+	UAnimBlendSpaceInstance();
+	void SetBlendSpace(UBlendSpace1D* InBlendSpace);
+	void SetBlendInput(float InInput);
+	float GetBlendInput() const;
+	void SetPlaybackPosition(float InTime);
+	float GetCurrentTime() const;
+	float GetPlayLength() const;
+	float GetFrameRate() const;
+	void SetPlayRate(float InPlayRate);
+	float GetPlayRate() const;
+	void SetLooping(bool bInLoop);
+	bool IsLooping() const;
+private:
+	FAnimNode_BlendSpacePlayer BlendSpacePlayer;
+	float PlayRate = 1.0f;
+	bool bLoop = true;
 };

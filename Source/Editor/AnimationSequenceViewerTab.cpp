@@ -3,6 +3,8 @@
 
 #include "Engine/World.h"
 #include "Animation/AnimSequence.h"
+#include "Animation/BlendSpace1D.h"
+#include "UObject/UObjectGlobals.h"
 #include "UObject/UObjectIterator.h"
 
 #include "GameFramework/Actor/SkeletalMeshActor.h"
@@ -34,6 +36,11 @@ namespace
 	}
 }
 
+static const float SpeedValues[] =
+{
+	0.25f, 0.5f, 1.0f, 1.5f, 2.0f
+};
+
 FAnimationSequenceViewerTab::FAnimationSequenceViewerTab(USkeletalMesh* InSkeletalMesh, UAnimSequence* InAnimation) : FEditorTab(MakeAnimationSequenceViewerSettings(InAnimation)), SkeletalMesh(InSkeletalMesh), Animation(InAnimation)
 {
 	PreviewScene = MakeUnique<FPreviewScene>();
@@ -55,11 +62,41 @@ FAnimationSequenceViewerTab::FAnimationSequenceViewerTab(USkeletalMesh* InSkelet
 	{
 		BlendAnimation = AvailableAnimations[0];
 	}
+
+	BlendSpaceAnimations.Add(Animation);
+	for (UAnimSequence* Candidate : AvailableAnimations)
+	{
+		BlendSpaceAnimations.Add(Candidate);
+	}
+	IdleAnimation = Animation;
+	if (AvailableAnimations.Num() > 0)
+	{
+		WalkAnimation = AvailableAnimations[0];
+		RunAnimation = AvailableAnimations[0];
+	}
+
+	if (AvailableAnimations.Num() > 1)
+	{
+		RunAnimation = AvailableAnimations[1];
+	}
+
+	PreviewBlendSpace = NewObject<UBlendSpace1D>();
+
+	RebuildPreviewBlendSpace();
+
 	ViewportPanel = AddPanel<FPreviewViewportPanel>(GetWorld(), FString("AnimationViewport##") + Animation->GetPath(), [this]() {DrawToolbar();});
 }
 
 FAnimationSequenceViewerTab::~FAnimationSequenceViewerTab()
 {
+	if (PreviewActor && PreviewBlendSpace)
+	{
+		// BlendSpaceInstance를 먼저 SingleNodeInstance로 교체한다.
+		PreviewActor->GetSkeletalMeshComponent()->PlayAnimation(Animation);
+	}
+
+	delete PreviewBlendSpace;
+	PreviewBlendSpace = nullptr;
 	Panels.Empty();
 	ViewportPanel = nullptr;
 	PreviewActor = nullptr;
@@ -118,6 +155,7 @@ void FAnimationSequenceViewerTab::DrawToolbar()
 	}
 	const float Duration = Component->GetAnimationPlayLength();
 	const float FrameRate = Component->GetAnimationFrameRate();
+	DrawBlendSpaceControls(Component);
 
 	ImGui::TextUnformatted("Two-Way Blend");
 	ImGui::BeginDisabled(BlendAnimation == nullptr);
@@ -125,6 +163,7 @@ void FAnimationSequenceViewerTab::DrawToolbar()
 	{
 		if (bUseTwoWayBlend)
 		{
+			bUseBlendSpace = false;
 			Component->PlayBlendAnimation(Animation, BlendAnimation, BlendAlpha);
 		}
 		else
@@ -210,7 +249,6 @@ void FAnimationSequenceViewerTab::DrawToolbar()
 	ImGui::SameLine();
 
 	static const char* SpeedLabels[] = { "0.25x", "0.5x", "1.0x", "1.5x", "2.0x" };
-	static const float SpeedValues[] = { 0.25f, 0.5f, 1.0f, 1.5f, 2.0f };
 
 	ImGui::SetNextItemWidth(100.0f);
 	if (ImGui::BeginCombo("Speed", SpeedLabels[PlaybackSpeedIndex]))
@@ -416,4 +454,170 @@ void FAnimationSequenceViewerTab::SelectNotify(int32 Index)
 	std::fill(NotifyNameBuffer, NotifyNameBuffer + sizeof(NotifyNameBuffer), '\0');
 	const size_t CopyLength = std::min(Name.size(), sizeof(NotifyNameBuffer) - 1);
 	std::copy_n(Name.data(), CopyLength, NotifyNameBuffer);
+}
+
+void FAnimationSequenceViewerTab::DrawBlendSpaceControls(
+	USkeletalMeshComponent* Component)
+{
+	ImGui::Separator();
+	ImGui::TextUnformatted("BlendSpace 1D");
+
+	bool bSamplesChanged = false;
+
+	// 세 애니메이션을 선택하는 UI
+	auto DrawAnimationCombo =
+		[this, &bSamplesChanged](const char* Label, UAnimSequence*& Selected)
+		{
+			const FString CurrentName = Selected
+				? Selected->GetPath().substr(SkeletalMesh->GetPath().size() + 2)
+				: "None";
+
+			if (ImGui::BeginCombo(Label, CurrentName.c_str()))
+			{
+				for (UAnimSequence* Candidate : BlendSpaceAnimations)
+				{
+					const FString Name =
+						Candidate->GetPath().substr(
+							SkeletalMesh->GetPath().size() + 2
+						);
+
+					const bool bSelected = Selected == Candidate;
+
+					if (ImGui::Selectable(Name.c_str(), bSelected))
+					{
+						Selected = Candidate;
+						bSamplesChanged = true;
+					}
+
+					if (bSelected)
+					{
+						ImGui::SetItemDefaultFocus();
+					}
+				}
+
+				ImGui::EndCombo();
+			}
+		};
+
+	DrawAnimationCombo("Idle Animation", IdleAnimation);
+	DrawAnimationCombo("Walk Animation", WalkAnimation);
+	DrawAnimationCombo("Run Animation", RunAnimation);
+
+	// Threshold 설정
+	bSamplesChanged |= ImGui::DragFloat(
+		"Idle Threshold",
+		&IdleSpeed,
+		1.0f,
+		0.0f,
+		1000.0f
+	);
+
+	bSamplesChanged |= ImGui::DragFloat(
+		"Walk Threshold",
+		&WalkSpeed,
+		1.0f,
+		0.0f,
+		1000.0f
+	);
+
+	bSamplesChanged |= ImGui::DragFloat(
+		"Run Threshold",
+		&RunSpeed,
+		1.0f,
+		0.0f,
+		1000.0f
+	);
+
+	const bool bValidSamples =
+		IdleAnimation &&
+		WalkAnimation &&
+		RunAnimation &&
+		IdleSpeed < WalkSpeed &&
+		WalkSpeed < RunSpeed;
+
+	if (bValidSamples && bSamplesChanged)
+	{
+		RebuildPreviewBlendSpace();
+
+		if (bUseBlendSpace)
+		{
+			Component->PlayBlendSpace(
+				PreviewBlendSpace,
+				BlendInput
+			);
+
+			Component->SetAnimationPlayRate(
+				SpeedValues[PlaybackSpeedIndex]
+			);
+
+			Component->SetAnimationLooping(bLooping);
+		}
+	}
+
+	if (!bValidSamples)
+	{
+		ImGui::TextDisabled(
+			"Use three valid samples with increasing thresholds."
+		);
+	}
+
+	ImGui::BeginDisabled(!bValidSamples);
+
+	if (ImGui::Checkbox(
+		"Enable BlendSpace",
+		&bUseBlendSpace))
+	{
+		if (bUseBlendSpace)
+		{
+			bUseTwoWayBlend = false;
+
+			Component->PlayBlendSpace(
+				PreviewBlendSpace,
+				BlendInput
+			);
+
+			Component->SetAnimationLooping(bLooping);
+		}
+		else
+		{
+			Component->PlayAnimation(Animation);
+		}
+	}
+
+	ImGui::EndDisabled();
+
+	if (bUseBlendSpace && bValidSamples)
+	{
+		if (ImGui::SliderFloat(
+			"Speed Input",
+			&BlendInput,
+			IdleSpeed,
+			RunSpeed,
+			"%.1f"))
+		{
+			Component->SetAnimationBlendInput(BlendInput);
+		}
+	}
+}
+
+bool FAnimationSequenceViewerTab::RebuildPreviewBlendSpace()
+{
+	if (!PreviewBlendSpace || !IdleAnimation || !WalkAnimation || !RunAnimation)
+	{
+		return false;
+	}
+	if (!(IdleSpeed < WalkSpeed && WalkSpeed < RunSpeed))
+	{
+		return false;
+	}
+
+	PreviewBlendSpace->ClearSamples();
+
+	const bool bIdleAdded = PreviewBlendSpace->AddSample(IdleSpeed, IdleAnimation);
+
+	const bool bWalkAdded = PreviewBlendSpace->AddSample(WalkSpeed, WalkAnimation);
+
+	const bool bRunAdded = PreviewBlendSpace->AddSample(RunSpeed, RunAnimation);
+
+	return bIdleAdded && bWalkAdded && bRunAdded;
 }

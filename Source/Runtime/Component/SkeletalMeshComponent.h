@@ -18,6 +18,10 @@ public:
     void SetAnimationBlendAlpha(float InAlpha);
     float GetAnimationBlendAlpha() const;
 
+    void PlayBlendSpace(UBlendSpace1D* InBlendSpace, float InInput);
+    void SetAnimationBlendInput(float InInput);
+    float GetAnimationBlendInput() const;
+
     void TickAnimation(float DeltaSeconds);
 
     virtual const FModelMeshData* GetMeshData() const override;
@@ -48,6 +52,7 @@ public:
 private:
     UAnimSingleNodeInstance* GetSingleNodeAnimationInstance() const;
     UAnimTwoWayBlendInstance* GetTwoWayBlendAnimationInstance() const;
+    UAnimBlendSpaceInstance* GetBlendSpaceAnimationInstance() const;
     void EvaluateAnimationPose();
 
 private:

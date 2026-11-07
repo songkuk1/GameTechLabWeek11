@@ -6,7 +6,7 @@
 #include "Render/RenderPacket.h"
 #include "Animation/Skeleton.h"
 #include "Animation/AnimInstance.h"
-
+#include "Animation/BlendSpace1D.h"
 USkeletalMeshComponent::~USkeletalMeshComponent()
 {
     delete AnimInstance;
@@ -21,6 +21,11 @@ UAnimSingleNodeInstance* USkeletalMeshComponent::GetSingleNodeAnimationInstance(
 UAnimTwoWayBlendInstance* USkeletalMeshComponent::GetTwoWayBlendAnimationInstance() const
 {
     return Cast<UAnimTwoWayBlendInstance>(AnimInstance);
+}
+
+UAnimBlendSpaceInstance* USkeletalMeshComponent::GetBlendSpaceAnimationInstance() const
+{
+    return Cast<UAnimBlendSpaceInstance>(AnimInstance);
 }
 
 void USkeletalMeshComponent::PlayAnimation(UAnimSequence* InSequence)
@@ -114,6 +119,53 @@ float USkeletalMeshComponent::GetAnimationBlendAlpha() const
     return BlendInstance ? BlendInstance->GetAlpha() : 0.0f;
 }
 
+void USkeletalMeshComponent::PlayBlendSpace(UBlendSpace1D* InBlendSpace, float InInput)
+{
+    if (!InBlendSpace || InBlendSpace->GetSamples().IsEmpty())
+    {
+        return;
+    }
+    if (!GetBlendSpaceAnimationInstance())
+    {
+        delete AnimInstance;
+        AnimInstance = nullptr;
+        AnimInstance = NewObject<UAnimBlendSpaceInstance>(this);
+        if (!AnimInstance)
+        {
+            return;
+        }
+        AnimInstance->InitializeAnimation(this);
+        UAnimBlendSpaceInstance* BlendInstance = GetBlendSpaceAnimationInstance();
+        if (!BlendInstance)
+        {
+            return;
+        }
+
+        BlendInstance->SetBlendSpace(InBlendSpace);
+        BlendInstance->SetBlendInput(InInput);
+        bPlayingAnimation = true;
+        TickAnimation(0.0f);
+    }
+}
+
+void USkeletalMeshComponent::SetAnimationBlendInput(float InInput)
+{
+    UAnimBlendSpaceInstance* BlendInstance = GetBlendSpaceAnimationInstance();
+    if (!BlendInstance)
+    {
+        return;
+    }
+    BlendInstance->SetBlendInput(InInput);
+    BlendInstance->UpdateAnimation(0.0f);
+    EvaluateAnimationPose();
+}
+
+float USkeletalMeshComponent::GetAnimationBlendInput() const
+{
+    const UAnimBlendSpaceInstance* BlendInstance = GetBlendSpaceAnimationInstance();
+    return BlendInstance ? BlendInstance->GetBlendInput() : 0.0f;
+}
+
 void USkeletalMeshComponent::TickAnimation(float DeltaSeconds)
 {
     if (!bPlayingAnimation || !AnimInstance)
@@ -141,6 +193,10 @@ void USkeletalMeshComponent::SetAnimationPlaybackTime(float InTime)
     {
         BlendInstance->SetPlaybackPosition(InTime);
     }
+    else if (UAnimBlendSpaceInstance* BlendInstance = GetBlendSpaceAnimationInstance())
+    {
+        BlendInstance->SetPlaybackPosition(InTime);
+    }
     else
     {
         return;
@@ -161,6 +217,10 @@ float USkeletalMeshComponent::GetAnimationPlaybackTime() const
         return BlendInstance->GetCurrentTime();
     }
 
+    if (const UAnimBlendSpaceInstance* BlendInstance = GetBlendSpaceAnimationInstance())
+    {
+        return BlendInstance->GetCurrentTime();
+    }
     return 0.0f;
 }
 
@@ -176,6 +236,10 @@ float USkeletalMeshComponent::GetAnimationPlayLength() const
         return BlendInstance->GetPlayLength();
     }
 
+    if (const UAnimBlendSpaceInstance* BlendInstance = GetBlendSpaceAnimationInstance())
+    {
+        return BlendInstance->GetPlayLength();
+    }
     return 0.0f;
 }
 
@@ -191,6 +255,10 @@ float USkeletalMeshComponent::GetAnimationFrameRate() const
         return BlendInstance->GetFrameRate();
     }
 
+    if (const UAnimBlendSpaceInstance* BlendInstance = GetBlendSpaceAnimationInstance())
+    {
+        return BlendInstance->GetFrameRate();
+    }
     return 0.0f;
 }
 
@@ -201,6 +269,10 @@ void USkeletalMeshComponent::SetAnimationPlayRate(float InPlayRate)
         SingleNode->SetPlayRate(InPlayRate);
     }
     else if (UAnimTwoWayBlendInstance* BlendInstance = GetTwoWayBlendAnimationInstance())
+    {
+        BlendInstance->SetPlayRate(InPlayRate);
+    }
+    else if (UAnimBlendSpaceInstance* BlendInstance = GetBlendSpaceAnimationInstance())
     {
         BlendInstance->SetPlayRate(InPlayRate);
     }
@@ -218,6 +290,10 @@ float USkeletalMeshComponent::GetAnimationPlayRate() const
         return BlendInstance->GetPlayRate();
     }
 
+    if (const UAnimBlendSpaceInstance* BlendInstance = GetBlendSpaceAnimationInstance())
+    {
+        return BlendInstance->GetPlayRate();
+    }
     return 1.0f;
 }
 
@@ -228,6 +304,10 @@ void USkeletalMeshComponent::SetAnimationLooping(bool bInLoop)
         SingleNode->SetLooping(bInLoop);
     }
     else if (UAnimTwoWayBlendInstance* BlendInstance = GetTwoWayBlendAnimationInstance())
+    {
+        BlendInstance->SetLooping(bInLoop);
+    }
+    else if (UAnimBlendSpaceInstance* BlendInstance = GetBlendSpaceAnimationInstance())
     {
         BlendInstance->SetLooping(bInLoop);
     }
@@ -245,6 +325,10 @@ bool USkeletalMeshComponent::IsAnimationLooping() const
         return BlendInstance->IsLooping();
     }
 
+    if (const UAnimBlendSpaceInstance* BlendInstance = GetBlendSpaceAnimationInstance())
+    {
+        return BlendInstance->IsLooping();
+    }
     return true;
 }
  

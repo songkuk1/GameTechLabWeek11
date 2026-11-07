@@ -185,3 +185,69 @@ bool UAnimTwoWayBlendInstance::IsLooping() const
 {
 	return SequencePlayerA.IsLooping();
 }
+
+UAnimBlendSpaceInstance::UAnimBlendSpaceInstance()
+{
+	RootNode = &BlendSpacePlayer;
+}
+
+void UAnimBlendSpaceInstance::SetBlendSpace(UBlendSpace1D* InBlendSpace)
+{
+	BlendSpacePlayer.SetBlendSpace(InBlendSpace);
+
+	BlendSpacePlayer.SetPlayRate(PlayRate);
+	BlendSpacePlayer.SetLooping(bLoop);
+}
+
+void UAnimBlendSpaceInstance::SetBlendInput(float InInput)
+{
+	BlendSpacePlayer.SetBlendInput(InInput);
+}
+
+float UAnimBlendSpaceInstance::GetBlendInput() const
+{
+	return BlendSpacePlayer.GetBlendInput();
+}
+
+void UAnimBlendSpaceInstance::SetPlaybackPosition(float InTime)
+{
+	BlendSpacePlayer.SetPlaybackPosition(InTime);
+}
+
+float UAnimBlendSpaceInstance::GetCurrentTime() const
+{
+	return BlendSpacePlayer.GetCurrentTime();
+}
+
+float UAnimBlendSpaceInstance::GetPlayLength() const
+{
+	return BlendSpacePlayer.GetPlayLength();
+}
+
+float UAnimBlendSpaceInstance::GetFrameRate() const
+{
+	return BlendSpacePlayer.GetFrameRate();
+}
+
+void UAnimBlendSpaceInstance::SetPlayRate(float InPlayRate)
+{
+	PlayRate = std::isfinite(InPlayRate) ? InPlayRate : 1.0f;
+
+	BlendSpacePlayer.SetPlayRate(PlayRate);
+}
+
+float UAnimBlendSpaceInstance::GetPlayRate() const
+{
+	return PlayRate;
+}
+
+void UAnimBlendSpaceInstance::SetLooping(bool bInLoop)
+{
+	bLoop = bInLoop;
+	BlendSpacePlayer.SetLooping(bLoop);
+}
+
+bool UAnimBlendSpaceInstance::IsLooping() const
+{
+	return bLoop;
+}
