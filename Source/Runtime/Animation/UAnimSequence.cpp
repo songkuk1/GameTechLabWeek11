@@ -39,12 +39,10 @@ void UAnimSequence::CalculateCurrentPose(float CurrentTime, bool bLoop, TArray<P
 		FVector AnimPos = FVector(Xpos, Ypos, Zpos);
 		FQuat AnimRot = xyzRot;
 		FVector AnimScale = FVector(Xscale, Yscale, Zscale);
-		FMatrix PoseMatrix = FMatrix(
-			AnimRot.ToFMatrix()[0][0] * AnimScale.X, AnimRot.ToFMatrix()[0][1] * AnimScale.X, AnimRot.ToFMatrix()[0][2] * AnimScale.X, 0.0f,
-			AnimRot.ToFMatrix()[1][0] * AnimScale.Y, AnimRot.ToFMatrix()[1][1] * AnimScale.Y, AnimRot.ToFMatrix()[1][2] * AnimScale.Y, 0.0f,
-			AnimRot.ToFMatrix()[2][0] * AnimScale.Z, AnimRot.ToFMatrix()[2][1] * AnimScale.Z, AnimRot.ToFMatrix()[2][2] * AnimScale.Z, 0.0f,
-			AnimPos.X, AnimPos.Y, AnimPos.Z, 1.0f
-		);	// 가까운 Index 사이에서 Alpha Lerp 진행함
-		OutPose[AnimData.BoneAnimationTracks[i].InternalTrack.NodeIndex] = PoseMatrix;
+		PoseTransform PoseTrans;
+		PoseTrans.Translation = AnimPos;
+		PoseTrans.Rotation = AnimRot;
+		PoseTrans.Scale = AnimScale;	// 가까운 Index 사이에서 Alpha Lerp 진행함
+		OutPoseTrans[AnimData.BoneAnimationTracks[i].InternalTrack.NodeIndex] = PoseTrans;
 	}
 }
