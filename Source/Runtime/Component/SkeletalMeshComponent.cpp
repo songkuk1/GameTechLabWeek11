@@ -7,6 +7,7 @@
 #include "Animation/Skeleton.h"
 #include "Animation/AnimInstance.h"
 #include "Animation/BlendSpace1D.h"
+#include "Animation/AnimSequence.h"
 USkeletalMeshComponent::~USkeletalMeshComponent()
 {
     delete AnimInstance;
@@ -27,6 +28,13 @@ void USkeletalMeshComponent::PlayAnimation(UAnimSequence* InSequence)
         return;
     }
 
+    USkeleton* ComponentSkeleton = SkeletalMesh ? SkeletalMesh->GetSkeleton() : nullptr;
+
+    if (!ComponentSkeleton || InSequence->GetSkeleton() != ComponentSkeleton)
+    {
+        return;
+    }
+
     if (!EnsureAnimInstance())
     {
         return;
@@ -40,6 +48,13 @@ void USkeletalMeshComponent::PlayAnimation(UAnimSequence* InSequence)
 void USkeletalMeshComponent::PlayBlendAnimation(UAnimSequence* InSequenceA, UAnimSequence* InSequenceB, float InAlpha)
 {
     if (!InSequenceA || !InSequenceB)
+    {
+        return;
+    }
+
+    USkeleton* ComponentSkeleton = SkeletalMesh ? SkeletalMesh->GetSkeleton() : nullptr;
+
+    if (!ComponentSkeleton || InSequenceA->GetSkeleton() != ComponentSkeleton || InSequenceB->GetSkeleton() != ComponentSkeleton)
     {
         return;
     }
@@ -74,6 +89,13 @@ float USkeletalMeshComponent::GetAnimationBlendAlpha() const
 void USkeletalMeshComponent::PlayBlendSpace(UBlendSpace1D* InBlendSpace, float InInput)
 {
     if (!InBlendSpace || InBlendSpace->GetSamples().IsEmpty())
+    {
+        return;
+    }
+
+    USkeleton* ComponentSkeleton = SkeletalMesh ? SkeletalMesh->GetSkeleton() : nullptr;
+
+    if (!ComponentSkeleton || InBlendSpace->GetSkeleton() != ComponentSkeleton)
     {
         return;
     }

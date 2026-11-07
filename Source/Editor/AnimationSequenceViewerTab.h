@@ -31,7 +31,6 @@ private:
 	void DrawNotifyDetails(float Duration);
 	void SelectNotify(int32 Index);
 	void DrawBlendSpaceControls(USkeletalMeshComponent* Component);
-	bool RebuildPreviewBlendSpace();
 private:
 	TArray<UAnimSequence*> AvailableAnimations;
 	TArray<UAnimSequence*> BlendSpaceAnimations;
@@ -43,9 +42,6 @@ private:
 	UAnimSequence* BlendAnimation = nullptr;
 
 	UBlendSpace1D* PreviewBlendSpace = nullptr;
-	UAnimSequence* IdleAnimation = nullptr;
-	UAnimSequence* WalkAnimation = nullptr;
-	UAnimSequence* RunAnimation = nullptr;
 	float BlendAlpha = 0.5f;
 	bool bUseTwoWayBlend = false;
 	int32 PlaybackSpeedIndex = 2;
@@ -55,10 +51,6 @@ private:
 	bool bLooping = true;
 	bool bPlaying = true;
 	bool bFramed = false;
-
-	float IdleSpeed = 0.0f;
-	float WalkSpeed = 150.0f;
-	float RunSpeed = 450.0f;
 	float BlendInput = 0.0f;
 	bool bUseBlendSpace = false;
 };

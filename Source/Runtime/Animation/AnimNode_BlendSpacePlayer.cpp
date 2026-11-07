@@ -160,8 +160,8 @@ void FAnimNode_BlendSpacePlayer::Update(const FAnimationUpdateContext& Context)
 		return;
 	}
 
-	PlayerA.SetPlayRate(PlayRate * (LengthA / ReferenceLength));
-	PlayerB.SetPlayRate(PlayRate * (LengthB / ReferenceLength));
+	PlayerA.SetPlayRate(PlayRate * (LengthA / ReferenceLength) * SampleA.RateScale);
+	PlayerB.SetPlayRate(PlayRate * (LengthB / ReferenceLength) * SampleB.RateScale);
 
 	PlayerA.SetLooping(bLoop);
 	PlayerB.SetLooping(bLoop);

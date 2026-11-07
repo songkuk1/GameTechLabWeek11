@@ -68,17 +68,6 @@ FAnimationSequenceViewerTab::FAnimationSequenceViewerTab(USkeletalMesh* InSkelet
 	{
 		BlendSpaceAnimations.Add(Candidate);
 	}
-	IdleAnimation = Animation;
-	if (AvailableAnimations.Num() > 0)
-	{
-		WalkAnimation = AvailableAnimations[0];
-		RunAnimation = AvailableAnimations[0];
-	}
-
-	if (AvailableAnimations.Num() > 1)
-	{
-		RunAnimation = AvailableAnimations[1];
-	}
 
 	PreviewBlendSpace = NewObject<UBlendSpace1D>();
 
@@ -86,7 +75,9 @@ FAnimationSequenceViewerTab::FAnimationSequenceViewerTab(USkeletalMesh* InSkelet
 
 	assert(bSkeletonSet);
 
-	RebuildPreviewBlendSpace();
+	const bool bInitialSampleAdded = PreviewBlendSpace->AddSample( PreviewBlendSpace->GetAxis().MinValue, Animation);
+
+	assert(bInitialSampleAdded);
 
 	ViewportPanel = AddPanel<FPreviewViewportPanel>(GetWorld(), FString("AnimationViewport##") + Animation->GetPath(), [this]() {DrawToolbar();});
 }
@@ -460,130 +451,169 @@ void FAnimationSequenceViewerTab::SelectNotify(int32 Index)
 	std::copy_n(Name.data(), CopyLength, NotifyNameBuffer);
 }
 
-void FAnimationSequenceViewerTab::DrawBlendSpaceControls(
-	USkeletalMeshComponent* Component)
+void FAnimationSequenceViewerTab::DrawBlendSpaceControls(USkeletalMeshComponent* Component)
 {
+	if (PreviewBlendSpace || !Component)
+	{
+		return;
+	}
 	ImGui::Separator();
 	ImGui::TextUnformatted("BlendSpace 1D");
-
+	const FBlendSpaceAxis1D& Axis = PreviewBlendSpace->GetAxis();
+	ImGui::Text("Axis: %s", Axis.Name.ToString().c_str());
+	ImGui::Text("Range: %.1f ~ %.1f", Axis.MinValue, Axis.MaxValue);
 	bool bSamplesChanged = false;
-
-	// 세 애니메이션을 선택하는 UI
-	auto DrawAnimationCombo =
-		[this, &bSamplesChanged](const char* Label, UAnimSequence*& Selected)
+	int32 PendingRemoveIndex = -1;
+	int32 PendingValueIndex = -1;
+	float PendingSampleValue = 0.0f;
+	const float PreviousPlaybackTime = bUseBlendSpace ? Component->GetAnimationPlaybackTime() : 0.0f;
+	const TArray<FBlendSample1D>& Samples = PreviewBlendSpace->GetSamples();
+	ImGui::Text("Samples: %d", Samples.Num());
+	for (int32 Index = 0; Index < Samples.Num(); ++Index)
+	{
+		const FBlendSample1D& Sample = Samples[Index];
+		ImGui::PushID(Index);
+		ImGui::Text("Sample %d", Index + 1);
+		const FString CurrentName = Sample.Animation ? Sample.Animation->GetPath().substr(SkeletalMesh->GetPath().size() + 2) : "None";
+		if (ImGui::BeginCombo("Animation", CurrentName.c_str()))
 		{
-			const FString CurrentName = Selected
-				? Selected->GetPath().substr(SkeletalMesh->GetPath().size() + 2)
-				: "None";
-
-			if (ImGui::BeginCombo(Label, CurrentName.c_str()))
+			for (UAnimSequence* Candidate : BlendSpaceAnimations)
 			{
-				for (UAnimSequence* Candidate : BlendSpaceAnimations)
+				if (!Candidate)
 				{
-					const FString Name =
-						Candidate->GetPath().substr(
-							SkeletalMesh->GetPath().size() + 2
-						);
-
-					const bool bSelected = Selected == Candidate;
-
-					if (ImGui::Selectable(Name.c_str(), bSelected))
+					continue;
+				}
+				const FString Name = Candidate->GetPath().substr(SkeletalMesh->GetPath().size() + 2);
+				const bool bSelected = Sample.Animation == Candidate;
+				if (ImGui::Selectable(Name.c_str(), bSelected))
+				{
+					if (PreviewBlendSpace->ReplaceSampleAnimation(Index, Candidate))
 					{
-						Selected = Candidate;
 						bSamplesChanged = true;
 					}
-
-					if (bSelected)
-					{
-						ImGui::SetItemDefaultFocus();
-					}
 				}
-
-				ImGui::EndCombo();
+				if (bSelected)
+				{
+					ImGui::SetItemDefaultFocus();
+				}
 			}
-		};
-
-	DrawAnimationCombo("Idle Animation", IdleAnimation);
-	DrawAnimationCombo("Walk Animation", WalkAnimation);
-	DrawAnimationCombo("Run Animation", RunAnimation);
-
-	// Threshold 설정
-	bSamplesChanged |= ImGui::DragFloat(
-		"Idle Threshold",
-		&IdleSpeed,
-		1.0f,
-		0.0f,
-		1000.0f
-	);
-
-	bSamplesChanged |= ImGui::DragFloat(
-		"Walk Threshold",
-		&WalkSpeed,
-		1.0f,
-		0.0f,
-		1000.0f
-	);
-
-	bSamplesChanged |= ImGui::DragFloat(
-		"Run Threshold",
-		&RunSpeed,
-		1.0f,
-		0.0f,
-		1000.0f
-	);
-
-	const bool bValidSamples =
-		IdleAnimation &&
-		WalkAnimation &&
-		RunAnimation &&
-		IdleSpeed < WalkSpeed &&
-		WalkSpeed < RunSpeed;
-
-	if (bValidSamples && bSamplesChanged)
-	{
-		RebuildPreviewBlendSpace();
-
-		if (bUseBlendSpace)
+			ImGui::EndCombo();
+		}
+		float SampleValue = Sample.SampleValue;
+		if (ImGui::DragFloat("Position", &SampleValue, 1.0f, Axis.MinValue, Axis.MaxValue, "%.1f"))
 		{
-			Component->PlayBlendSpace(
-				PreviewBlendSpace,
-				BlendInput
-			);
+			PendingValueIndex = Index;
+			PendingSampleValue = SampleValue;
+		}
+		float RateScale = Sample.RateScale;
+		if (ImGui::DragFloat("Rate Scale", &RateScale, 0.01f, 0.01f, 10.0f, "%.2fx"))
+		{
+			if (PreviewBlendSpace->SetSampleRateScale(Index, RateScale))
+			{
+				bSamplesChanged = true;
+			}
+		}
+		if (ImGui::Button("Remove Sample"))
+		{
+			PendingRemoveIndex = Index;
+		}
+		ImGui::PopID();
+		ImGui::Separator();
+	}
 
-			Component->SetAnimationPlayRate(
-				SpeedValues[PlaybackSpeedIndex]
-			);
-
-			Component->SetAnimationLooping(bLooping);
+	if (PendingRemoveIndex != -1)
+	{
+		if (PreviewBlendSpace->RemoveSample(PendingRemoveIndex))
+		{
+			bSamplesChanged = true;
+		}
+	}
+	else if (PendingValueIndex != -1)
+	{
+		if (PreviewBlendSpace->SetSampleValue(PendingValueIndex, PendingSampleValue))
+		{
+			bSamplesChanged = true;
 		}
 	}
 
-	if (!bValidSamples)
+	if (ImGui::Button("Add Sample"))
 	{
-		ImGui::TextDisabled(
-			"Use three valid samples with increasing thresholds."
-		);
+		const TArray<FBlendSample1D>& CurrentSamples = PreviewBlendSpace->GetSamples();
+
+		const float MinValue = Axis.MinValue;
+		const float MaxValue = Axis.MaxValue;
+
+		float PreviousValue = MinValue;
+		float BestGap = -1.0f;
+		float NewSampleValue = (MinValue + MaxValue) * 0.5f;
+
+		for (const FBlendSample1D& Sample : CurrentSamples)
+		{
+			const float Value = std::clamp(Sample.SampleValue, MinValue, MaxValue);
+
+			const float Gap = Value - PreviousValue;
+
+			if (Gap > BestGap)
+			{
+				BestGap = Gap;
+				NewSampleValue = (PreviousValue + Value) * 0.5f;
+			}
+
+			PreviousValue = std::max(PreviousValue, Value);
+		}
+
+		const float LastGap = MaxValue - PreviousValue;
+
+		if (LastGap > BestGap)
+		{
+			BestGap = LastGap;
+			NewSampleValue = (PreviousValue + MaxValue) * 0.5f;
+		}
+
+		UAnimSequence* DefaultAnimation = Animation;
+
+		if (!DefaultAnimation && !BlendSpaceAnimations.IsEmpty())
+		{
+			DefaultAnimation = BlendSpaceAnimations[0];
+		}
+
+		if (DefaultAnimation && BestGap > 2.0e-4f && PreviewBlendSpace->AddSample(NewSampleValue, DefaultAnimation))
+		{
+			bSamplesChanged = true;
+		}
+		else
+		{
+			ImGui::TextDisabled("No available sample position. Adjust existing samples.");
+		}
 	}
 
-	ImGui::BeginDisabled(!bValidSamples);
+	if (bSamplesChanged && bUseBlendSpace)
+	{
+		if (PreviewBlendSpace->GetSamples().IsEmpty())
+		{
+			bUseBlendSpace = false;
+			Component->PlayAnimation(Animation);
+		}
+		else
+		{
+			Component->PlayBlendSpace(PreviewBlendSpace, BlendInput);
+			Component->SetAnimationPlayRate(SpeedValues[PlaybackSpeedIndex]);
+			Component->SetAnimationLooping(bLooping);
+			Component->SetAnimationPlaybackTime(PreviousPlaybackTime);
+		}
+	}
 
-	if (ImGui::Checkbox(
-		"Enable BlendSpace",
-		&bUseBlendSpace))
+	const bool bHasSamples = !PreviewBlendSpace->GetSamples().IsEmpty();
+
+	ImGui::BeginDisabled(!bHasSamples);
+
+	if (ImGui::Checkbox("Enable BlendSpace", &bUseBlendSpace))
 	{
 		if (bUseBlendSpace)
 		{
 			bUseTwoWayBlend = false;
-
-			Component->PlayBlendSpace(
-				PreviewBlendSpace,
-				BlendInput
-			);
-
-			Component->SetAnimationPlayRate(
-				SpeedValues[PlaybackSpeedIndex]
-			);
-
+			Component->PlayBlendSpace(PreviewBlendSpace, BlendInput);
+			Component->SetAnimationPlayRate(SpeedValues[PlaybackSpeedIndex]);
 			Component->SetAnimationLooping(bLooping);
 		}
 		else
@@ -593,39 +623,11 @@ void FAnimationSequenceViewerTab::DrawBlendSpaceControls(
 	}
 
 	ImGui::EndDisabled();
-
-	if (bUseBlendSpace && bValidSamples)
+	if (bUseBlendSpace && bHasSamples)
 	{
-		if (ImGui::SliderFloat(
-			"Speed Input",
-			&BlendInput,
-			IdleSpeed,
-			RunSpeed,
-			"%.1f"))
+		if (ImGui::SliderFloat("Blend Input", &BlendInput, Axis.MinValue, Axis.MaxValue, "%.1f"))
 		{
 			Component->SetAnimationBlendInput(BlendInput);
 		}
 	}
-}
-
-bool FAnimationSequenceViewerTab::RebuildPreviewBlendSpace()
-{
-	if (!PreviewBlendSpace || !IdleAnimation || !WalkAnimation || !RunAnimation)
-	{
-		return false;
-	}
-	if (!(IdleSpeed < WalkSpeed && WalkSpeed < RunSpeed))
-	{
-		return false;
-	}
-
-	PreviewBlendSpace->ClearSamples();
-
-	const bool bIdleAdded = PreviewBlendSpace->AddSample(IdleSpeed, IdleAnimation);
-
-	const bool bWalkAdded = PreviewBlendSpace->AddSample(WalkSpeed, WalkAnimation);
-
-	const bool bRunAdded = PreviewBlendSpace->AddSample(RunSpeed, RunAnimation);
-
-	return bIdleAdded && bWalkAdded && bRunAdded;
 }
