@@ -9,6 +9,9 @@
 #include "Sequence/LevelSequence.h"
 #include "Sequence/MovieScene.h"
 #include "Serialization/JsonArchive.h"
+#include "Animation/BlendSpace1D.h"
+#include "Render/SkeletalMesh.h"
+#include "UObject/UObjectIterator.h"
 
 bool FContentDrawerPanel::Init()
 {
@@ -177,6 +180,18 @@ void FContentDrawerPanel::OnRender()
 					{
 						OpenLevelSequence(PathString);
 					}
+					else if (Path.extension() == ".blendspace")
+					{
+						UBlendSpace1D* BlendSpace = UAssetManager::LoadBlendSpace(PathString);
+						if (BlendSpace && OpenBlendSpace)
+						{
+							OpenBlendSpace(BlendSpace);
+						}
+						else
+						{
+							CreateAssetError = "Could not open BlendSpace.";
+						}
+					}
 				}
 				// 파일 이름 표시
 				ImGui::TextWrapped("%s", FilenameString.c_str());
@@ -193,7 +208,81 @@ void FContentDrawerPanel::OnRender()
 				{
 					CreateLevelSequenceFile();
 				}
+
+				if (ImGui::MenuItem("Blend Space 1D"))
+				{
+					SelectedCreateMesh = nullptr;
+					bOpenCreateBlendSpacePopup = true;
+				}
 				ImGui::EndMenu();
+			}
+			ImGui::EndPopup();
+		}
+		if (bOpenCreateBlendSpacePopup)
+		{
+			ImGui::OpenPopup("Create Blend Space 1D");
+			bOpenCreateBlendSpacePopup = false;
+		}
+
+		if (ImGui::BeginPopupModal("Create Blend Space 1D", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+		{
+			TArray<USkeletalMesh*> AvailableMeshes;
+			for (TObjectIterator<USkeletalMesh> It; It; ++It)
+			{
+				USkeletalMesh* Mesh = *It;
+				if (Mesh && Mesh->GetSkeleton())
+				{
+					AvailableMeshes.Add(Mesh);
+				}
+			}
+
+			std::sort(AvailableMeshes.begin(), AvailableMeshes.end(), [](const USkeletalMesh* A, const USkeletalMesh* B) { return A->GetPath() < B->GetPath(); });
+			
+			if (SelectedCreateMesh && AvailableMeshes.Find(SelectedCreateMesh) == -1)
+			{
+				SelectedCreateMesh = nullptr;
+			}
+			const FString CurrentName = SelectedCreateMesh ? SelectedCreateMesh->GetPath() : "Select Skeletal Mesh";
+			ImGui::SetNextItemWidth(350.0f);
+			if (ImGui::BeginCombo("Skeletal Mesh", CurrentName.c_str()))
+			{
+				for (USkeletalMesh* Mesh : AvailableMeshes)
+				{
+					const bool bSelected = Mesh == SelectedCreateMesh;
+					if (ImGui::Selectable(Mesh->GetPath().c_str(), bSelected))
+					{
+						SelectedCreateMesh = Mesh;
+					}
+
+					if (bSelected)
+					{
+						ImGui::SetItemDefaultFocus();
+					}
+				}
+
+				ImGui::EndCombo();
+			}
+			ImGui::Spacing();
+			ImGui::BeginDisabled(SelectedCreateMesh == nullptr);
+			if (ImGui::Button("Create"))
+			{
+				if (CreateBlendSpaceFile(SelectedCreateMesh))
+				{
+					SelectedCreateMesh = nullptr;
+					ImGui::CloseCurrentPopup();
+				}
+			}
+			ImGui::EndDisabled();
+			ImGui::SameLine();
+
+			if (ImGui::Button("Cancel"))
+			{
+				SelectedCreateMesh = nullptr;
+				ImGui::CloseCurrentPopup();
+			}
+			if (AvailableMeshes.IsEmpty())
+			{
+				ImGui::TextDisabled("No compatible Skeletal Mesh is loaded.");
 			}
 			ImGui::EndPopup();
 		}
@@ -229,6 +318,52 @@ void FContentDrawerPanel::CreateLevelSequenceFile()
 	}
 	delete Scene;
 	delete Sequence;
+}
+
+bool FContentDrawerPanel::CreateBlendSpaceFile(USkeletalMesh* InSkeletalMesh)
+{
+	CreateAssetError.clear();
+	if (!InSkeletalMesh || !InSkeletalMesh->GetSkeleton())
+	{
+		CreateAssetError = "A valid Skeletal Mesh is required.";
+		return false;
+	}
+	fs::path Path = CurrentPath / "NewBlendSpace1D.blendspace";
+	for (int32 Index = 1; fs::exists(Path); ++Index)
+	{
+		Path = CurrentPath / ("NewBlendSpace1D_" + std::to_string(Index) + ".blendspace");
+	}
+	const FString FilePath = PathUtils::ToUtf8(Path);
+	UBlendSpace1D* NewBlendSpace = NewObject<UBlendSpace1D>();
+	if (!NewBlendSpace->SetSkeleton(InSkeletalMesh->GetSkeleton()))
+	{
+		delete NewBlendSpace;
+		CreateAssetError = "Could not set the BlendSpace Skeleton.";
+		return false;
+	}
+
+	if (!FJsonArchive::SaveBlendSpace(NewBlendSpace, FilePath))
+	{
+		delete NewBlendSpace;
+		CreateAssetError = "Could not save the BlendSpace file.";
+		return false;
+	}
+
+	delete NewBlendSpace;
+
+	UBlendSpace1D* CreatedBlendSpace = UAssetManager::LoadBlendSpace(FilePath);
+	if (!CreatedBlendSpace)
+	{
+		CreateAssetError = "Could not register the BlendSpace asset.";
+		return false;
+	}
+
+	if (OpenBlendSpace)
+	{
+		OpenBlendSpace(CreatedBlendSpace);
+	}
+
+	return true;
 }
 
 void FContentDrawerPanel::DrawPathBar()

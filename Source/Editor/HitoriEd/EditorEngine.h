@@ -43,6 +43,7 @@
 
 class UAnimSequence;
 class USkeletalMesh;
+class UBlendSpace1D;
 
 class UEditorEngine : public UEngine
 {
@@ -136,6 +137,8 @@ private:
 	// 액터 파괴 전 선택·드래그·아웃라이너 참조 정리
 	void HandleActorDestroyed(AActor* Actor);
 
+	void OpenBlendSpaceEditor(UBlendSpace1D* BlendSpace);
+
 	// FEngineLoop 소유. OnInit에서 받아 둔다.
 	FWindow* MainWindow = nullptr;
 	FSwapchain* MainWindowSC = nullptr;
@@ -174,6 +177,7 @@ private:
 	USkeletalMesh* PendingPreviewMesh = nullptr;
 	USkeletalMesh* PendingAnimationViewerMesh = nullptr;
 	UAnimSequence* PendingAnimationViewerAnimation = nullptr;
+	UBlendSpace1D* PendingBlendSpaceEditorAsset = nullptr;
 
 	UWorld* EditorWorld = nullptr;
 	UWorld* PlayWorld = nullptr;

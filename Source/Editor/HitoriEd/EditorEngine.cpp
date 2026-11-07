@@ -48,6 +48,8 @@
 #include "Engine/GameViewportClient.h"
 #include "Editor/SkeletalMeshPreviewTab.h"
 #include "Editor/AnimationSequenceViewerTab.h"
+#include "Editor/BlendSpaceEditorTab.h"
+#include "Animation/BlendSpace1D.h"
 
 namespace
 {
@@ -138,10 +140,8 @@ bool UEditorEngine::Init()
 	ViewportsPanel = EditorUI->GetLevelTab()->AddPanel<FViewportsPanel>();
 	ContentDrawerPanel = EditorUI->GetLevelTab()->AddPanel<FContentDrawerPanel>();
 	LevelSequencerPanel = EditorUI->GetLevelTab()->AddPanel<FLevelSequencePanel>();
-	ContentDrawerPanel->SetOpenLevelSequenceBinding([this](const FString& Path)
-	{
-		LevelSequencerPanel->OpenSequenceFile(Path);
-	});
+	ContentDrawerPanel->SetOpenLevelSequenceBinding([this](const FString& Path){LevelSequencerPanel->OpenSequenceFile(Path);});
+	ContentDrawerPanel->SetOpenBlendSpaceBinding([this](UBlendSpace1D* BlendSpace){PendingBlendSpaceEditorAsset = BlendSpace;});
 
 	EditorUI->GetLevelTab()->SetGizmo(Gizmo.get());
 	EditorUI->GetLevelTab()->SetViewportsPanel(ViewportsPanel);
@@ -641,6 +641,13 @@ void UEditorEngine::UpdateEditorTabs()
 		PendingAnimationViewerAnimation = nullptr;
 		OpenAnimationSequenceViewer(Mesh, Animation);
 	}
+
+	if (PendingBlendSpaceEditorAsset)
+	{
+		UBlendSpace1D* BlendSpace = PendingBlendSpaceEditorAsset;
+		PendingBlendSpaceEditorAsset = nullptr;
+		OpenBlendSpaceEditor(BlendSpace);
+	}
 }
 
 FSceneView UEditorEngine::MakeSceneView(const FViewport& Viewport) const
@@ -821,6 +828,24 @@ void UEditorEngine::HandleActorDestroyed(AActor* Actor)
 	Selection.Remove(Actor);
 	GizmoDragStarts.Reset();
 	OutlinerPanel->NotifyActorDestroyed(Actor);
+}
+
+void UEditorEngine::OpenBlendSpaceEditor(UBlendSpace1D* BlendSpace)
+{
+	if (!BlendSpace)
+	{
+		return;
+	}
+	for (const TUniquePtr<FEditorTab>& Tab : EditorUI->GetTabs())
+	{
+		if (Tab->GetEditingAsset() == BlendSpace)
+		{
+			Tab->RequestFocus();
+			return;
+		}
+	}
+	FBlendSpaceEditorTab* NewTab = EditorUI->AddTab<FBlendSpaceEditorTab>(BlendSpace);
+	NewTab->RequestFocus();
 }
 
 void UEditorEngine::RenderOverlayPass(const FViewport& Viewport, FEditorViewportClient* OverlayClient, UWorld& ViewWorld, const FSceneView& View, FRenderQueue& RenderQueue, const FGizmo* ViewGizmo)

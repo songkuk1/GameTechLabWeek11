@@ -8,6 +8,8 @@
 namespace fs = std::filesystem;
 
 class UTexture2D;
+class UBlendSpace1D;
+class USkeletalMesh;
 
 class FContentDrawerPanel : public IEditorPanel
 {
@@ -21,11 +23,16 @@ public:
 	{
 		OpenLevelSequence = std::move(InOpenLevelSequence);
 	}
-
+	void SetOpenBlendSpaceBinding(std::function<void(UBlendSpace1D*)> InOpenBlendSpace)
+	{
+		OpenBlendSpace = std::move(InOpenBlendSpace);
+	}
 private:
 	// 현재 폴더를 Assets > A > B 형태로 그린다. 조각을 누르면 그 폴더로 이동한다.
 	void DrawPathBar();
 	void CreateLevelSequenceFile();
+	bool CreateBlendSpaceFile(USkeletalMesh* InSkeletalMesh);
+	std::function<void(UBlendSpace1D*)> OpenBlendSpace;
 
 	fs::path AssetRootPath = "Assets";
 	fs::path CurrentPath = "Assets";
@@ -35,4 +42,6 @@ private:
 	UTexture2D* FolderIcon = nullptr;
 	UTexture2D* FileIcon = nullptr;
 
+	bool bOpenCreateBlendSpacePopup = false;
+	USkeletalMesh* SelectedCreateMesh = nullptr;
 };
