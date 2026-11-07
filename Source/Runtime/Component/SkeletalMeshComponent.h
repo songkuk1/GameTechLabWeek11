@@ -13,6 +13,11 @@ public:
     virtual ~USkeletalMeshComponent() override;
 
     void PlayAnimation(UAnimSequence* InSequence);
+
+    void PlayBlendAnimation(UAnimSequence* InSequenceA, UAnimSequence* InSequenceB, float InAlpha);
+    void SetAnimationBlendAlpha(float InAlpha);
+    float GetAnimationBlendAlpha() const;
+
     void TickAnimation(float DeltaSeconds);
 
     virtual const FModelMeshData* GetMeshData() const override;
@@ -22,6 +27,7 @@ public:
     FPrimitiveSceneProxy* CreateSceneProxy() override;
 
     UAnimInstance* GetAnimInstance() const { return AnimInstance; }
+    void SetAnimInstanceClass(UClass* InAnimInstanceClass);
 
     // 애니메이션 재생 위치
     void SetAnimationPlaybackTime(float InTime);
@@ -41,7 +47,7 @@ public:
 
 private:
     UAnimSingleNodeInstance* GetSingleNodeAnimationInstance() const;
-
+    UAnimTwoWayBlendInstance* GetTwoWayBlendAnimationInstance() const;
     void EvaluateAnimationPose();
 
 private:

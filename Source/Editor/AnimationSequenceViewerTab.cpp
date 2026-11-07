@@ -3,6 +3,7 @@
 
 #include "Engine/World.h"
 #include "Animation/AnimSequence.h"
+#include "UObject/UObjectIterator.h"
 
 #include "GameFramework/Actor/SkeletalMeshActor.h"
 #include "Component/SkeletalMeshComponent.h"
@@ -40,6 +41,20 @@ FAnimationSequenceViewerTab::FAnimationSequenceViewerTab(USkeletalMesh* InSkelet
 	USkeletalMeshComponent* MeshComponent = PreviewActor->GetSkeletalMeshComponent();
 	MeshComponent->SetSkeletalMesh(SkeletalMesh);
 	MeshComponent->PlayAnimation(Animation);
+	const FString AnimationPrefix = SkeletalMesh->GetPath() + "::";
+	for (TObjectIterator<UAnimSequence> It; It; ++It)
+	{
+		UAnimSequence* Candidate = *It;
+		if (Candidate && Candidate != Animation && Candidate->GetPath().find(AnimationPrefix) == 0)
+		{
+			AvailableAnimations.Add(Candidate);
+		}
+	}
+	std::sort(AvailableAnimations.begin(), AvailableAnimations.end(), [](const UAnimSequence* A, const UAnimSequence* B) {return A->GetPath() < B->GetPath();});
+	if (!AvailableAnimations.IsEmpty())
+	{
+		BlendAnimation = AvailableAnimations[0];
+	}
 	ViewportPanel = AddPanel<FPreviewViewportPanel>(GetWorld(), FString("AnimationViewport##") + Animation->GetPath(), [this]() {DrawToolbar();});
 }
 
@@ -103,6 +118,61 @@ void FAnimationSequenceViewerTab::DrawToolbar()
 	}
 	const float Duration = Component->GetAnimationPlayLength();
 	const float FrameRate = Component->GetAnimationFrameRate();
+
+	ImGui::TextUnformatted("Two-Way Blend");
+	ImGui::BeginDisabled(BlendAnimation == nullptr);
+	if (ImGui::Checkbox("Enable Blend", &bUseTwoWayBlend))
+	{
+		if (bUseTwoWayBlend)
+		{
+			Component->PlayBlendAnimation(Animation, BlendAnimation, BlendAlpha);
+		}
+		else
+		{
+			Component->PlayAnimation(Animation);
+		}
+	}
+	ImGui::EndDisabled();
+
+	if (BlendAnimation)
+	{
+		const FString CurrentBlendName = BlendAnimation->GetPath().substr(SkeletalMesh->GetPath().size() + 2);
+
+		ImGui::SetNextItemWidth(250.0f);
+
+		if (ImGui::BeginCombo("Source B", CurrentBlendName.c_str()))
+		{
+			for (UAnimSequence* Candidate : AvailableAnimations)
+			{
+				const FString Name = Candidate->GetPath().substr(SkeletalMesh->GetPath().size() + 2);
+
+				const bool bSelected = Candidate == BlendAnimation;
+
+				if (ImGui::Selectable(Name.c_str(), bSelected))
+				{
+					BlendAnimation = Candidate;
+
+					if (bUseTwoWayBlend)
+					{
+						Component->PlayBlendAnimation(Animation, BlendAnimation, BlendAlpha);
+					}
+				}
+				if (bSelected)
+				{
+					ImGui::SetItemDefaultFocus();
+				}
+			}
+			ImGui::EndCombo();
+		}
+	}
+
+	if (bUseTwoWayBlend)
+	{
+		if (ImGui::SliderFloat("Blend Alpha", &BlendAlpha, 0.0f, 1.0f, "%.2f"))
+		{
+			Component->SetAnimationBlendAlpha(BlendAlpha);
+		}
+	}
 
 	if (ImGui::Button(bPlaying ? "Pause" : "Play"))
 	{

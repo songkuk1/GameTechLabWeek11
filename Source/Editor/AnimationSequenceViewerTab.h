@@ -28,11 +28,16 @@ private:
 	void DrawNotifyDetails(float Duration);
 	void SelectNotify(int32 Index);
 private:
+	TArray<UAnimSequence*> AvailableAnimations;
 	USkeletalMesh* SkeletalMesh = nullptr;
 	UAnimSequence* Animation = nullptr;
 	TUniquePtr<FPreviewScene> PreviewScene;
 	ASkeletalMeshActor* PreviewActor = nullptr;
 	FPreviewViewportPanel* ViewportPanel = nullptr;
+	UAnimSequence* BlendAnimation = nullptr;
+
+	float BlendAlpha = 0.5f;
+	bool bUseTwoWayBlend = false;
 	int32 PlaybackSpeedIndex = 2;
 	int32 SelectedNotifyIndex = -1;
 	bool bDraggingNotify = false;

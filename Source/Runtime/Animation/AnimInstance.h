@@ -2,6 +2,7 @@
 
 #include "UObject/Class.h"
 #include "Animation/AnimNode_SequencePlayer.h"
+#include "Animation/AnimNode_TwoWayBlend.h"
 
 class USkeletalMeshComponent;
 class AActor;
@@ -40,4 +41,26 @@ public:
 	bool IsLooping() const;
 private:
 	FAnimNode_SequencePlayer SequencePlayer;
+};
+
+class UAnimTwoWayBlendInstance : public UAnimInstance
+{
+	DECLARE_CLASS(UAnimTwoWayBlendInstance, UAnimInstance)
+public:
+	UAnimTwoWayBlendInstance();
+	void SetAnimations(UAnimSequence* InSequenceA, UAnimSequence* InSequenceB);
+	void SetAlpha(float InAlpha);
+	float GetAlpha() const;
+	void SetPlaybackPosition(float InTime);
+	float GetCurrentTime() const;
+	float GetPlayLength() const;
+	float GetFrameRate() const;
+	void SetPlayRate(float InPlayRate);
+	float GetPlayRate() const;
+	void SetLooping(bool bInLoop);
+	bool IsLooping() const;
+private:
+	FAnimNode_SequencePlayer SequencePlayerA;
+	FAnimNode_SequencePlayer SequencePlayerB;
+	FAnimNode_TwoWayBlend BlendNode;
 };
