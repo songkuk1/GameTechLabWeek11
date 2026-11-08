@@ -23,7 +23,7 @@ public:
 	void RenderFolderTree(const fs::path& Path, fs::path& SelectedPath);
 	void SetOpenLevelSequenceBinding(std::function<void(const FString&)> InOpenLevelSequence) { OpenLevelSequence = std::move(InOpenLevelSequence); }
 	void SetOpenBlendSpaceBinding(std::function<void(UBlendSpace1D*)> InOpenBlendSpace) { OpenBlendSpace = std::move(InOpenBlendSpace); }
-	void SetOpenAnimationGraphBinding(std::function<void(UAnimationGraph*)> InOpenAnimationGraph) { InOpenAnimationGraph = std::move(InOpenAnimationGraph); }
+	void SetOpenAnimationGraphBinding(std::function<void(UAnimationGraph*)> InOpenAnimationGraph) { OpenAnimationGraph = std::move(InOpenAnimationGraph); }
 private:
 	// 현재 폴더를 Assets > A > B 형태로 그린다. 조각을 누르면 그 폴더로 이동한다.
 	void DrawPathBar();

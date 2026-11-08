@@ -611,10 +611,6 @@ void FAnimationGraphEditorTab::DrawStateEditor()
     float PlayRate = State.PlayRate;
     bool bLooping = State.bLooping;
 
-    ImGui::DragFloat("Play Rate", &PlayRate, 0.01f);
-
-    ImGui::Checkbox("Looping", &bLooping);
-
     if (State.NodeType == EAnimGraphStateNodeType::SequencePlayer)
     {
         UAnimSequence* SelectedAnimation = State.Sequence;
