@@ -31,6 +31,7 @@ public:
     FPrimitiveSceneProxy* CreateSceneProxy() override;
 
     UAnimInstance* GetAnimInstance() const { return AnimInstance; }
+    UAnimInstance* GetOrCreateAnimInstance();
     void SetAnimInstanceClass(UClass* InAnimInstanceClass);
 
     void SetAnimationRootNode(FAnimNode_Base* InRootNode);

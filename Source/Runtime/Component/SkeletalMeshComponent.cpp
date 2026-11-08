@@ -241,6 +241,11 @@ FPrimitiveSceneProxy* USkeletalMeshComponent::CreateSceneProxy()
     return new FSkeletalMeshSceneProxy(this);
 }
 
+UAnimInstance* USkeletalMeshComponent::GetOrCreateAnimInstance()
+{
+    return EnsureAnimInstance() ? AnimInstance : nullptr;
+}
+
 void USkeletalMeshComponent::SetAnimInstanceClass(UClass* InAnimInstanceClass)
 {
     if (!InAnimInstanceClass || !InAnimInstanceClass->IsChildOf(UAnimInstance::StaticClass()))
@@ -281,7 +286,11 @@ void USkeletalMeshComponent::SetAnimationRootNode(FAnimNode_Base* InRootNode)
     {
         return;
     }
-    AnimInstance->SetRootNode(InRootNode);
+    if (!AnimInstance->SetRootNode(InRootNode))
+    {
+        return;
+    }
+
     bPlayingAnimation = true;
     TickAnimation(0.0f);
 }

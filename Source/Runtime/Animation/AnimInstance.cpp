@@ -6,6 +6,10 @@ UAnimInstance::UAnimInstance()
 {
 	RootNode = &SequencePlayer;
 }
+UAnimInstance::~UAnimInstance()
+{
+	ClearAnimationNodes();
+}
 void UAnimInstance::NativeInitializeAnimation()
 {
 }
@@ -199,7 +203,36 @@ void UAnimInstance::ClearAnimationParameters()
 	FloatParameters.Reset();
 }
 
-void UAnimInstance::SetRootNode(FAnimNode_Base* InRootNode)
+bool UAnimInstance::SetRootNode(FAnimNode_Base* InRootNode)
 {
+	if (!InRootNode)
+	{
+		RootNode = nullptr;
+		return true;
+	}
+
+	if (InRootNode == &SequencePlayer || InRootNode == &TwoWayBlendPlayer || InRootNode == &BlendSpacePlayer)
+	{
+		RootNode = InRootNode;
+		return true;
+	}
+
+	if (OwnedAnimationNodes.Find(InRootNode) == -1)
+	{
+		return false;
+	}
+
 	RootNode = InRootNode;
+	return true;
+}
+
+void UAnimInstance::ClearAnimationNodes()
+{
+	RootNode = &SequencePlayer;
+	SequencePlayer.SetSequence(nullptr);
+	for (FAnimNode_Base* Node : OwnedAnimationNodes)
+	{
+		delete Node;
+	}
+	OwnedAnimationNodes.Reset();
 }

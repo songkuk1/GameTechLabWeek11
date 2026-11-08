@@ -5,6 +5,8 @@
 #include "Animation/AnimNode_TwoWayBlend.h"
 #include "Animation/AnimNode_BlendSpacePlayer.h"
 #include "Containers/Map.h"
+#include "Containers/Array.h"
+#include <type_traits>
 
 class USkeletalMeshComponent;
 class AActor;
@@ -14,6 +16,7 @@ class UAnimInstance : public UObject
 	DECLARE_CLASS(UAnimInstance, UObject)
 public:
 	UAnimInstance();
+	virtual ~UAnimInstance() override;
 	virtual void NativeInitializeAnimation();
 	virtual void NativeUpdateAnimation(float DeltaSeconds);
 	void InitializeAnimation(USkeletalMeshComponent* InOwningComponent);
@@ -44,7 +47,19 @@ public:
 	float GetFloatParameter(const FName& Name) const;
 	void ClearAnimationParameters();
 
-	void SetRootNode(FAnimNode_Base* InRootNode);
+	bool SetRootNode(FAnimNode_Base* InRootNode);
+
+	template <typename T>
+	T* CreateAnimationNode()
+	{
+		static_assert(std::is_base_of_v<FAnimNode_Base, T>, "T must derive from FAnimNode_Base");
+		static_assert(!std::is_abstract_v<T>, "T must be a concrete animation node");
+		T* Node = new T();
+		OwnedAnimationNodes.Add(Node);
+		return Node;
+	}
+	void ClearAnimationNodes();
+
 	IAnimPlaybackControl* GetPlaybackControl() { return RootNode ? RootNode->GetPlaybackControl() : nullptr; }
 	const IAnimPlaybackControl* GetPlaybackControl() const { return RootNode ? RootNode->GetPlaybackControl() : nullptr; }
 protected:
@@ -55,6 +70,7 @@ private:
 	FAnimNode_BlendSpacePlayer BlendSpacePlayer;
 
 	USkeletalMeshComponent* OwningComponent = nullptr;
+	TArray<FAnimNode_Base*> OwnedAnimationNodes;
 
 	TMap<FName, bool, FNameHash> BoolParameters;
 	TMap<FName, float, FNameHash> FloatParameters;
