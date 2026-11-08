@@ -64,6 +64,7 @@ FAnimationGraphEditorTab::FAnimationGraphEditorTab(UAnimationGraph* InGraph) : F
     }
 
     PreviewScene = MakeUnique<FPreviewScene>();
+    NewTransition.BlendDuration = 0.2f;
 
     for (TObjectIterator<USkeletalMesh> It; It; ++It)
     {
@@ -401,6 +402,14 @@ void FAnimationGraphEditorTab::DrawToolbar()
 
     ImGui::Separator();
 
+    DrawParameterEditor();
+
+    ImGui::Separator();
+
+    DrawTransitionEditor();
+
+    ImGui::Separator();
+
     ImGui::Text("Parameters: %d | Transitions: %d", Graph->GetParameters().Num(), Graph->GetTransitions().Num());
 
     if (!ErrorMessage.empty())
@@ -536,6 +545,35 @@ void FAnimationGraphEditorTab::DrawStateEditor()
         ImGui::EndCombo();
     }
 
+    const FString NewParameterLabel = NewBlendSpaceParameterName.IsNone() ? "None" : NewBlendSpaceParameterName.ToString();
+
+    if (ImGui::BeginCombo("BlendSpace Float Parameter", NewParameterLabel.c_str()))
+    {
+        if (ImGui::Selectable("None", NewBlendSpaceParameterName.IsNone()))
+        {
+            NewBlendSpaceParameterName = NAME_None;
+        }
+
+        for (const FAnimGraphParameterDefinition& Parameter : Graph->GetParameters())
+        {
+            if (Parameter.Type != EAnimGraphParameterType::Float)
+            {
+                continue;
+            }
+
+            const bool bSelected = Parameter.Name == NewBlendSpaceParameterName;
+
+            const FString Name = Parameter.Name.ToString();
+
+            if (ImGui::Selectable(Name.c_str(), bSelected))
+            {
+                NewBlendSpaceParameterName = Parameter.Name;
+            }
+        }
+
+        ImGui::EndCombo();
+    }
+
     ImGui::BeginDisabled(NewBlendSpace == nullptr);
 
     if (ImGui::Button("Add BlendSpace State"))
@@ -543,7 +581,7 @@ void FAnimationGraphEditorTab::DrawStateEditor()
         const FName StateName(NewStateNameBuffer);
         const bool bWasEmpty = Graph->GetStates().IsEmpty();
 
-        if (Graph->AddBlendSpaceState(StateName, NewBlendSpace))
+        if (Graph->AddBlendSpaceState(StateName, NewBlendSpace, NewBlendSpaceParameterName))
         {
             if (bWasEmpty)
             {
@@ -601,6 +639,7 @@ void FAnimationGraphEditorTab::DrawStateEditor()
         if (Graph->RemoveState(State.Name))
         {
             SelectedStateIndex = -1;
+            SelectedTransitionIndex = -1;
             bDirty = true;
             ErrorMessage.clear();
 
@@ -662,7 +701,7 @@ void FAnimationGraphEditorTab::DrawStateEditor()
     else if (State.NodeType == EAnimGraphStateNodeType::BlendSpacePlayer)
     {
         UBlendSpace1D* SelectedBlendSpace = State.BlendSpace;
-
+        FName SelectedBlendParameterName = State.BlendParameterName;
         const FString CurrentLabel = SelectedBlendSpace ? SelectedBlendSpace->GetPath() : "None";
 
         bool bChanged = false;
@@ -683,6 +722,37 @@ void FAnimationGraphEditorTab::DrawStateEditor()
             ImGui::EndCombo();
         }
 
+        const FString ParameterLabel = SelectedBlendParameterName.IsNone() ? "None" : SelectedBlendParameterName.ToString();
+
+        if (ImGui::BeginCombo("BlendSpace Parameter", ParameterLabel.c_str()))
+        {
+            if (ImGui::Selectable("None", SelectedBlendParameterName.IsNone()))
+            {
+                SelectedBlendParameterName = NAME_None;
+                bChanged = true;
+            }
+
+            for (const FAnimGraphParameterDefinition& Parameter : Graph->GetParameters())
+            {
+                if (Parameter.Type != EAnimGraphParameterType::Float)
+                {
+                    continue;
+                }
+
+                const bool bSelected = Parameter.Name == SelectedBlendParameterName;
+
+                const FString Name = Parameter.Name.ToString();
+
+                if (ImGui::Selectable(Name.c_str(), bSelected))
+                {
+                    SelectedBlendParameterName = Parameter.Name;
+                    bChanged = true;
+                }
+            }
+
+            ImGui::EndCombo();
+        }
+
         if (ImGui::DragFloat("Play Rate", &PlayRate, 0.01f))
         {
             bChanged = true;
@@ -695,7 +765,7 @@ void FAnimationGraphEditorTab::DrawStateEditor()
 
         if (bChanged)
         {
-            if (Graph->SetBlendSpaceState(State.Name, SelectedBlendSpace, State.BlendParameterName, PlayRate, bLooping))
+            if (Graph->SetBlendSpaceState(State.Name, SelectedBlendSpace, SelectedBlendParameterName, PlayRate, bLooping))
             {
                 bDirty = true;
                 ErrorMessage.clear();
@@ -705,6 +775,636 @@ void FAnimationGraphEditorTab::DrawStateEditor()
             {
                 ErrorMessage = "Could not update BlendSpace State.";
             }
+        }
+    }
+}
+
+void FAnimationGraphEditorTab::DrawParameterEditor()
+{
+    ImGui::TextUnformatted("Parameters");
+
+    const TArray<FAnimGraphParameterDefinition>& Parameters = Graph->GetParameters();
+
+    ImGui::BeginChild("AnimationGraphParameterList", ImVec2(0.0f, 75.0f), true);
+
+    for (int32 Index = 0; Index < Parameters.Num(); ++Index)
+    {
+        const FAnimGraphParameterDefinition& Parameter = Parameters[Index];
+
+        const FString Name = Parameter.Name.ToString();
+
+        const FString Label = Name + (Parameter.Type == EAnimGraphParameterType::Bool ? " [Bool]" : " [Float]");
+
+        if (ImGui::Selectable(Label.c_str(), SelectedParameterIndex == Index))
+        {
+            SelectedParameterIndex = Index;
+
+            std::snprintf(RenameParameterBuffer, sizeof(RenameParameterBuffer), "%s", Name.c_str());
+        }
+    }
+
+    ImGui::EndChild();
+
+    ImGui::TextUnformatted("Add Parameter");
+
+    ImGui::InputText("New Parameter Name", NewParameterNameBuffer, sizeof(NewParameterNameBuffer));
+
+    const char* ParameterTypeNames[] =
+    {
+        "Bool",
+        "Float"
+    };
+
+    ImGui::Combo("Parameter Type", &NewParameterTypeIndex, ParameterTypeNames, IM_ARRAYSIZE(ParameterTypeNames));
+
+    if (NewParameterTypeIndex == 0)
+    {
+        ImGui::Checkbox("Default Value", &bNewParameterBoolDefault);
+    }
+    else
+    {
+        ImGui::DragFloat("Default Value", &NewParameterFloatDefault, 0.1f);
+    }
+
+    if (ImGui::Button("Add Parameter"))
+    {
+        const FName NewName(NewParameterNameBuffer);
+
+        bool bAdded = false;
+
+        if (NewParameterTypeIndex == 0)
+        {
+            bAdded = Graph->AddBoolParameter(NewName, bNewParameterBoolDefault);
+        }
+        else
+        {
+            bAdded = Graph->AddFloatParameter(NewName, NewParameterFloatDefault);
+        }
+
+        if (bAdded)
+        {
+            SelectedParameterIndex = Graph->GetParameters().Num() - 1;
+
+            std::snprintf(RenameParameterBuffer, sizeof(RenameParameterBuffer), "%s", NewName.ToString().c_str());
+
+            bDirty = true;
+            ErrorMessage.clear();
+
+            RefreshPreview();
+        }
+        else
+        {
+            ErrorMessage = "Could not add Parameter. Check its name and value.";
+        }
+    }
+
+    ImGui::Separator();
+
+    if (!Parameters.IsValidIndex(SelectedParameterIndex))
+    {
+        ImGui::TextDisabled("Select a Parameter to edit.");
+    }
+    else
+    {
+        const FAnimGraphParameterDefinition Parameter = Parameters[SelectedParameterIndex];
+
+        ImGui::Text("Selected Parameter: %s", Parameter.Name.ToString().c_str());
+
+        ImGui::InputText("Rename Parameter", RenameParameterBuffer, sizeof(RenameParameterBuffer));
+
+        bool bBoolDefault = Parameter.BoolDefaultValue;
+        float FloatDefault = Parameter.FloatDefaultValue;
+
+        if (Parameter.Type == EAnimGraphParameterType::Bool)
+        {
+            ImGui::Checkbox("Parameter Default", &bBoolDefault);
+        }
+        else
+        {
+            ImGui::DragFloat("Parameter Default", &FloatDefault, 0.1f);
+        }
+
+        if (ImGui::Button("Apply Parameter Changes"))
+        {
+            const FName NewName(RenameParameterBuffer);
+
+            if (Graph->RenameParameter(Parameter.Name, NewName))
+            {
+                bool bUpdated = false;
+
+                if (Parameter.Type == EAnimGraphParameterType::Bool)
+                {
+                    bUpdated = Graph->SetBoolParameterDefault(NewName, bBoolDefault);
+                }
+                else
+                {
+                    bUpdated = Graph->SetFloatParameterDefault(NewName, FloatDefault);
+                }
+
+                if (bUpdated)
+                {
+                    bDirty = true;
+                    ErrorMessage.clear();
+
+                    RefreshPreview();
+                }
+                else
+                {
+                    ErrorMessage = "Could not update Parameter default value.";
+                }
+            }
+            else
+            {
+                ErrorMessage = "Could not rename Parameter. Check for duplicate names.";
+            }
+        }
+
+        ImGui::SameLine();
+
+        if (ImGui::Button("Remove Parameter"))
+        {
+            if (Graph->RemoveParameter(Parameter.Name))
+            {
+                SelectedParameterIndex = -1;
+
+                bDirty = true;
+                ErrorMessage.clear();
+
+                RefreshPreview();
+            }
+            else
+            {
+                ErrorMessage = "Cannot remove Parameter while it is being used.";
+            }
+        }
+    }
+
+    ImGui::Separator();
+
+    ImGui::TextUnformatted("Preview Parameter Values");
+
+    USkeletalMeshComponent* Component = PreviewActor ? PreviewActor->GetSkeletalMeshComponent() : nullptr;
+
+    UAnimInstance* AnimInstance = Component ? Component->GetAnimInstance() : nullptr;
+
+    if (!AnimInstance)
+    {
+        ImGui::TextDisabled("Animation preview is not available.");
+        return;
+    }
+
+    const TArray<FAnimGraphParameterDefinition>& CurrentParameters = Graph->GetParameters();
+
+    for (int32 Index = 0; Index < CurrentParameters.Num(); ++Index)
+    {
+        const FAnimGraphParameterDefinition& Parameter = CurrentParameters[Index];
+
+        ImGui::PushID(Index);
+
+        const FString Name = Parameter.Name.ToString();
+
+        if (Parameter.Type == EAnimGraphParameterType::Bool)
+        {
+            bool Value = AnimInstance->GetBoolParameter(Parameter.Name);
+
+            if (ImGui::Checkbox(Name.c_str(), &Value))
+            {
+                AnimInstance->SetBoolParameter(Parameter.Name, Value);
+
+                Component->TickAnimation(0.0f);
+            }
+        }
+        else
+        {
+            float Value = AnimInstance->GetFloatParameter(Parameter.Name);
+
+            if (ImGui::DragFloat( Name.c_str(), &Value, 0.1f))
+            {
+                AnimInstance->SetFloatParameter(Parameter.Name, Value);
+                Component->TickAnimation(0.0f);
+            }
+        }
+
+        ImGui::PopID();
+    }
+}
+
+void FAnimationGraphEditorTab::DrawTransitionEditor()
+{
+    ImGui::TextUnformatted("Transitions");
+
+    const TArray<FAnimGraphStateDefinition>& States = Graph->GetStates();
+
+    const TArray<FAnimGraphParameterDefinition>& Parameters = Graph->GetParameters();
+
+    const EAnimTransitionRule Rules[] =
+    {
+        EAnimTransitionRule::Always,
+        EAnimTransitionRule::BoolTrue,
+        EAnimTransitionRule::BoolFalse,
+        EAnimTransitionRule::StateFinished,
+        EAnimTransitionRule::FloatGreaterThan,
+        EAnimTransitionRule::FloatLessThan,
+        EAnimTransitionRule::FloatGreaterOrEqual,
+        EAnimTransitionRule::FloatLessOrEqual
+    };
+
+    const char* RuleNames[] =
+    {
+        "Always",
+        "Bool True",
+        "Bool False",
+        "State Finished",
+        "Float Greater Than",
+        "Float Less Than",
+        "Float Greater Or Equal",
+        "Float Less Or Equal"
+    };
+
+    const auto IsBoolRule = [](EAnimTransitionRule Rule)
+        {
+            return Rule == EAnimTransitionRule::BoolTrue ||
+                Rule == EAnimTransitionRule::BoolFalse;
+        };
+
+    const auto IsFloatRule = [](EAnimTransitionRule Rule)
+        {
+            return Rule == EAnimTransitionRule::FloatGreaterThan ||
+                Rule == EAnimTransitionRule::FloatLessThan ||
+                Rule == EAnimTransitionRule::FloatGreaterOrEqual ||
+                Rule == EAnimTransitionRule::FloatLessOrEqual;
+        };
+
+    const auto EnsureParameter = [&](FAnimGraphTransitionDefinition& Transition)
+        {
+            EAnimGraphParameterType RequiredType;
+
+            if (IsBoolRule(Transition.Rule))
+            {
+                RequiredType = EAnimGraphParameterType::Bool;
+            }
+            else if (IsFloatRule(Transition.Rule))
+            {
+                RequiredType = EAnimGraphParameterType::Float;
+            }
+            else
+            {
+                Transition.ParameterName = NAME_None;
+                return;
+            }
+
+            bool bFound = false;
+
+            for (const FAnimGraphParameterDefinition& Parameter : Parameters)
+            {
+                if (Parameter.Name == Transition.ParameterName &&
+                    Parameter.Type == RequiredType)
+                {
+                    bFound = true;
+                    break;
+                }
+            }
+
+            if (!bFound)
+            {
+                Transition.ParameterName = NAME_None;
+
+                for (const FAnimGraphParameterDefinition& Parameter : Parameters)
+                {
+                    if (Parameter.Type == RequiredType)
+                    {
+                        Transition.ParameterName = Parameter.Name;
+                        break;
+                    }
+                }
+            }
+        };
+
+    const auto DrawParameterCombo = [&](const char* Label, FAnimGraphTransitionDefinition& Transition)
+        {
+            EnsureParameter(Transition);
+
+            const FString CurrentLabel = Transition.ParameterName.IsNone() ? "Select Parameter" : Transition.ParameterName.ToString();
+
+            const EAnimGraphParameterType RequiredType = IsBoolRule(Transition.Rule) ? EAnimGraphParameterType::Bool : EAnimGraphParameterType::Float;
+
+            bool bHasParameter = false;
+
+            for (const FAnimGraphParameterDefinition& Parameter : Parameters)
+            {
+                if (Parameter.Type == RequiredType)
+                {
+                    bHasParameter = true;
+                    break;
+                }
+            }
+
+            if (!bHasParameter)
+            {
+                ImGui::TextDisabled(RequiredType == EAnimGraphParameterType::Bool ? "Add a Bool Parameter first." : "Add a Float Parameter first.");
+
+                return;
+            }
+
+            if (ImGui::BeginCombo(Label, CurrentLabel.c_str()))
+            {
+                for (const FAnimGraphParameterDefinition& Parameter : Parameters)
+                {
+                    if (Parameter.Type != RequiredType)
+                    {
+                        continue;
+                    }
+
+                    const bool bSelected = Parameter.Name == Transition.ParameterName;
+
+                    const FString Name = Parameter.Name.ToString();
+
+                    if (ImGui::Selectable(Name.c_str(), bSelected))
+                    {
+                        Transition.ParameterName = Parameter.Name;
+                    }
+                }
+
+                ImGui::EndCombo();
+            }
+        };
+
+    const auto DrawRuleCombo = [&](const char* Label, FAnimGraphTransitionDefinition& Transition)
+        {
+            int32 RuleIndex = static_cast<int32>(Transition.Rule);
+
+            if (RuleIndex < 0 || RuleIndex >= IM_ARRAYSIZE(Rules))
+            {
+                RuleIndex = 0;
+            }
+
+            if (ImGui::BeginCombo(Label, RuleNames[RuleIndex]))
+            {
+                for (int32 Index = 0; Index < IM_ARRAYSIZE(Rules); ++Index)
+                {
+                    const bool bSelected = RuleIndex == Index;
+
+                    if (ImGui::Selectable(RuleNames[Index], bSelected))
+                    {
+                        Transition.Rule = Rules[Index];
+                        EnsureParameter(Transition);
+                    }
+                }
+
+                ImGui::EndCombo();
+            }
+        };
+
+    const auto DrawStateCombo = [&](const char* Label, FName& SelectedName)
+        {
+            const FString CurrentLabel = SelectedName.IsNone() ? "Select State" : SelectedName.ToString();
+
+            if (ImGui::BeginCombo(Label, CurrentLabel.c_str()))
+            {
+                for (const FAnimGraphStateDefinition& State : States)
+                {
+                    const bool bSelected = State.Name == SelectedName;
+                    const FString Name = State.Name.ToString();
+
+                    if (ImGui::Selectable(Name.c_str(), bSelected))
+                    {
+                        SelectedName = State.Name;
+                    }
+                }
+
+                ImGui::EndCombo();
+            }
+        };
+
+    ImGui::TextUnformatted("Add Transition");
+
+    if (!NewTransition.bAnyState)
+    {
+        if (NewTransition.FromState.IsNone() && States.Num() >= 1)
+        {
+            NewTransition.FromState = States[0].Name;
+        }
+
+        if (NewTransition.ToState.IsNone() && States.Num() >= 2)
+        {
+            NewTransition.ToState = States[1].Name;
+        }
+    }
+    else
+    {
+        NewTransition.FromState = NAME_None;
+    }
+
+    ImGui::Checkbox("Any State Transition", &NewTransition.bAnyState);
+
+    if (NewTransition.bAnyState)
+    {
+        NewTransition.FromState = NAME_None;
+    }
+    else
+    {
+        DrawStateCombo("From State", NewTransition.FromState);
+    }
+
+    DrawStateCombo("To State", NewTransition.ToState);
+
+    DrawRuleCombo("Rule", NewTransition);
+
+    if (IsBoolRule(NewTransition.Rule) || IsFloatRule(NewTransition.Rule))
+    {
+        DrawParameterCombo("Parameter", NewTransition);
+    }
+    else
+    {
+        NewTransition.ParameterName = NAME_None;
+    }
+
+    if (IsFloatRule(NewTransition.Rule))
+    {
+        ImGui::DragFloat("Float Threshold", &NewTransition.FloatThreshold, 1.0f);
+    }
+
+    ImGui::InputInt("Priority", &NewTransition.Priority);
+
+    ImGui::DragFloat("Blend Duration", &NewTransition.BlendDuration, 0.01f, 0.0f, 10.0f);
+
+    if (ImGui::Button("Add Transition"))
+    {
+        bool bAdded = false;
+
+        if (NewTransition.bAnyState)
+        {
+            bAdded = Graph->AddAnyStateTransition(
+                NewTransition.ToState,
+                NewTransition.Rule,
+                NewTransition.ParameterName,
+                NewTransition.Priority,
+                NewTransition.BlendDuration,
+                NewTransition.FloatThreshold);
+        }
+        else
+        {
+            bAdded = Graph->AddTransition(
+                NewTransition.FromState,
+                NewTransition.ToState,
+                NewTransition.Rule,
+                NewTransition.ParameterName,
+                NewTransition.Priority,
+                NewTransition.BlendDuration,
+                NewTransition.FloatThreshold);
+        }
+
+        if (bAdded)
+        {
+            SelectedTransitionIndex = Graph->GetTransitions().Num() - 1;
+
+            bDirty = true;
+            ErrorMessage.clear();
+
+            RefreshPreview();
+        }
+        else
+        {
+            ErrorMessage = "Could not add Transition. Check State and Parameter settings.";
+        }
+    }
+
+    ImGui::Separator();
+
+    const TArray<FAnimGraphTransitionDefinition>& Transitions =
+        Graph->GetTransitions();
+
+    ImGui::BeginChild(
+        "AnimationGraphTransitionList",
+        ImVec2(0.0f, 85.0f),
+        true);
+
+    for (int32 Index = 0; Index < Transitions.Num(); ++Index)
+    {
+        const FAnimGraphTransitionDefinition& Transition =
+            Transitions[Index];
+
+        const FString FromLabel = Transition.bAnyState
+            ? "Any State"
+            : Transition.FromState.ToString();
+
+        const FString ToLabel = Transition.ToState.ToString();
+
+        const FString Label =
+            FromLabel + " -> " + ToLabel;
+
+        if (ImGui::Selectable(
+            Label.c_str(),
+            SelectedTransitionIndex == Index))
+        {
+            SelectedTransitionIndex = Index;
+        }
+    }
+
+    ImGui::EndChild();
+
+    if (!Transitions.IsValidIndex(SelectedTransitionIndex))
+    {
+        ImGui::TextDisabled("Select a Transition to edit.");
+        return;
+    }
+
+    FAnimGraphTransitionDefinition EditableTransition =
+        Transitions[SelectedTransitionIndex];
+
+    ImGui::Separator();
+
+    ImGui::Text(
+        "Selected Transition: %s -> %s",
+        EditableTransition.bAnyState
+        ? "Any State"
+        : EditableTransition.FromState.ToString().c_str(),
+        EditableTransition.ToState.ToString().c_str());
+
+    ImGui::Checkbox(
+        "Edit Any State",
+        &EditableTransition.bAnyState);
+
+    if (EditableTransition.bAnyState)
+    {
+        EditableTransition.FromState = NAME_None;
+    }
+    else
+    {
+        DrawStateCombo(
+            "Edit From State",
+            EditableTransition.FromState);
+    }
+
+    DrawStateCombo(
+        "Edit To State",
+        EditableTransition.ToState);
+
+    DrawRuleCombo(
+        "Edit Rule",
+        EditableTransition);
+
+    if (IsBoolRule(EditableTransition.Rule) ||
+        IsFloatRule(EditableTransition.Rule))
+    {
+        DrawParameterCombo(
+            "Edit Parameter",
+            EditableTransition);
+    }
+    else
+    {
+        EditableTransition.ParameterName = NAME_None;
+    }
+
+    if (IsFloatRule(EditableTransition.Rule))
+    {
+        ImGui::DragFloat(
+            "Edit Float Threshold",
+            &EditableTransition.FloatThreshold,
+            1.0f);
+    }
+
+    ImGui::InputInt(
+        "Edit Priority",
+        &EditableTransition.Priority);
+
+    ImGui::DragFloat(
+        "Edit Blend Duration",
+        &EditableTransition.BlendDuration,
+        0.01f,
+        0.0f,
+        10.0f);
+
+    if (ImGui::Button("Apply Transition Changes"))
+    {
+        if (Graph->SetTransition(
+            SelectedTransitionIndex,
+            EditableTransition))
+        {
+            bDirty = true;
+            ErrorMessage.clear();
+
+            RefreshPreview();
+        }
+        else
+        {
+            ErrorMessage =
+                "Could not update Transition. Check the selected settings.";
+        }
+    }
+
+    ImGui::SameLine();
+
+    if (ImGui::Button("Remove Transition"))
+    {
+        if (Graph->RemoveTransition(SelectedTransitionIndex))
+        {
+            SelectedTransitionIndex = -1;
+
+            bDirty = true;
+            ErrorMessage.clear();
+
+            RefreshPreview();
         }
     }
 }

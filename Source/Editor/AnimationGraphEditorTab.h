@@ -25,6 +25,8 @@ public:
 private:
     void DrawToolbar();
     void DrawStateEditor();
+    void DrawParameterEditor();
+    void DrawTransitionEditor();
     void FrameMesh();
     void RefreshPreview();
     bool CanCloseNow() override;
@@ -52,4 +54,22 @@ private:
     bool bDirty = false;
     bool bPlaying = false;
     bool bFramed = false;
+
+    // Parameter Editor
+    int32 SelectedParameterIndex = -1;
+
+    char NewParameterNameBuffer[64] = "Speed";
+    char RenameParameterBuffer[64] = {};
+
+    int32 NewParameterTypeIndex = 1;
+    bool bNewParameterBoolDefault = false;
+    float NewParameterFloatDefault = 0.0f;
+
+    // Transition Editor
+    int32 SelectedTransitionIndex = -1;
+
+    FAnimGraphTransitionDefinition NewTransition;
+
+    // BlendSpace Parameter Binding
+    FName NewBlendSpaceParameterName = NAME_None;
 };
