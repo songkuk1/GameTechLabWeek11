@@ -54,6 +54,7 @@ bool UAnimInstance::InitializeAnimationGraph(UAnimationGraph* InGraph)
     }
 
     FAnimNode_StateMachine* StateMachine = CreateAnimationNode<FAnimNode_StateMachine>();
+	StateMachineNode = StateMachine;
 
     for (const FAnimGraphStateDefinition& State : InGraph->GetStates())
     {
@@ -332,10 +333,24 @@ bool UAnimInstance::SetRootNode(FAnimNode_Base* InRootNode)
 void UAnimInstance::ClearAnimationNodes()
 {
 	RootNode = &SequencePlayer;
+	StateMachineNode = nullptr;
+
 	SequencePlayer.SetSequence(nullptr);
+
 	for (FAnimNode_Base* Node : OwnedAnimationNodes)
 	{
 		delete Node;
 	}
+
 	OwnedAnimationNodes.Reset();
+}
+
+bool UAnimInstance::GetStateMachineDebugInfo(FAnimStateMachineDebugInfo& OutInfo) const
+{
+	if (!StateMachineNode || RootNode != StateMachineNode)
+	{
+		return false;
+	}
+	StateMachineNode->GetDebugInfo(OutInfo);
+	return true;
 }

@@ -29,6 +29,26 @@ struct FAnimStateTransition
 	bool bAnyState = false;
 };
 
+struct FAnimStateMachineDebugInfo
+{
+	FName CurrentStateName = NAME_None;
+
+	bool bCurrentStateFinished = false;
+	bool bIsBlending = false;
+
+	bool bHasLastTransition = false;
+	bool bLastTransitionWasAnyState = false;
+
+	FName LastTransitionFromState = NAME_None;
+	FName LastTransitionToState = NAME_None;
+
+	EAnimTransitionRule LastTransitionRule = EAnimTransitionRule::Always;
+
+	float TransitionElapsedTime = 0.0f;
+	float TransitionDuration = 0.0f;
+	float TransitionAlpha = 1.0f;
+};
+
 struct FAnimNode_StateMachine : public FAnimNode_Base
 {
 public:
@@ -44,6 +64,7 @@ public:
 	FName GetStateName(int32 Index) const { return States.IsValidIndex(Index) ? States[Index].Name : NAME_None; }
 	bool IsBlending() const { return bIsBlending; }
 	float GetTransitionAlpha() const { return bIsBlending ? TransitionBlendNode.GetAlpha() : 1.0f; }
+	void GetDebugInfo(FAnimStateMachineDebugInfo& OutInfo) const;
 	virtual void Update(const FAnimationUpdateContext& Context) override;
 	virtual void Evaluate(FPoseContext& Output) override;
 	IAnimPlaybackControl* GetPlaybackControl() override;
@@ -67,4 +88,6 @@ private:
 	TArray<FAnimStateEntry> States;
 	int32 CurrentStateIndex = -1;
 	TArray<FAnimStateTransition> Transitions;
+	FAnimStateTransition LastTransition;
+	bool bHasLastTransition = false;
 };

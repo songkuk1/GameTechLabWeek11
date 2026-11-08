@@ -27,6 +27,7 @@ private:
     void DrawStateEditor();
     void DrawParameterEditor();
     void DrawTransitionEditor();
+    void DrawRuntimeDebug();
     void FrameMesh();
     void RefreshPreview();
     bool CanCloseNow() override;

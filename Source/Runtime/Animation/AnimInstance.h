@@ -11,6 +11,8 @@
 class USkeletalMeshComponent;
 class AActor;
 class UAnimationGraph;
+struct FAnimNode_StateMachine;
+struct FAnimStateMachineDebugInfo;
 
 class UAnimInstance : public UObject
 {
@@ -65,6 +67,8 @@ public:
 
 	IAnimPlaybackControl* GetPlaybackControl() { return RootNode ? RootNode->GetPlaybackControl() : nullptr; }
 	const IAnimPlaybackControl* GetPlaybackControl() const { return RootNode ? RootNode->GetPlaybackControl() : nullptr; }
+
+	bool GetStateMachineDebugInfo(FAnimStateMachineDebugInfo& OutInfo) const;
 protected:
 	FAnimNode_Base* RootNode = nullptr;
 private:
@@ -73,6 +77,7 @@ private:
 	FAnimNode_BlendSpacePlayer BlendSpacePlayer;
 
 	USkeletalMeshComponent* OwningComponent = nullptr;
+	FAnimNode_StateMachine* StateMachineNode = nullptr;
 	TArray<FAnimNode_Base*> OwnedAnimationNodes;
 
 	TMap<FName, bool, FNameHash> BoolParameters;

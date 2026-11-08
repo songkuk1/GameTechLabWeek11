@@ -410,6 +410,10 @@ void FAnimationGraphEditorTab::DrawToolbar()
 
     ImGui::Separator();
 
+    DrawRuntimeDebug();
+
+    ImGui::Separator();
+
     ImGui::Text("Parameters: %d | Transitions: %d", Graph->GetParameters().Num(), Graph->GetTransitions().Num());
 
     if (!ErrorMessage.empty())
@@ -1407,4 +1411,86 @@ void FAnimationGraphEditorTab::DrawTransitionEditor()
             RefreshPreview();
         }
     }
+}
+
+void FAnimationGraphEditorTab::DrawRuntimeDebug()
+{
+    if (!ImGui::CollapsingHeader("Runtime Debug", ImGuiTreeNodeFlags_DefaultOpen))
+    {
+        return;
+    }
+
+    USkeletalMeshComponent* Component = PreviewActor ? PreviewActor->GetSkeletalMeshComponent() : nullptr;
+
+    UAnimInstance* AnimInstance = Component ? Component->GetAnimInstance() : nullptr;
+
+    if (!AnimInstance)
+    {
+        ImGui::TextDisabled("Animation Instance is not available.");
+        return;
+    }
+
+    FAnimStateMachineDebugInfo DebugInfo;
+
+    if (!AnimInstance->GetStateMachineDebugInfo(DebugInfo))
+    {
+        ImGui::TextDisabled("State Machine is not the active root node.");
+        return;
+    }
+
+    // 현재 State
+    const FString CurrentStateName = DebugInfo.CurrentStateName.IsNone() ? "None" : DebugInfo.CurrentStateName.ToString();
+
+    ImGui::Text("Current State: %s", CurrentStateName.c_str());
+
+    ImGui::Text("State Finished: %s", DebugInfo.bCurrentStateFinished ? "True" : "False");
+
+    ImGui::Text("Playing: %s", bPlaying ? "True" : "False");
+
+    ImGui::Separator();
+
+    ImGui::TextUnformatted("Last Transition");
+
+    if (!DebugInfo.bHasLastTransition)
+    {
+        ImGui::TextDisabled("No Transition has been triggered.");
+    }
+    else
+    {
+        const FString FromState = DebugInfo.bLastTransitionWasAnyState ? "Any State" : DebugInfo.LastTransitionFromState.ToString();
+
+        const FString ToState = DebugInfo.LastTransitionToState.ToString();
+
+        ImGui::Text("%s -> %s", FromState.c_str(), ToState.c_str());
+
+        const char* RuleNames[] =
+        {
+            "Always",
+            "Bool True",
+            "Bool False",
+            "State Finished",
+            "Float Greater Than",
+            "Float Less Than",
+            "Float Greater Or Equal",
+            "Float Less Or Equal"
+        };
+
+        const int32 RuleIndex = static_cast<int32>(DebugInfo.LastTransitionRule);
+
+        if (RuleIndex >= 0 && RuleIndex < IM_ARRAYSIZE(RuleNames))
+        {
+            ImGui::Text("Rule: %s", RuleNames[RuleIndex]);
+        }
+    }
+
+    ImGui::Separator();
+
+    // 현재 블렌딩 정보
+    ImGui::Text("Blending: %s", DebugInfo.bIsBlending ? "True" : "False");
+
+    ImGui::Text("Blend Alpha: %.3f", DebugInfo.TransitionAlpha);
+
+    ImGui::Text("Blend Time: %.3f / %.3f sec", DebugInfo.TransitionElapsedTime, DebugInfo.TransitionDuration);
+
+    ImGui::Text("Blend Progress: %.1f%%", DebugInfo.TransitionAlpha * 100.0f);
 }

@@ -34,6 +34,7 @@ bool FAnimNode_StateMachine::SetState(const FName& StateName, bool bResetPlaybac
 	TransitionBlendElapsed = 0.0f;
 	TransitionBlendNode.SetSourceNodes(nullptr, nullptr);
 	TransitionBlendNode.SetAlpha(0.0f);
+	bHasLastTransition = false;
 	CurrentStateIndex = NewIndex;
 	if (bResetPlayback)
 	{
@@ -104,6 +105,37 @@ bool FAnimNode_StateMachine::HasState(const FName& StateName) const
 	return FindStateIndex(StateName) != -1;
 }
 
+void FAnimNode_StateMachine::GetDebugInfo(FAnimStateMachineDebugInfo& OutInfo) const
+{
+	OutInfo.CurrentStateName = GetCurrentStateName();
+	OutInfo.bCurrentStateFinished = IsCurrentStateFinished();
+	OutInfo.bIsBlending = bIsBlending;
+
+	OutInfo.bHasLastTransition = bHasLastTransition;
+
+	if (bHasLastTransition)
+	{
+		OutInfo.bLastTransitionWasAnyState = LastTransition.bAnyState;
+
+		OutInfo.LastTransitionFromState = LastTransition.FromState;
+
+		OutInfo.LastTransitionToState = LastTransition.ToState;
+
+		OutInfo.LastTransitionRule = LastTransition.Rule;
+	}
+	else
+	{
+		OutInfo.bLastTransitionWasAnyState = false;
+		OutInfo.LastTransitionFromState = NAME_None;
+		OutInfo.LastTransitionToState = NAME_None;
+		OutInfo.LastTransitionRule = EAnimTransitionRule::Always;
+	}
+
+	OutInfo.TransitionElapsedTime = TransitionBlendElapsed;
+	OutInfo.TransitionDuration = TransitionBlendDuration;
+	OutInfo.TransitionAlpha = GetTransitionAlpha();
+}
+
 void FAnimNode_StateMachine::Update(const FAnimationUpdateContext& Context)
 {
 	if (bIsBlending)
@@ -116,8 +148,7 @@ void FAnimNode_StateMachine::Update(const FAnimationUpdateContext& Context)
 		if (Alpha >= 1.0f)
 		{
 			bIsBlending = false;
-			TransitionBlendDuration = 0.0f;
-			TransitionBlendElapsed = 0.0f;
+			TransitionBlendElapsed = TransitionBlendDuration;
 			TransitionBlendNode.SetSourceNodes(nullptr, nullptr);
 			TransitionBlendNode.SetAlpha(0.0f);
 		}
@@ -266,6 +297,8 @@ void FAnimNode_StateMachine::EvaluateTransitions(const FAnimationUpdateContext& 
 
 		if (SetState(Transition.ToState, true))
 		{
+			LastTransition = Transition;
+			bHasLastTransition = true;
 			FAnimNode_Base* CurrentNode = GetActiveStateNode();
 			if (PreviousNode && CurrentNode && PreviousNode != CurrentNode && Transition.BlendDuration > 0.0f)
 			{
