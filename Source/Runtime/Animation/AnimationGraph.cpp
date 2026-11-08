@@ -203,36 +203,253 @@ bool UAnimationGraph::IsAnimationGraphDataValid() const
 
     for (const FAnimGraphTransitionDefinition& Transition : Transitions)
     {
-        if (FindStateIndex(Transition.ToState) == -1 || (!Transition.bAnyState && FindStateIndex(Transition.FromState) == -1) || !std::isfinite(Transition.BlendDuration) || Transition.BlendDuration < 0.0f || !std::isfinite(Transition.FloatThreshold))
+        if (!IsTransitionDefinitionValid(Transition))
         {
-            return false;
-        }
-
-        switch (Transition.Rule)
-        {
-        case EAnimTransitionRule::Always:
-        case EAnimTransitionRule::StateFinished:
-            break;
-        case EAnimTransitionRule::BoolTrue:
-        case EAnimTransitionRule::BoolFalse:
-            if (!HasParameterType(Transition.ParameterName, EAnimGraphParameterType::Bool))
-            {
-                return false;
-            }
-            break;
-        case EAnimTransitionRule::FloatGreaterThan:
-        case EAnimTransitionRule::FloatLessThan:
-        case EAnimTransitionRule::FloatGreaterOrEqual:
-        case EAnimTransitionRule::FloatLessOrEqual:
-            if (!HasParameterType(Transition.ParameterName, EAnimGraphParameterType::Float))
-            {
-                return false;
-            }
-            break;
-        default:
             return false;
         }
     }
+
+    return true;
+}
+
+bool UAnimationGraph::RenameParameter(const FName& OldName, const FName& NewName)
+{
+    const int32 ParameterIndex = FindParameterIndex(OldName);
+    if (ParameterIndex == -1 || NewName.IsNone())
+    {
+        return false;
+    }
+
+    if (OldName == NewName)
+    {
+        return false;
+    }
+
+    if (FindParameterIndex(NewName) != -1)
+    {
+        return false;
+    }
+    
+    Parameters[ParameterIndex].Name = NewName;
+    for (FAnimGraphStateDefinition& State : States)
+    {
+        if (State.BlendParameterName == OldName)
+        {
+            State.BlendParameterName = NewName;
+        }
+    }
+
+    for (FAnimGraphTransitionDefinition& Transition : Transitions)
+    {
+        if (Transition.ParameterName == OldName)
+        {
+            Transition.ParameterName = NewName;
+        }
+    }
+    return true;
+}
+
+bool UAnimationGraph::RemoveParameter(const FName& Name)
+{
+    const int32 ParameterIndex = FindParameterIndex(Name);
+    if (ParameterIndex == -1)
+    {
+        return false;
+    }
+
+    for (const FAnimGraphStateDefinition& State : States)
+    {
+        if (State.BlendParameterName == Name)
+        {
+            return false;
+        }
+    }
+    for (const FAnimGraphTransitionDefinition& Transition : Transitions)
+    {
+        if (Transition.ParameterName == Name)
+        {
+            return false;
+        }
+    }
+    Parameters.RemoveAt(static_cast<uint32>(ParameterIndex));
+    return true;
+}
+
+bool UAnimationGraph::SetBoolParameterDefault(const FName& Name, bool DefaultValue)
+{
+    const int32 Index = FindParameterIndex(Name);
+    if (Index == -1 || Parameters[Index].Type != EAnimGraphParameterType::Bool)
+    {
+        return false;
+    }
+    Parameters[Index].BoolDefaultValue = DefaultValue;
+    return true;
+}
+
+bool UAnimationGraph::SetFloatParameterDefault(const FName& Name, float DefaultValue)
+{
+    const int32 Index = FindParameterIndex(Name);
+    if (Index == -1 || Parameters[Index].Type != EAnimGraphParameterType::Float || !std::isfinite(DefaultValue))
+    {
+        return false;
+    }
+    Parameters[Index].FloatDefaultValue = DefaultValue;
+    return true;
+}
+
+bool UAnimationGraph::RenameState(const FName& OldName, const FName& NewName)
+{
+    const int32 StateIndex = FindStateIndex(OldName);
+
+    if (StateIndex == -1 || NewName.IsNone())
+    {
+        return false;
+    }
+
+    if (OldName == NewName)
+    {
+        return true;
+    }
+
+    if (FindStateIndex(NewName) != -1)
+    {
+        return false;
+    }
+
+    States[StateIndex].Name = NewName;
+
+    if (EntryStateName == OldName)
+    {
+        EntryStateName = NewName;
+    }
+
+    for (FAnimGraphTransitionDefinition& Transition : Transitions)
+    {
+        if (Transition.FromState == OldName)
+        {
+            Transition.FromState = NewName;
+        }
+
+        if (Transition.ToState == OldName)
+        {
+            Transition.ToState = NewName;
+        }
+    }
+
+    return true;
+}
+
+bool UAnimationGraph::RemoveState(const FName& StateName)
+{
+    const int32 StateIndex = FindStateIndex(StateName);
+
+    if (StateIndex == -1)
+    {
+        return false;
+    }
+
+    for (int32 Index = Transitions.Num() - 1; Index >= 0; --Index)
+    {
+        const FAnimGraphTransitionDefinition& Transition = Transitions[Index];
+
+        const bool bIsSource = Transition.FromState == StateName;
+        const bool bIsDestination = Transition.ToState == StateName;
+
+        if (bIsSource || bIsDestination)
+        {
+            Transitions.RemoveAt(static_cast<uint32>(Index));
+        }
+    }
+
+    if (EntryStateName == StateName)
+    {
+        EntryStateName = NAME_None;
+    }
+
+    States.RemoveAt(static_cast<uint32>(StateIndex));
+
+    return true;
+}
+
+bool UAnimationGraph::SetSequenceState(const FName& StateName, UAnimSequence* Sequence, float PlayRate, bool bLooping)
+{
+    const int32 Index = FindStateIndex(StateName);
+
+    if (Index == -1 || !Skeleton || !Sequence || Sequence->GetSkeleton() != Skeleton || !std::isfinite(PlayRate))
+    {
+        return false;
+    }
+
+    FAnimGraphStateDefinition& State = States[Index];
+
+    State.NodeType = EAnimGraphStateNodeType::SequencePlayer;
+    State.Sequence = Sequence;
+    State.BlendSpace = nullptr;
+    State.BlendParameterName = NAME_None;
+    State.PlayRate = PlayRate;
+    State.bLooping = bLooping;
+
+    return true;
+}
+
+bool UAnimationGraph::SetBlendSpaceState(const FName& StateName, UBlendSpace1D* BlendSpace, const FName& BlendParameterName, float PlayRate, bool bLooping)
+{
+    const int32 Index = FindStateIndex(StateName);
+
+    if (Index == -1 || !Skeleton || !BlendSpace || BlendSpace->GetSkeleton() != Skeleton || !BlendSpace->IsBlendSpaceDataValid() || !std::isfinite(PlayRate))
+    {
+        return false;
+    }
+
+    if (!BlendParameterName.IsNone() && !HasParameterType(BlendParameterName, EAnimGraphParameterType::Float))
+    {
+        return false;
+    }
+
+    FAnimGraphStateDefinition& State = States[Index];
+
+    State.NodeType = EAnimGraphStateNodeType::BlendSpacePlayer;
+    State.Sequence = nullptr;
+    State.BlendSpace = BlendSpace;
+    State.BlendParameterName = BlendParameterName;
+    State.PlayRate = PlayRate;
+    State.bLooping = bLooping;
+
+    return true;
+}
+
+bool UAnimationGraph::SetTransition(int32 Index, const FAnimGraphTransitionDefinition& InTransition)
+{
+    if (!Transitions.IsValidIndex(Index))
+    {
+        return false;
+    }
+
+    FAnimGraphTransitionDefinition NewTransition = InTransition;
+
+    if (NewTransition.bAnyState)
+    {
+        NewTransition.FromState = NAME_None;
+    }
+
+    if (!IsTransitionDefinitionValid(NewTransition))
+    {
+        return false;
+    }
+
+    Transitions[Index] = std::move(NewTransition);
+
+    return true;
+}
+
+bool UAnimationGraph::RemoveTransition(int32 Index)
+{
+    if (!Transitions.IsValidIndex(Index))
+    {
+        return false;
+    }
+
+    Transitions.RemoveAt(static_cast<uint32>(Index));
 
     return true;
 }
@@ -398,35 +615,8 @@ bool UAnimationGraph::HasParameterType(const FName& ParameterName, EAnimGraphPar
 
 bool UAnimationGraph::AddTransitionInternal(const FName& FromState, const FName& ToState, EAnimTransitionRule Rule, const FName& ParameterName, int32 Priority, float BlendDuration, float FloatThreshold, bool bAnyState)
 {
-    if (FindStateIndex(ToState) == -1 || (!bAnyState && FindStateIndex(FromState) == -1) || !std::isfinite(BlendDuration) || BlendDuration < 0.0f || !std::isfinite(FloatThreshold))
-    {
-        return false;
-    }
-    switch (Rule)
-    {
-    case EAnimTransitionRule::Always:
-    case EAnimTransitionRule::StateFinished:
-        break;
-    case EAnimTransitionRule::BoolTrue:
-    case EAnimTransitionRule::BoolFalse:
-        if (!HasParameterType(ParameterName, EAnimGraphParameterType::Bool))
-        {
-            return false;
-        }
-        break;
-    case EAnimTransitionRule::FloatGreaterThan:
-    case EAnimTransitionRule::FloatLessThan:
-    case EAnimTransitionRule::FloatGreaterOrEqual:
-    case EAnimTransitionRule::FloatLessOrEqual:
-        if (!HasParameterType(ParameterName, EAnimGraphParameterType::Float))
-        {
-            return false;
-        }
-        break;
-    default:
-        return false;
-    }
     FAnimGraphTransitionDefinition Transition;
+
     Transition.FromState = FromState;
     Transition.ToState = ToState;
     Transition.ParameterName = ParameterName;
@@ -436,6 +626,61 @@ bool UAnimationGraph::AddTransitionInternal(const FName& FromState, const FName&
     Transition.FloatThreshold = FloatThreshold;
     Transition.bAnyState = bAnyState;
 
+    if (!IsTransitionDefinitionValid(Transition))
+    {
+        return false;
+    }
+
     Transitions.Add(std::move(Transition));
+
+    return true;
+}
+
+bool UAnimationGraph::IsTransitionDefinitionValid( const FAnimGraphTransitionDefinition& Transition) const
+{
+    if (Transition.ToState.IsNone() || FindStateIndex(Transition.ToState) == -1 || !std::isfinite(Transition.BlendDuration) || Transition.BlendDuration < 0.0f || !std::isfinite(Transition.FloatThreshold))
+    {
+        return false;
+    }
+
+    if (Transition.bAnyState)
+    {
+        if (!Transition.FromState.IsNone())
+        {
+            return false;
+        }
+    }
+    else
+    {
+        if (Transition.FromState.IsNone() || FindStateIndex(Transition.FromState) == -1 || Transition.FromState == Transition.ToState)
+        {
+            return false;
+        }
+    }
+
+    switch (Transition.Rule)
+    {
+    case EAnimTransitionRule::Always:
+    case EAnimTransitionRule::StateFinished:
+        break;
+    case EAnimTransitionRule::BoolTrue:
+    case EAnimTransitionRule::BoolFalse:
+        if (!HasParameterType(Transition.ParameterName, EAnimGraphParameterType::Bool))
+        {
+            return false;
+        }
+        break;
+    case EAnimTransitionRule::FloatGreaterThan:
+    case EAnimTransitionRule::FloatLessThan:
+    case EAnimTransitionRule::FloatGreaterOrEqual:
+    case EAnimTransitionRule::FloatLessOrEqual:
+        if (!HasParameterType(Transition.ParameterName, EAnimGraphParameterType::Float))
+        {
+            return false;
+        }
+        break;
+    default:
+        return false;
+    }
     return true;
 }
