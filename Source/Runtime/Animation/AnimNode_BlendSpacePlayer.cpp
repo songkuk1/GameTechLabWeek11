@@ -128,7 +128,7 @@ void FAnimNode_BlendSpacePlayer::Update(const FAnimationUpdateContext& Context)
 		}
 	}
 
-	if (BlendSpace)
+	if (!BlendSpace)
 	{
 		return;
 	}

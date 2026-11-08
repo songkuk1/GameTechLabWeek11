@@ -8,6 +8,7 @@
 #include "Animation/AnimInstance.h"
 #include "Animation/BlendSpace1D.h"
 #include "Animation/AnimSequence.h"
+#include "Animation/AnimationGraph.h"
 USkeletalMeshComponent::~USkeletalMeshComponent()
 {
     delete AnimInstance;
@@ -293,6 +294,29 @@ void USkeletalMeshComponent::SetAnimationRootNode(FAnimNode_Base* InRootNode)
 
     bPlayingAnimation = true;
     TickAnimation(0.0f);
+}
+
+bool USkeletalMeshComponent::SetAnimationGraph(
+    UAnimationGraph* InGraph)
+{
+    if (!InGraph || !SkeletalMesh || InGraph->GetSkeleton() != SkeletalMesh->GetSkeleton())
+    {
+        return false;
+    }
+
+    if (!EnsureAnimInstance())
+    {
+        return false;
+    }
+
+    if (!AnimInstance->InitializeAnimationGraph(InGraph))
+    {
+        return false;
+    }
+
+    bPlayingAnimation = true;
+    TickAnimation(0.0f);
+    return true;
 }
 
 bool USkeletalMeshComponent::EnsureAnimInstance()

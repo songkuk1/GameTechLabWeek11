@@ -4,6 +4,7 @@
 #include "Animation/AnimInstance.h"
 
 class USkeleton;
+class UAnimationGraph;
 
 class USkeletalMeshComponent : public USkinnedMeshComponent
 {
@@ -35,6 +36,7 @@ public:
     void SetAnimInstanceClass(UClass* InAnimInstanceClass);
 
     void SetAnimationRootNode(FAnimNode_Base* InRootNode);
+    bool SetAnimationGraph(UAnimationGraph* InGraph);
 
     // 애니메이션 재생 위치
     void SetAnimationPlaybackTime(float InTime);

@@ -10,6 +10,7 @@
 
 class USkeletalMeshComponent;
 class AActor;
+class UAnimationGraph;
 
 class UAnimInstance : public UObject
 {
@@ -20,6 +21,7 @@ public:
 	virtual void NativeInitializeAnimation();
 	virtual void NativeUpdateAnimation(float DeltaSeconds);
 	void InitializeAnimation(USkeletalMeshComponent* InOwningComponent);
+	bool InitializeAnimationGraph(UAnimationGraph* InGraph);
 	void UpdateAnimation(float DeltaSeconds);
 	void EvaluateAnimation(FPoseContext& Output);
 	USkeletalMeshComponent* GetOwningComponent() const { return OwningComponent; }

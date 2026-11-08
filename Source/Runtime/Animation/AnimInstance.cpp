@@ -2,6 +2,8 @@
 #include "AnimInstance.h"
 #include "Component/SkeletalMeshComponent.h"
 #include "GameFramework/Actor.h"
+#include "Animation/AnimationGraph.h"
+#include "Animation/AnimNode_StateMachine.h"
 UAnimInstance::UAnimInstance()
 {
 	RootNode = &SequencePlayer;
@@ -27,6 +29,102 @@ void UAnimInstance::InitializeAnimation(USkeletalMeshComponent* InOwningComponen
 	OwningComponent = InOwningComponent;
 	NativeInitializeAnimation();
 	bInitialized = true;
+}
+
+bool UAnimInstance::InitializeAnimationGraph(UAnimationGraph* InGraph)
+{
+    if (!InGraph || !InGraph->IsAnimationGraphDataValid())
+    {
+        return false;
+    }
+
+    ClearAnimationNodes();
+    ClearAnimationParameters();
+
+    for (const FAnimGraphParameterDefinition& Parameter : InGraph->GetParameters())
+    {
+        if (Parameter.Type == EAnimGraphParameterType::Bool)
+        {
+            SetBoolParameter(Parameter.Name, Parameter.BoolDefaultValue);
+        }
+        else if (Parameter.Type == EAnimGraphParameterType::Float)
+        {
+            SetFloatParameter(Parameter.Name, Parameter.FloatDefaultValue);
+        }
+    }
+
+    FAnimNode_StateMachine* StateMachine = CreateAnimationNode<FAnimNode_StateMachine>();
+
+    for (const FAnimGraphStateDefinition& State : InGraph->GetStates())
+    {
+        FAnimNode_Base* StateNode = nullptr;
+
+        if (State.NodeType == EAnimGraphStateNodeType::SequencePlayer)
+        {
+            FAnimNode_SequencePlayer* Player = CreateAnimationNode<FAnimNode_SequencePlayer>();
+
+            Player->SetSequence(State.Sequence);
+            Player->SetPlayRate(State.PlayRate);
+            Player->SetLooping(State.bLooping);
+
+            StateNode = Player;
+        }
+        else if (State.NodeType == EAnimGraphStateNodeType::BlendSpacePlayer)
+        {
+            FAnimNode_BlendSpacePlayer* Player = CreateAnimationNode<FAnimNode_BlendSpacePlayer>();
+
+            Player->SetBlendSpace(State.BlendSpace);
+            Player->SetBlendParameter(State.BlendParameterName);
+            Player->SetPlayRate(State.PlayRate);
+            Player->SetLooping(State.bLooping);
+
+            StateNode = Player;
+        }
+
+        if (!StateNode || !StateMachine->AddState(State.Name, StateNode))
+        {
+            ClearAnimationNodes();
+            ClearAnimationParameters();
+            return false;
+        }
+    }
+
+    for (const FAnimGraphTransitionDefinition& Transition : InGraph->GetTransitions())
+    {
+        bool bAdded = false;
+
+        if (Transition.bAnyState)
+        {
+            bAdded = StateMachine->AddAnyStateTransition(Transition.ToState, Transition.Rule, Transition.ParameterName, Transition.Priority, Transition.BlendDuration, Transition.FloatThreshold);
+        }
+        else
+        {
+            bAdded = StateMachine->AddTransition(Transition.FromState, Transition.ToState, Transition.Rule, Transition.ParameterName, Transition.Priority, Transition.BlendDuration, Transition.FloatThreshold);
+        }
+
+        if (!bAdded)
+        {
+            ClearAnimationNodes();
+            ClearAnimationParameters();
+            return false;
+        }
+    }
+
+    if (!StateMachine->SetState(InGraph->GetEntryState()))
+    {
+        ClearAnimationNodes();
+        ClearAnimationParameters();
+        return false;
+    }
+
+    if (!SetRootNode(StateMachine))
+    {
+        ClearAnimationNodes();
+        ClearAnimationParameters();
+        return false;
+    }
+
+    return true;
 }
 
 void UAnimInstance::UpdateAnimation(float DeltaSeconds)

@@ -4,6 +4,7 @@ class UWorld;
 class AActor;
 class UMovieSceneSequence;
 class UBlendSpace1D;
+class UAnimationGraph;
 
 class FJsonArchive
 {
@@ -29,4 +30,10 @@ public:
 
 	static bool LoadBlendSpace(UBlendSpace1D* BlendSpace, const FString& Path);
 	static bool LoadBlendSpaceFromBytes(UBlendSpace1D* BlendSpace, const TArray<uint8>& Bytes);
+
+	static bool SaveAnimationGraph(UAnimationGraph* Graph, const FString& Path);
+	static bool SaveAnimationGraphToBytes(UAnimationGraph* Graph, TArray<uint8>& OutBytes);
+
+	static bool LoadAnimationGraph(UAnimationGraph* Graph, const FString& Path);
+	static bool LoadAnimationGraphFromBytes(UAnimationGraph* Graph, const TArray<uint8>& Bytes);
 };

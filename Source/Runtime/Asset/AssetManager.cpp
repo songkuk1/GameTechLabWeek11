@@ -24,6 +24,7 @@
 #include "Animation/Skeleton.h"
 #include "Animation/AnimSequence.h"
 #include "Animation/BlendSpace1D.h"
+#include "Animation/AnimationGraph.h"
 #include "Render/SkeletalMesh.h"
 #include "Core/PathUtils.h"
 
@@ -227,6 +228,7 @@ void UAssetManager::ScanAssets(
 	int32 Completed = 0;
 
 	TArray<fs::path> BlendSpaceFiles;
+	TArray<fs::path> AnimationGraphFiles;
 
 	for (const fs::path& FilePath : Files)
 	{
@@ -238,6 +240,12 @@ void UAssetManager::ScanAssets(
 			BlendSpaceFiles.Add(FilePath);
 			continue;
 		}
+
+		if (FilePath.extension() == ".animgraph")
+		{
+			AnimationGraphFiles.Add(FilePath);
+			continue;
+		}
 		LoadAsset(Key, Path);
 		++Completed;
 		if (OnProgress)
@@ -247,6 +255,17 @@ void UAssetManager::ScanAssets(
 	}
 
 	for (const fs::path& FilePath : BlendSpaceFiles)
+	{
+		const FString Key = PathUtils::ToUtf8(fs::relative(FilePath, AssetRoot));
+		const FString Path = PathUtils::ToUtf8(FilePath);
+		LoadAsset(Key, Path);
+		++Completed;
+		if (OnProgress)
+		{
+			OnProgress(Completed, Total, Key);
+		}
+	}
+	for (const fs::path& FilePath : AnimationGraphFiles)
 	{
 		const FString Key = PathUtils::ToUtf8(fs::relative(FilePath, AssetRoot));
 		const FString Path = PathUtils::ToUtf8(FilePath);
@@ -292,6 +311,10 @@ void UAssetManager::LoadAsset(const FString& Key, const FString& Path)
 	else if (Extension == ".blendspace")
 	{
 		LoadBlendSpace(Path);
+	}
+	else if (Extension == ".animgraph")
+	{
+		LoadAnimationGraph(Path);
 	}
 }
 
@@ -666,6 +689,24 @@ UBlendSpace1D* UAssetManager::LoadBlendSpace(const FString& Path)
 	Get().RegisterAsset(Key, BlendSpace);
 
 	return BlendSpace;
+}
+
+UAnimationGraph* UAssetManager::LoadAnimationGraph(const FString& Path)
+{
+	const FString Key = MakeAssetKey(Path);
+	if (UAnimationGraph* Cached = GetAssetByPath<UAnimationGraph>(Key))
+	{
+		return Cached;
+	}
+	UAnimationGraph* Graph = NewObject<UAnimationGraph>();
+	if (!FJsonArchive::LoadAnimationGraph(Graph, Path))
+	{
+		HTR_LOG(Warning, "Can't load AnimationGraph: {}", Path);
+		delete Graph;
+		return nullptr;
+	}
+	Get().RegisterAsset(Key, Graph);
+	return Graph;
 }
 
 bool UAssetManager::ReorientStaticMesh(UStaticMesh& Mesh, const std::function<FVector(const FVector&)>& Rotate)

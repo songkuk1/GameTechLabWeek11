@@ -11,6 +11,7 @@
 #include "Asset/AssetManager.h"
 #include "Sequence/MovieSceneSequence.h"
 #include "Animation/BlendSpace1D.h"
+#include "Animation/AnimationGraph.h"
 #include "Core/PathUtils.h"
 
 #include "Serialization/MemoryWriter.h"
@@ -25,6 +26,7 @@ namespace
 	constexpr int32 SceneVersion = 4;   // 포맷이 바뀌었으므로 올린다
 	constexpr int32 SequenceVersion = 2;
 	constexpr int32 BlendSpaceVersion = 1;
+	constexpr int32 AnimationGraphVersion = 1;
 }
 
 bool FJsonArchive::SaveWorldToBytes(UWorld* World, TArray<uint8>& OutBytes)
@@ -385,3 +387,115 @@ bool FJsonArchive::LoadBlendSpaceFromBytes(UBlendSpace1D* BlendSpace, const TArr
 	return true;
 }
 
+bool FJsonArchive::SaveAnimationGraph(UAnimationGraph* Graph, const FString& Path)
+{
+	TArray<uint8> Bytes;
+
+	if (!SaveAnimationGraphToBytes(Graph, Bytes))
+	{
+		return false;
+	}
+
+	std::ofstream File(PathUtils::FromUtf8(Path), std::ios::binary);
+
+	if (!File.is_open())
+	{
+		return false;
+	}
+
+	File.write(reinterpret_cast<const char*>(Bytes.GetData()), Bytes.Num());
+
+	return !File.fail();
+}
+
+bool FJsonArchive::SaveAnimationGraphToBytes(UAnimationGraph* Graph, TArray<uint8>& OutBytes)
+{
+	if (!Graph || !Graph->IsAnimationGraphDataValid())
+	{
+		return false;
+	}
+
+	FMemoryWriter Writer(OutBytes);
+
+	{
+		FJsonArchiveOutputFormatter Formatter(Writer);
+		FStructuredArchive Ar(Formatter);
+
+		FStructuredArchive::FRecord Root = Ar.Open().EnterRecord();
+
+		int32 Version = AnimationGraphVersion;
+
+		Root << SA_VALUE("Version", Version);
+
+		Graph->Serialize(Root.EnterRecord("AnimationGraph"));
+
+		Ar.Close();
+	}
+
+	return !Writer.IsError();
+}
+
+bool FJsonArchive::LoadAnimationGraph(UAnimationGraph* Graph, const FString& Path)
+{
+	const std::filesystem::path FilePath = PathUtils::FromUtf8(Path);
+
+	if (!Graph || !std::filesystem::exists(FilePath))
+	{
+		return false;
+	}
+
+	std::ifstream File(FilePath, std::ios::binary);
+
+	if (!File.is_open())
+	{
+		return false;
+	}
+
+	TArray<uint8> Bytes;
+
+	Bytes.SetNum(static_cast<int32>(std::filesystem::file_size(FilePath)));
+
+	File.read(reinterpret_cast<char*>(Bytes.GetData()), Bytes.Num());
+
+	if (File.fail())
+	{
+		return false;
+	}
+
+	return LoadAnimationGraphFromBytes(Graph, Bytes);
+}
+
+bool FJsonArchive::LoadAnimationGraphFromBytes(UAnimationGraph* Graph, const TArray<uint8>& Bytes)
+{
+	if (!Graph)
+	{
+		return false;
+	}
+
+	FMemoryReader Reader(Bytes);
+	FJsonArchiveInputFormatter Formatter(Reader);
+
+	if (Reader.IsError())
+	{
+		return false;
+	}
+
+	FStructuredArchive Ar(Formatter);
+
+	FStructuredArchive::FRecord Root = Ar.Open().EnterRecord();
+
+	int32 Version = 0;
+
+	Root << SA_VALUE("Version", Version);
+
+	if (Version != AnimationGraphVersion)
+	{
+		return false;
+	}
+
+	Graph->Serialize(Root.EnterRecord("AnimationGraph"));
+
+	Ar.Close();
+
+	return !Reader.IsError() && Graph->IsAnimationGraphDataValid();
+}
