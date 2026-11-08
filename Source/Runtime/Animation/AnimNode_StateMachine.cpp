@@ -32,6 +32,8 @@ bool FAnimNode_StateMachine::SetState(const FName& StateName, bool bResetPlaybac
 	bIsBlending = false;
 	TransitionBlendDuration = 0.0f;
 	TransitionBlendElapsed = 0.0f;
+	TransitionBlendNode.SetSourceNodes(nullptr, nullptr);
+	TransitionBlendNode.SetAlpha(0.0f);
 	CurrentStateIndex = NewIndex;
 	if (bResetPlayback)
 	{
@@ -97,6 +99,11 @@ void FAnimNode_StateMachine::ClearTransitions()
 	Transitions.Reset();
 }
 
+bool FAnimNode_StateMachine::HasState(const FName& StateName) const
+{
+	return FindStateIndex(StateName) != -1;
+}
+
 void FAnimNode_StateMachine::Update(const FAnimationUpdateContext& Context)
 {
 	if (bIsBlending)
@@ -111,6 +118,8 @@ void FAnimNode_StateMachine::Update(const FAnimationUpdateContext& Context)
 			bIsBlending = false;
 			TransitionBlendDuration = 0.0f;
 			TransitionBlendElapsed = 0.0f;
+			TransitionBlendNode.SetSourceNodes(nullptr, nullptr);
+			TransitionBlendNode.SetAlpha(0.0f);
 		}
 		return;
 	}
@@ -200,6 +209,11 @@ bool FAnimNode_StateMachine::AddTransitionInternal(const FName& FromState, const
 		return false;
 	}
 
+	if (bUsesFloatParameter && !std::isfinite(FloatThreshold))
+	{
+		return false;
+	}
+
 	FAnimStateTransition Transition;
 	Transition.FromState = FromState;
 	Transition.ToState = ToState;
@@ -207,7 +221,7 @@ bool FAnimNode_StateMachine::AddTransitionInternal(const FName& FromState, const
 	Transition.Rule = Rule;
 	Transition.Priority = Priority;
 	Transition.BlendDuration = std::isfinite(BlendDuration) ? std::max(BlendDuration, 0.0f) : 0.0f;
-	Transition.FloatThreshold = std::isfinite(FloatThreshold) ? FloatThreshold : 0.0f;
+	Transition.FloatThreshold = FloatThreshold;
 	Transition.bAnyState = bAnyState;
 
 	Transitions.Add(Transition);

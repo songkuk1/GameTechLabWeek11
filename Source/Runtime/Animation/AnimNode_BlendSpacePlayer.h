@@ -3,6 +3,7 @@
 
 #include "Animation/AnimNode_SequencePlayer.h"
 #include "Animation/AnimNode_TwoWayBlend.h"
+#include "Core/NameTypes.h"
 
 class UBlendSpace1D;
 
@@ -12,6 +13,8 @@ public:
     FAnimNode_BlendSpacePlayer();
     void SetBlendSpace(UBlendSpace1D* InBlendSpace);
     void SetBlendInput(float InInput);
+	void SetBlendParameter(const FName& InParameterName);
+	FName GetBlendParameter() const { return BlendParameterName; }
     float GetBlendInput() const { return BlendInput; }
 	void SetPlayRate(float InPlayRate) override;
 	float GetPlayRate() const override { return PlayRate; }
@@ -28,6 +31,7 @@ public:
 private:
 	UBlendSpace1D* BlendSpace = nullptr;
 	float BlendInput = 0.0f;
+	FName BlendParameterName = NAME_None;
 	float PlayRate = 1.0f;
 	float NormalizedTime = 0.0f;
 	bool bLoop = true;

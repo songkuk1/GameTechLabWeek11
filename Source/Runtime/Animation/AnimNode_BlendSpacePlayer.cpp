@@ -2,6 +2,7 @@
 #include "Animation/AnimNode_BlendSpacePlayer.h"
 #include "Animation/BlendSpace1D.h"
 #include "Animation/AnimSequence.h"
+#include "Animation/AnimInstance.h"
 #include <algorithm>
 #include <cmath>
 
@@ -23,6 +24,11 @@ void FAnimNode_BlendSpacePlayer::SetBlendSpace(UBlendSpace1D* InBlendSpace)
 void FAnimNode_BlendSpacePlayer::SetBlendInput(float InInput)
 {
 	BlendInput = std::isfinite(InInput) ? InInput : 0.0f;
+}
+
+void FAnimNode_BlendSpacePlayer::SetBlendParameter(const FName& InParameterName)
+{
+	BlendParameterName = InParameterName;
 }
 
 void FAnimNode_BlendSpacePlayer::SetPlayRate(float InPlayRate)
@@ -110,10 +116,23 @@ float FAnimNode_BlendSpacePlayer::GetFrameRate() const
 
 void FAnimNode_BlendSpacePlayer::Update(const FAnimationUpdateContext& Context)
 {
-	if (!BlendSpace)
+	if (!BlendParameterName.IsNone())
+	{
+		if (Context.AnimInstance && Context.AnimInstance->HasFloatParameter(BlendParameterName))
+		{
+			SetBlendInput(Context.AnimInstance->GetFloatParameter(BlendParameterName));
+		}
+		else
+		{
+			SetBlendInput(0.0f);
+		}
+	}
+
+	if (BlendSpace)
 	{
 		return;
 	}
+
 	int32 SampleIndexA = -1;
 	int32 SampleIndexB = -1;
 	float Alpha = 0.0f;

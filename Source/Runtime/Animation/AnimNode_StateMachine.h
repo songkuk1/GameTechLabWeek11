@@ -24,7 +24,7 @@ struct FAnimStateTransition
 	FName ParameterName;
 	EAnimTransitionRule Rule = EAnimTransitionRule::Always;
 	int32 Priority = 0;
-	float BlendDuration;
+	float BlendDuration = 0.0f;
 	float FloatThreshold = 0.0f;
 	bool bAnyState = false;
 };
@@ -39,6 +39,11 @@ public:
 	bool AddTransition(const FName& FromState, const FName& ToState, EAnimTransitionRule Rule, const FName& ParameterName = NAME_None, int32 Priority = 0, float BlendDuration = 0.0f, float FloatThreshold = 0.0f);
 	bool AddAnyStateTransition(const FName& ToState, EAnimTransitionRule Rule, const FName& ParameterName = NAME_None, int32 Priority = 0, float BlendDuration = 0.0f, float FloatThreshold = 0.0f);
 	void ClearTransitions();
+	bool HasState(const FName& StateName) const;
+	int32 GetStateCount() const { return States.Num(); }
+	FName GetStateName(int32 Index) const { return States.IsValidIndex(Index) ? States[Index].Name : NAME_None; }
+	bool IsBlending() const { return bIsBlending; }
+	float GetTransitionAlpha() const { return bIsBlending ? TransitionBlendNode.GetAlpha() : 1.0f; }
 	virtual void Update(const FAnimationUpdateContext& Context) override;
 	virtual void Evaluate(FPoseContext& Output) override;
 	IAnimPlaybackControl* GetPlaybackControl() override;
