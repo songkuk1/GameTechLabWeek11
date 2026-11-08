@@ -7,8 +7,8 @@
 #include <algorithm>
 #include <cmath>
 
-FPreviewViewportPanel::FPreviewViewportPanel(UWorld* InWorld, FString InPanelName, std::function<void()> InDrawToolbar)
-	: World(InWorld), PanelName(std::move(InPanelName)), DrawToolbar(std::move(InDrawToolbar))
+FPreviewViewportPanel::FPreviewViewportPanel(UWorld* InWorld, FString InPanelName, std::function<void()> InDrawToolbar, float InMaxToolbarHeight)
+	: World(InWorld), PanelName(std::move(InPanelName)), DrawToolbar(std::move(InDrawToolbar)), MaxToolbarHeight(InMaxToolbarHeight)
 {
 }
 
@@ -73,7 +73,7 @@ void FPreviewViewportPanel::OnRender()
 
 	const ImVec2 Available = ImGui::GetContentRegionAvail();
 
-	const float ToolbarHeight = std::max(1.0f, std::min(280.0f, Available.y * 0.4f));
+	const float ToolbarHeight = std::max(1.0f, std::min(MaxToolbarHeight, Available.y * 0.4f));
 
 	const float ViewportHeight = std::max(0.0f, Available.y - ToolbarHeight - ImGui::GetStyle().ItemSpacing.y);
 

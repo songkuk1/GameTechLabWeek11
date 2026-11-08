@@ -26,6 +26,27 @@
 #include <cmath>
 #include <cstdio>
 
+class FAnimationGraphEditorPanel : public IEditorPanel
+{
+public:
+    FAnimationGraphEditorPanel(FString InPanelName, std::function<void()> InDrawContent) : PanelName(std::move(InPanelName)), DrawContent(std::move(InDrawContent)){}
+    bool Init() override { return true; }
+    void Tick(float DeltaTime) override { (void)DeltaTime; }
+    void OnRender() override
+    {
+        const bool bVisible = ImGui::Begin(PanelName.c_str());
+        if (bVisible && DrawContent)
+        {
+            DrawContent();
+        }
+        ImGui::End();
+    }
+    const char* GetPanelName() const override { return PanelName.c_str(); }
+private:
+    FString PanelName;
+    std::function<void()> DrawContent;
+};
+
 namespace
 {
     constexpr float FramingPitchDegrees = 20.0f;
@@ -47,12 +68,95 @@ namespace
 
         FEditorTabSettings Settings;
         Settings.Title = "Animation Graph: " + AssetName;
-        Settings.DockSpaceName = "AnimationGraphEditorDock_" + AssetPath;
+        Settings.DockSpaceName = "AnimationGraphWorkspaceV2_" + AssetPath;
 
         Settings.bClosable = true;
         Settings.bIsolatePanels = true;
 
         return Settings;
+    }
+
+    const char* GetTransitionRuleLabel(EAnimTransitionRule Rule)
+    {
+        switch (Rule)
+        {
+        case EAnimTransitionRule::Always:
+            return "Always";
+
+        case EAnimTransitionRule::BoolTrue:
+            return "Bool True";
+
+        case EAnimTransitionRule::BoolFalse:
+            return "Bool False";
+
+        case EAnimTransitionRule::StateFinished:
+            return "State Finished";
+
+        case EAnimTransitionRule::FloatGreaterThan:
+            return "Float >";
+
+        case EAnimTransitionRule::FloatLessThan:
+            return "Float <";
+
+        case EAnimTransitionRule::FloatGreaterOrEqual:
+            return "Float >=";
+
+        case EAnimTransitionRule::FloatLessOrEqual:
+            return "Float <=";
+        }
+
+        return "Unknown";
+    }
+
+    float DistanceSquaredToSegment(const ImVec2& Point, const ImVec2& Start, const ImVec2& End)
+    {
+        const float DX = End.x - Start.x;
+        const float DY = End.y - Start.y;
+
+        const float LengthSquared = DX * DX + DY * DY;
+
+        if (LengthSquared <= 1.0e-6f)
+        {
+            const float PX = Point.x - Start.x;
+            const float PY = Point.y - Start.y;
+
+            return PX * PX + PY * PY;
+        }
+
+        const float T = std::clamp(((Point.x - Start.x) * DX + (Point.y - Start.y) * DY) / LengthSquared, 0.0f, 1.0f);
+
+        const float ClosestX = Start.x + T * DX;
+        const float ClosestY = Start.y + T * DY;
+
+        const float PX = Point.x - ClosestX;
+        const float PY = Point.y - ClosestY;
+
+        return PX * PX + PY * PY;
+    }
+
+    void DrawTransitionArrow(ImDrawList* DrawList, const ImVec2& Start, const ImVec2& End, ImU32 Color, float Thickness)
+    {
+        DrawList->AddLine(Start, End, Color, Thickness);
+
+        const float DX = End.x - Start.x;
+        const float DY = End.y - Start.y;
+
+        const float Length = std::sqrt(DX * DX + DY * DY);
+
+        if (Length <= 1.0f)
+        {
+            return;
+        }
+
+        const float NX = DX / Length;
+        const float NY = DY / Length;
+
+        const float BaseX = End.x - NX * 11.0f;
+        const float BaseY = End.y - NY * 11.0f;
+
+        const ImVec2 Perpendicular(-NY * 5.0f, NX * 5.0f);
+
+        DrawList->AddTriangleFilled(End, ImVec2(BaseX + Perpendicular.x, BaseY + Perpendicular.y), ImVec2(BaseX - Perpendicular.x, BaseY - Perpendicular.y), Color);
     }
 }
 
@@ -134,7 +238,8 @@ FAnimationGraphEditorTab::FAnimationGraphEditorTab(UAnimationGraph* InGraph) : F
         RefreshPreview();
     }
 
-    ViewportPanel = AddPanel<FPreviewViewportPanel>(GetWorld(), FString("AnimationGraphViewport##") + Graph->GetPath(), [this]() { DrawToolbar(); });
+    GraphEditorPanel = AddPanel<FAnimationGraphEditorPanel>(FString("Animation Graph Editor##") + Graph->GetPath(), [this]() { DrawGraphEditor(); });
+    ViewportPanel = AddPanel<FPreviewViewportPanel>(GetWorld(), FString("AnimationGraphPreview##") + Graph->GetPath(), [this]() { DrawToolbar(); }, 90.0f);
 }
 
 FAnimationGraphEditorTab::~FAnimationGraphEditorTab()
@@ -299,75 +404,31 @@ bool FAnimationGraphEditorTab::SaveAnimationGraphAsset()
     return true;
 }
 
-void FAnimationGraphEditorTab::DrawToolbar()
+void FAnimationGraphEditorTab::BuildDefaultLayout(ImGuiID DockSpaceRoot)
 {
-    if (!Graph)
+    if (!GraphEditorPanel || !ViewportPanel)
     {
-        ImGui::TextUnformatted("No Animation Graph asset.");
+        FEditorTab::BuildDefaultLayout(DockSpaceRoot);
         return;
     }
 
-    if (bShowClosePopup)
-    {
-        ImGui::OpenPopup("Unsaved Animation Graph Changes");
-        bShowClosePopup = false;
-    }
+    ImGuiID PreviewDockId = 0;
+    ImGuiID GraphDockId = 0;
 
-    if (ImGui::BeginPopupModal("Unsaved Animation Graph Changes", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
-    {
-        ImGui::TextUnformatted("There are unsaved changes.");
+    ImGui::DockBuilderSplitNode(DockSpaceRoot, ImGuiDir_Right, 0.36f, &PreviewDockId, &GraphDockId);
 
-        if (!ErrorMessage.empty())
-        {
-            ImGui::TextUnformatted(ErrorMessage.c_str());
-        }
+    ImGui::DockBuilderDockWindow(GraphEditorPanel->GetPanelName(), GraphDockId);
 
-        if (ImGui::Button("Save"))
-        {
-            if (SaveAnimationGraphAsset())
-            {
-                SetOpen(false);
-                ImGui::CloseCurrentPopup();
-            }
-        }
+    ImGui::DockBuilderDockWindow(ViewportPanel->GetPanelName(), PreviewDockId);
+}
 
-        ImGui::SameLine();
-
-        if (ImGui::Button("Discard"))
-        {
-            bDirty = false;
-            SetOpen(false);
-            ImGui::CloseCurrentPopup();
-        }
-
-        ImGui::SameLine();
-
-        if (ImGui::Button("Cancel"))
-        {
-            ImGui::CloseCurrentPopup();
-        }
-
-        ImGui::EndPopup();
-    }
-
-    ImGui::TextUnformatted("Animation Graph");
-
-    ImGui::Text("Skeleton: %s", Graph->GetSkeleton() ? Graph->GetSkeleton()->GetPath().c_str() : "None");
+void FAnimationGraphEditorTab::DrawToolbar()
+{
+    ImGui::TextUnformatted("Animation Preview");
 
     ImGui::SameLine();
 
-    ImGui::BeginDisabled(!bDirty);
-
-    if (ImGui::Button("Save Graph"))
-    {
-        SaveAnimationGraphAsset();
-    }
-
-    ImGui::EndDisabled();
-
-    ImGui::SameLine();
-
-    ImGui::BeginDisabled(!Graph->IsAnimationGraphDataValid());
+    ImGui::BeginDisabled(!PreviewActor);
 
     if (ImGui::Button(bPlaying ? "Pause" : "Play"))
     {
@@ -390,40 +451,9 @@ void FAnimationGraphEditorTab::DrawToolbar()
 
     ImGui::EndDisabled();
 
-    if (bDirty)
-    {
-        ImGui::SameLine();
-        ImGui::TextDisabled("Unsaved changes");
-    }
-
-    ImGui::Separator();
-
-    DrawStateEditor();
-
-    ImGui::Separator();
-
-    DrawParameterEditor();
-
-    ImGui::Separator();
-
-    DrawTransitionEditor();
-
-    ImGui::Separator();
-
-    DrawRuntimeDebug();
-
-    ImGui::Separator();
-
-    ImGui::Text("Parameters: %d | Transitions: %d", Graph->GetParameters().Num(), Graph->GetTransitions().Num());
-
     if (!ErrorMessage.empty())
     {
         ImGui::TextUnformatted(ErrorMessage.c_str());
-    }
-
-    if (!SkeletalMesh || !PreviewActor)
-    {
-        ImGui::TextDisabled("No compatible Skeletal Mesh is available for preview.");
     }
 }
 
@@ -1493,4 +1523,512 @@ void FAnimationGraphEditorTab::DrawRuntimeDebug()
     ImGui::Text("Blend Time: %.3f / %.3f sec", DebugInfo.TransitionElapsedTime, DebugInfo.TransitionDuration);
 
     ImGui::Text("Blend Progress: %.1f%%", DebugInfo.TransitionAlpha * 100.0f);
+}
+
+void FAnimationGraphEditorTab::DrawGraphEditor()
+{
+    if (!Graph)
+    {
+        ImGui::TextUnformatted("No Animation Graph asset.");
+        return;
+    }
+
+    if (bShowClosePopup)
+    {
+        ImGui::OpenPopup("Unsaved Animation Graph Changes");
+        bShowClosePopup = false;
+    }
+
+    if (ImGui::BeginPopupModal("Unsaved Animation Graph Changes", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+    {
+        ImGui::TextUnformatted("There are unsaved changes.");
+
+        if (!ErrorMessage.empty())
+        {
+            ImGui::TextUnformatted(ErrorMessage.c_str());
+        }
+
+        if (ImGui::Button("Save"))
+        {
+            if (SaveAnimationGraphAsset())
+            {
+                SetOpen(false);
+                ImGui::CloseCurrentPopup();
+            }
+        }
+
+        ImGui::SameLine();
+
+        if (ImGui::Button("Discard"))
+        {
+            bDirty = false;
+            SetOpen(false);
+            ImGui::CloseCurrentPopup();
+        }
+
+        ImGui::SameLine();
+
+        if (ImGui::Button("Cancel"))
+        {
+            ImGui::CloseCurrentPopup();
+        }
+
+        ImGui::EndPopup();
+    }
+
+    ImGui::Text("Animation Graph: %s", Graph->GetPath().c_str());
+
+    ImGui::SameLine();
+
+    ImGui::BeginDisabled(!bDirty);
+
+    if (ImGui::Button("Save Graph"))
+    {
+        SaveAnimationGraphAsset();
+    }
+
+    ImGui::EndDisabled();
+
+    ImGui::SameLine();
+
+    ImGui::BeginDisabled(!Graph->IsAnimationGraphDataValid());
+
+    if (ImGui::Button(bPlaying ? "Pause" : "Play"))
+    {
+        if (bPlaying)
+        {
+            bPlaying = false;
+        }
+        else
+        {
+            RefreshPreview();
+        }
+    }
+
+    ImGui::SameLine();
+
+    if (ImGui::Button("Restart"))
+    {
+        RefreshPreview();
+    }
+
+    ImGui::EndDisabled();
+
+    if (bDirty)
+    {
+        ImGui::SameLine();
+        ImGui::TextDisabled("Unsaved");
+    }
+
+    ImGui::Separator();
+
+    const ImVec2 Available = ImGui::GetContentRegionAvail();
+
+    const float DetailsWidth = std::min(460.0f, std::max(300.0f, Available.x * 0.35f));
+
+    const float CanvasWidth = std::max(240.0f, Available.x - DetailsWidth - ImGui::GetStyle().ItemSpacing.x);
+
+    ImGui::BeginChild("AnimationGraphCanvasRegion", ImVec2(CanvasWidth, 0.0f), true);
+
+    DrawGraphCanvas();
+
+    ImGui::EndChild();
+
+    ImGui::SameLine();
+
+    ImGui::BeginChild("AnimationGraphInspectorRegion", ImVec2(0.0f, 0.0f), true);
+
+    if (ImGui::BeginTabBar("AnimationGraphInspectorTabs"))
+    {
+        const ImGuiTabItemFlags StateFlags = bFocusStateDetails ? ImGuiTabItemFlags_SetSelected : 0;
+
+        if (ImGui::BeginTabItem("State", nullptr, StateFlags))
+        {
+            bFocusStateDetails = false;
+
+            ImGui::BeginChild("StateInspectorScroll");
+
+            DrawStateEditor();
+
+            ImGui::EndChild();
+
+            ImGui::EndTabItem();
+        }
+
+        if (ImGui::BeginTabItem("Parameters"))
+        {
+            ImGui::BeginChild("ParameterInspectorScroll");
+
+            DrawParameterEditor();
+
+            ImGui::EndChild();
+
+            ImGui::EndTabItem();
+        }
+
+        const ImGuiTabItemFlags TransitionFlags = bFocusTransitionDetails ? ImGuiTabItemFlags_SetSelected : 0;
+
+        if (ImGui::BeginTabItem("Transitions", nullptr, TransitionFlags))
+        {
+            bFocusTransitionDetails = false;
+
+            ImGui::BeginChild("TransitionInspectorScroll");
+
+            DrawTransitionEditor();
+
+            ImGui::EndChild();
+
+            ImGui::EndTabItem();
+        }
+
+        if (ImGui::BeginTabItem("Debug"))
+        {
+            ImGui::BeginChild("RuntimeDebugScroll");
+
+            DrawRuntimeDebug();
+
+            ImGui::EndChild();
+
+            ImGui::EndTabItem();
+        }
+
+        ImGui::EndTabBar();
+    }
+
+    ImGui::EndChild();
+
+    if (!ErrorMessage.empty())
+    {
+        ImGui::Separator();
+        ImGui::TextUnformatted(ErrorMessage.c_str());
+    }
+}
+
+void FAnimationGraphEditorTab::DrawGraphCanvas()
+{
+    const TArray<FAnimGraphStateDefinition>& States = Graph->GetStates();
+
+    const TArray<FAnimGraphTransitionDefinition>& Transitions = Graph->GetTransitions();
+
+    ImGui::TextUnformatted("State Machine");
+    ImGui::SameLine();
+
+    ImGui::TextDisabled("%d States / %d Transitions", States.Num(), Transitions.Num());
+
+    if (States.IsEmpty())
+    {
+        ImGui::TextDisabled("No states. Add a State from the Inspector.");
+
+        return;
+    }
+
+    ImGui::BeginChild("AnimationGraphCanvasScroll", ImVec2(0.0f, 0.0f), true,ImGuiWindowFlags_HorizontalScrollbar);
+
+    const int32 StateCount = States.Num();
+
+    constexpr float NodeWidth = 220.0f;
+    constexpr float NodeHeight = 92.0f;
+
+    constexpr float ColumnGap = 115.0f;
+    constexpr float RowGap = 55.0f;
+
+    constexpr float LeftPadding = 55.0f;
+
+    const FName EntryStateName = Graph->GetEntryState();
+
+    int32 EntryIndex = -1;
+
+    for (int32 Index = 0; Index < StateCount; ++Index)
+    {
+        if (States[Index].Name == EntryStateName)
+        {
+            EntryIndex = Index;
+            break;
+        }
+    }
+
+    std::vector<int32> Levels(static_cast<size_t>(StateCount), -1);
+
+    std::vector<int32> Queue;
+
+    if (EntryIndex != -1)
+    {
+        Levels[EntryIndex] = 0;
+        Queue.push_back(EntryIndex);
+    }
+    else
+    {
+        std::fill(Levels.begin(), Levels.end(), 0);
+    }
+
+    auto FindStateIndex = [&](const FName& Name)
+        {
+            for (int32 Index = 0; Index < StateCount; ++Index)
+            {
+                if (States[Index].Name == Name)
+                {
+                    return Index;
+                }
+            }
+
+            return -1;
+        };
+
+    for (size_t QueueIndex = 0; QueueIndex < Queue.size(); ++QueueIndex)
+    {
+        const int32 CurrentIndex = Queue[QueueIndex];
+
+        for (const FAnimGraphTransitionDefinition& Transition : Transitions)
+        {
+            if (Transition.bAnyState || Transition.FromState != States[CurrentIndex].Name)
+            {
+                continue;
+            }
+
+            const int32 DestinationIndex = FindStateIndex(Transition.ToState);
+
+            if (DestinationIndex == -1 || Levels[DestinationIndex] != -1)
+            {
+                continue;
+            }
+
+            Levels[DestinationIndex] = Levels[CurrentIndex] + 1;
+
+            Queue.push_back(DestinationIndex);
+        }
+    }
+
+    int32 MaxLevel = 0;
+
+    for (const int32 Level : Levels)
+    {
+        MaxLevel = std::max(MaxLevel, Level);
+    }
+
+    for (int32 Index = 0; Index < StateCount; ++Index)
+    {
+        if (Levels[Index] == -1)
+        {
+            Levels[Index] = EntryIndex == -1 ? 0 : MaxLevel + 1;
+        }
+
+        MaxLevel = std::max(MaxLevel, Levels[Index]);
+    }
+
+    std::vector<int32> RowsPerLevel(static_cast<size_t>(MaxLevel + 1), 0);
+
+    std::vector<ImVec2> NodePositions(static_cast<size_t>(StateCount));
+
+    int32 MaxRows = 1;
+
+    for (int32 Index = 0; Index < StateCount; ++Index)
+    {
+        const int32 Level = Levels[Index];
+        const int32 Row = RowsPerLevel[Level]++;
+
+        NodePositions[Index] = ImVec2(LeftPadding + Level * (NodeWidth + ColumnGap), 100.0f + Row * (NodeHeight + RowGap));
+
+        MaxRows = std::max(MaxRows, Row + 1);
+    }
+
+    const bool bHasAnyStateTransition = std::any_of(Transitions.begin(), Transitions.end(), [](const FAnimGraphTransitionDefinition& Transition){return Transition.bAnyState;});
+
+    const float CanvasWidth = LeftPadding + (MaxLevel + 1) * (NodeWidth + ColumnGap) + 70.0f;
+
+    const float CanvasHeight = 100.0f + MaxRows * (NodeHeight + RowGap) + 60.0f;
+
+    const ImVec2 CanvasOrigin = ImGui::GetCursorScreenPos();
+
+    const ImVec2 Available = ImGui::GetContentRegionAvail();
+
+    const float ContentWidth = std::max(CanvasWidth, Available.x);
+    const float ContentHeight = std::max(CanvasHeight, Available.y);
+
+    ImGui::Dummy(ImVec2(ContentWidth, ContentHeight));
+
+    ImDrawList* DrawList = ImGui::GetWindowDrawList();
+
+    DrawList->AddRectFilled(CanvasOrigin, ImVec2(CanvasOrigin.x + ContentWidth, CanvasOrigin.y + ContentHeight), IM_COL32(29, 31, 36, 255));
+
+    constexpr float GridSize = 32.0f;
+
+    for (float X = 0.0f; X < ContentWidth; X += GridSize)
+    {
+        const float ScreenX = CanvasOrigin.x + X;
+
+        DrawList->AddLine(ImVec2(ScreenX, CanvasOrigin.y), ImVec2(ScreenX, CanvasOrigin.y + ContentHeight), IM_COL32(43, 45, 51, 255));
+    }
+
+    for (float Y = 0.0f; Y < ContentHeight; Y += GridSize)
+    {
+        const float ScreenY = CanvasOrigin.y + Y;
+
+        DrawList->AddLine(ImVec2(CanvasOrigin.x, ScreenY), ImVec2(CanvasOrigin.x + ContentWidth, ScreenY), IM_COL32(43, 45, 51, 255));
+    }
+
+    FAnimStateMachineDebugInfo DebugInfo;
+
+    UAnimInstance* AnimInstance = PreviewActor ? PreviewActor->GetSkeletalMeshComponent()->GetAnimInstance() : nullptr;
+
+    const bool bHasDebugInfo = AnimInstance && AnimInstance->GetStateMachineDebugInfo(DebugInfo);
+
+    const ImVec2 MousePosition = ImGui::GetIO().MousePos;
+
+    const ImVec2 AnyStatePosition(CanvasOrigin.x + 20.0f, CanvasOrigin.y + 25.0f);
+
+    for (int32 Index = 0; Index < Transitions.Num(); ++Index)
+    {
+        const FAnimGraphTransitionDefinition& Transition = Transitions[Index];
+
+        const int32 DestinationIndex = FindStateIndex(Transition.ToState);
+
+        if (DestinationIndex == -1)
+        {
+            continue;
+        }
+
+        ImVec2 Start;
+        ImVec2 End;
+
+        if (Transition.bAnyState)
+        {
+            Start = ImVec2(AnyStatePosition.x + 75.0f, AnyStatePosition.y + 36.0f);
+
+            const ImVec2 DestinationPosition = NodePositions[DestinationIndex];
+
+            End = ImVec2(CanvasOrigin.x + DestinationPosition.x + NodeWidth * 0.5f, CanvasOrigin.y + DestinationPosition.y);
+        }
+        else
+        {
+            const int32 SourceIndex = FindStateIndex(Transition.FromState);
+
+            if (SourceIndex == -1)
+            {
+                continue;
+            }
+
+            const ImVec2 SourcePosition = NodePositions[SourceIndex];
+
+            const ImVec2 DestinationPosition = NodePositions[DestinationIndex];
+
+            if (DestinationPosition.x > SourcePosition.x)
+            {
+                Start = ImVec2(CanvasOrigin.x + SourcePosition.x + NodeWidth, CanvasOrigin.y + SourcePosition.y + NodeHeight * 0.5f);
+
+                End = ImVec2(CanvasOrigin.x + DestinationPosition.x, CanvasOrigin.y + DestinationPosition.y + NodeHeight * 0.5f);
+            }
+            else
+            {
+                Start = ImVec2(CanvasOrigin.x + SourcePosition.x + NodeWidth * 0.5f, CanvasOrigin.y + SourcePosition.y + NodeHeight);
+
+                End = ImVec2(CanvasOrigin.x + DestinationPosition.x + NodeWidth * 0.5f, CanvasOrigin.y + DestinationPosition.y);
+            }
+        }
+
+        const bool bSelected = SelectedTransitionIndex == Index;
+
+        const bool bLastTransition = bHasDebugInfo && DebugInfo.bHasLastTransition && DebugInfo.LastTransitionToState == Transition.ToState &&
+            DebugInfo.LastTransitionFromState == Transition.FromState && DebugInfo.bLastTransitionWasAnyState == Transition.bAnyState;
+
+        const ImU32 Color = bSelected ? IM_COL32(255, 200, 90, 255) : bLastTransition ? IM_COL32(90, 220, 150, 255) : IM_COL32(155, 165, 180, 255);
+
+        DrawTransitionArrow(DrawList, Start, End, Color, bSelected || bLastTransition ? 3.0f : 2.0f);
+
+        // 전환 규칙을 연결선 근처에 표시한다.
+        const ImVec2 Center((Start.x + End.x) * 0.5f, (Start.y + End.y) * 0.5f);
+
+        const char* RuleLabel = GetTransitionRuleLabel(Transition.Rule);
+
+        const ImVec2 LabelSize = ImGui::CalcTextSize(RuleLabel);
+
+        DrawList->AddRectFilled(ImVec2(Center.x - LabelSize.x * 0.5f - 5.0f, Center.y - 10.0f), ImVec2(Center.x + LabelSize.x * 0.5f + 5.0f, Center.y + 10.0f), IM_COL32(35, 38, 44, 245), 4.0f);
+
+        DrawList->AddText(ImVec2(Center.x - LabelSize.x * 0.5f, Center.y - LabelSize.y * 0.5f), IM_COL32(220, 225, 235, 255), RuleLabel);
+
+        if (ImGui::IsWindowHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+        {
+            if (DistanceSquaredToSegment(MousePosition, Start, End) <= 64.0f)
+            {
+                SelectedTransitionIndex = Index;
+                SelectedStateIndex = -1;
+
+                bFocusTransitionDetails = true;
+                bFocusStateDetails = false;
+            }
+        }
+    }
+
+    if (bHasAnyStateTransition)
+    {
+        const ImVec2 AnyMax(AnyStatePosition.x + 150.0f, AnyStatePosition.y + 36.0f);
+
+        DrawList->AddRectFilled(AnyStatePosition, AnyMax, IM_COL32(70, 80, 65, 255), 6.0f);
+
+        DrawList->AddRect(AnyStatePosition, AnyMax, IM_COL32(160, 190, 120, 255), 6.0f, 0, 2.0f);
+
+        DrawList->AddText(ImVec2(AnyStatePosition.x + 45.0f, AnyStatePosition.y + 10.0f), IM_COL32(235, 240, 225, 255), "Any State");
+    }
+
+    // State 노드 그리기
+    for (int32 Index = 0; Index < StateCount; ++Index)
+    {
+        const FAnimGraphStateDefinition& State = States[Index];
+
+        const ImVec2 Position(CanvasOrigin.x + NodePositions[Index].x, CanvasOrigin.y + NodePositions[Index].y);
+
+        const ImVec2 NodeMax(Position.x + NodeWidth, Position.y + NodeHeight);
+
+        ImGui::SetCursorScreenPos(Position);
+
+        ImGui::PushID(Index);
+
+        const bool bClicked = ImGui::InvisibleButton("##StateNode", ImVec2(NodeWidth, NodeHeight));
+
+        const bool bHovered = ImGui::IsItemHovered();
+
+        ImGui::PopID();
+
+        if (bClicked)
+        {
+            SelectedStateIndex = Index;
+            SelectedTransitionIndex = -1;
+
+            bFocusStateDetails = true;
+            bFocusTransitionDetails = false;
+        }
+
+        const bool bSelected = SelectedStateIndex == Index;
+
+        const bool bCurrent = bHasDebugInfo && DebugInfo.CurrentStateName == State.Name;
+
+        const bool bEntry = EntryStateName == State.Name;
+
+        const ImU32 Background = bCurrent ? IM_COL32(44, 88, 72, 255) : bSelected ? IM_COL32(60, 79, 110, 255) : IM_COL32(52, 55, 63, 255);
+
+        const ImU32 Border = bSelected ? IM_COL32(110, 180, 255, 255) : bHovered ? IM_COL32(210, 210, 220, 255) : IM_COL32(100, 105, 115, 255);
+
+        DrawList->AddRectFilled(Position, NodeMax, Background, 7.0f);
+
+        DrawList->AddRect(Position, NodeMax, Border, 7.0f, 0, bSelected ? 2.5f : 1.0f);
+
+        const FString StateName = State.Name.ToString();
+
+        DrawList->AddText(ImVec2(Position.x + 12.0f, Position.y + 12.0f), IM_COL32(245, 245, 250, 255), StateName.c_str());
+
+        const char* NodeType = State.NodeType == EAnimGraphStateNodeType::SequencePlayer ? "Sequence Player" : "BlendSpace Player";
+
+        DrawList->AddText(ImVec2(Position.x + 12.0f, Position.y + 39.0f), IM_COL32(180, 195, 215, 255), NodeType);
+
+        if (bEntry)
+        {
+            DrawList->AddText(ImVec2(Position.x + 130.0f, Position.y + 12.0f), IM_COL32(255, 215, 110, 255), "ENTRY");
+        }
+
+        if (bCurrent)
+        {
+            DrawList->AddText(ImVec2(Position.x + 12.0f, Position.y + 67.0f), IM_COL32(130, 245, 180, 255), "ACTIVE");
+        }
+    }
+
+    ImGui::EndChild();
 }

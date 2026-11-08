@@ -22,12 +22,16 @@ public:
     void CollectViews(TArray<FEditorTabView>& OutViews) override;
     UWorld* GetWorld() const override;
     const UObject* GetEditingAsset() const override { return Graph; }
+protected:
+    void BuildDefaultLayout(ImGuiID DockSpaceRoot) override;
 private:
     void DrawToolbar();
     void DrawStateEditor();
     void DrawParameterEditor();
     void DrawTransitionEditor();
     void DrawRuntimeDebug();
+    void DrawGraphEditor();
+    void DrawGraphCanvas();
     void FrameMesh();
     void RefreshPreview();
     bool CanCloseNow() override;
@@ -38,6 +42,9 @@ private:
 	ASkeletalMeshActor* PreviewActor = nullptr;
 	TUniquePtr<FPreviewScene> PreviewScene;
 	FPreviewViewportPanel* ViewportPanel = nullptr;
+    IEditorPanel* GraphEditorPanel = nullptr;
+    bool bFocusStateDetails = false;
+    bool bFocusTransitionDetails = false;
     TArray<UAnimSequence*> AvailableAnimations;
     TArray<UBlendSpace1D*> AvailableBlendSpaces;
 
