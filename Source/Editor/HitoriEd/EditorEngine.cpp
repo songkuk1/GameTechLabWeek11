@@ -49,6 +49,8 @@
 #include "Editor/SkeletalMeshPreviewTab.h"
 #include "Editor/AnimationSequenceViewerTab.h"
 #include "Editor/BlendSpaceEditorTab.h"
+#include "Editor/AnimationGraphEditorTab.h"
+#include "Animation/AnimationGraph.h"
 #include "Animation/BlendSpace1D.h"
 
 namespace
@@ -142,7 +144,7 @@ bool UEditorEngine::Init()
 	LevelSequencerPanel = EditorUI->GetLevelTab()->AddPanel<FLevelSequencePanel>();
 	ContentDrawerPanel->SetOpenLevelSequenceBinding([this](const FString& Path){LevelSequencerPanel->OpenSequenceFile(Path);});
 	ContentDrawerPanel->SetOpenBlendSpaceBinding([this](UBlendSpace1D* BlendSpace){PendingBlendSpaceEditorAsset = BlendSpace;});
-
+	ContentDrawerPanel->SetOpenAnimationGraphBinding([this](UAnimationGraph* Graph) {PendingAnimationGraphEditorAsset = Graph;});
 	EditorUI->GetLevelTab()->SetGizmo(Gizmo.get());
 	EditorUI->GetLevelTab()->SetViewportsPanel(ViewportsPanel);
 	EditorUI->GetLevelTab()->SetIsPlayingViewQuery([this](int32 ViewIndex) { return IsPlayingView(ViewIndex); });
@@ -656,6 +658,13 @@ void UEditorEngine::UpdateEditorTabs()
 		PendingBlendSpaceEditorAsset = nullptr;
 		OpenBlendSpaceEditor(BlendSpace);
 	}
+
+	if (PendingAnimationGraphEditorAsset)
+	{
+		UAnimationGraph* Graph = PendingAnimationGraphEditorAsset;
+		PendingAnimationGraphEditorAsset = nullptr;
+		OpenAnimationGraphEditor(Graph);
+	}
 }
 
 FSceneView UEditorEngine::MakeSceneView(const FViewport& Viewport) const
@@ -853,6 +862,25 @@ void UEditorEngine::OpenBlendSpaceEditor(UBlendSpace1D* BlendSpace)
 		}
 	}
 	FBlendSpaceEditorTab* NewTab = EditorUI->AddTab<FBlendSpaceEditorTab>(BlendSpace);
+	NewTab->RequestFocus();
+}
+
+void UEditorEngine::OpenAnimationGraphEditor(UAnimationGraph* Graph)
+{
+	if (!Graph)
+	{
+		return;
+	}
+	for (const TUniquePtr<FEditorTab>& Tab : EditorUI->GetTabs())
+	{
+		if (Tab->GetEditingAsset() == Graph)
+		{
+			Tab->RequestFocus();
+			return;
+		}
+	}
+	FAnimationGraphEditorTab* NewTab = EditorUI->AddTab<FAnimationGraphEditorTab>(Graph);
+
 	NewTab->RequestFocus();
 }
 

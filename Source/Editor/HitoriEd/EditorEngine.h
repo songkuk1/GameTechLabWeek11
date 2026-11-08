@@ -44,6 +44,7 @@
 class UAnimSequence;
 class USkeletalMesh;
 class UBlendSpace1D;
+class UAnimationGraph;
 
 class UEditorEngine : public UEngine
 {
@@ -139,6 +140,8 @@ private:
 
 	void OpenBlendSpaceEditor(UBlendSpace1D* BlendSpace);
 
+	void OpenAnimationGraphEditor(UAnimationGraph* Graph);
+
 	// FEngineLoop 소유. OnInit에서 받아 둔다.
 	FWindow* MainWindow = nullptr;
 	FSwapchain* MainWindowSC = nullptr;
@@ -178,6 +181,7 @@ private:
 	USkeletalMesh* PendingAnimationViewerMesh = nullptr;
 	UAnimSequence* PendingAnimationViewerAnimation = nullptr;
 	UBlendSpace1D* PendingBlendSpaceEditorAsset = nullptr;
+	UAnimationGraph* PendingAnimationGraphEditorAsset = nullptr;
 
 	UWorld* EditorWorld = nullptr;
 	UWorld* PlayWorld = nullptr;

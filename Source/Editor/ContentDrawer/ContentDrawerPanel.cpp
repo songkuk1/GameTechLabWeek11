@@ -12,6 +12,8 @@
 #include "Animation/BlendSpace1D.h"
 #include "Render/SkeletalMesh.h"
 #include "UObject/UObjectIterator.h"
+#include "Animation/AnimSequence.h"
+#include "Animation/AnimationGraph.h"
 
 bool FContentDrawerPanel::Init()
 {
@@ -192,6 +194,19 @@ void FContentDrawerPanel::OnRender()
 							CreateAssetError = "Could not open BlendSpace.";
 						}
 					}
+					else if (Path.extension() == ".animgraph")
+					{
+						UAnimationGraph* Graph = UAssetManager::LoadAnimationGraph(PathString);
+
+						if (Graph && OpenAnimationGraph)
+						{
+							OpenAnimationGraph(Graph);
+						}
+						else
+						{
+							CreateAssetError = "Could not open Animation Graph.";
+						}
+					}
 				}
 				// 파일 이름 표시
 				ImGui::TextWrapped("%s", FilenameString.c_str());
@@ -213,6 +228,14 @@ void FContentDrawerPanel::OnRender()
 				{
 					SelectedCreateMesh = nullptr;
 					bOpenCreateBlendSpacePopup = true;
+				}
+
+				if (ImGui::MenuItem("Animation Graph"))
+				{
+					SelectedCreateAnimationGraphMesh = nullptr;
+					SelectedCreateAnimationGraphSequence = nullptr;
+
+					bOpenCreateAnimationGraphPopup = true;
 				}
 				ImGui::EndMenu();
 			}
@@ -284,6 +307,153 @@ void FContentDrawerPanel::OnRender()
 			{
 				ImGui::TextDisabled("No compatible Skeletal Mesh is loaded.");
 			}
+			ImGui::EndPopup();
+		}
+
+		if (bOpenCreateAnimationGraphPopup)
+		{
+			ImGui::OpenPopup("Create Animation Graph");
+			bOpenCreateAnimationGraphPopup = false;
+		}
+
+		if (ImGui::BeginPopupModal("Create Animation Graph", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+		{
+			TArray<USkeletalMesh*> AvailableMeshes;
+
+			for (TObjectIterator<USkeletalMesh> It; It; ++It)
+			{
+				USkeletalMesh* Mesh = *It;
+
+				if (Mesh && Mesh->GetSkeleton())
+				{
+					AvailableMeshes.Add(Mesh);
+				}
+			}
+
+			std::sort(AvailableMeshes.begin(), AvailableMeshes.end(), [](const USkeletalMesh* A, const USkeletalMesh* B) { return A->GetPath() < B->GetPath(); });
+
+			if (SelectedCreateAnimationGraphMesh && AvailableMeshes.Find(SelectedCreateAnimationGraphMesh) == -1)
+			{
+				SelectedCreateAnimationGraphMesh = nullptr;
+				SelectedCreateAnimationGraphSequence = nullptr;
+			}
+
+			const FString MeshLabel = SelectedCreateAnimationGraphMesh ? SelectedCreateAnimationGraphMesh->GetPath() : "Select Skeletal Mesh";
+
+			ImGui::SetNextItemWidth(350.0f);
+
+			if (ImGui::BeginCombo("Skeletal Mesh", MeshLabel.c_str()))
+			{
+				for (USkeletalMesh* Mesh : AvailableMeshes)
+				{
+					const bool bSelected = Mesh == SelectedCreateAnimationGraphMesh;
+
+					if (ImGui::Selectable(Mesh->GetPath().c_str(), bSelected))
+					{
+						SelectedCreateAnimationGraphMesh = Mesh;
+						SelectedCreateAnimationGraphSequence = nullptr;
+					}
+
+					if (bSelected)
+					{
+						ImGui::SetItemDefaultFocus();
+					}
+				}
+
+				ImGui::EndCombo();
+			}
+
+			TArray<UAnimSequence*> AvailableAnimations;
+
+			if (SelectedCreateAnimationGraphMesh)
+			{
+				USkeleton* Skeleton = SelectedCreateAnimationGraphMesh->GetSkeleton();
+
+				for (TObjectIterator<UAnimSequence> It; It; ++It)
+				{
+					UAnimSequence* Animation = *It;
+
+					if (Animation && Animation->GetSkeleton() == Skeleton)
+					{
+						AvailableAnimations.Add(Animation);
+					}
+				}
+
+				std::sort(AvailableAnimations.begin(), AvailableAnimations.end(), [](const UAnimSequence* A, const UAnimSequence* B) { return A->GetPath() < B->GetPath(); });
+			}
+
+			if (SelectedCreateAnimationGraphSequence && AvailableAnimations.Find(SelectedCreateAnimationGraphSequence) == -1)
+			{
+				SelectedCreateAnimationGraphSequence = nullptr;
+			}
+
+			if (!SelectedCreateAnimationGraphSequence && !AvailableAnimations.IsEmpty())
+			{
+				SelectedCreateAnimationGraphSequence = AvailableAnimations[0];
+			}
+
+			const FString AnimationLabel = SelectedCreateAnimationGraphSequence ? SelectedCreateAnimationGraphSequence->GetPath() : "Select Initial Animation";
+
+			ImGui::SetNextItemWidth(350.0f);
+
+			if (ImGui::BeginCombo("Initial Animation", AnimationLabel.c_str()))
+			{
+				for (UAnimSequence* Animation : AvailableAnimations)
+				{
+					const bool bSelected = Animation == SelectedCreateAnimationGraphSequence;
+
+					if (ImGui::Selectable(Animation->GetPath().c_str(), bSelected))
+					{
+						SelectedCreateAnimationGraphSequence = Animation;
+					}
+
+					if (bSelected)
+					{
+						ImGui::SetItemDefaultFocus();
+					}
+				}
+
+				ImGui::EndCombo();
+			}
+
+			ImGui::Spacing();
+
+			const bool bCanCreate = SelectedCreateAnimationGraphMesh != nullptr && SelectedCreateAnimationGraphSequence != nullptr;
+
+			ImGui::BeginDisabled(!bCanCreate);
+
+			if (ImGui::Button("Create"))
+			{
+				if (CreateAnimationGraphFile(SelectedCreateAnimationGraphMesh, SelectedCreateAnimationGraphSequence))
+				{
+					SelectedCreateAnimationGraphMesh = nullptr;
+					SelectedCreateAnimationGraphSequence = nullptr;
+
+					ImGui::CloseCurrentPopup();
+				}
+			}
+
+			ImGui::EndDisabled();
+
+			ImGui::SameLine();
+
+			if (ImGui::Button("Cancel"))
+			{
+				SelectedCreateAnimationGraphMesh = nullptr;
+				SelectedCreateAnimationGraphSequence = nullptr;
+
+				ImGui::CloseCurrentPopup();
+			}
+
+			if (AvailableMeshes.IsEmpty())
+			{
+				ImGui::TextDisabled("No compatible Skeletal Mesh is loaded.");
+			}
+			else if (SelectedCreateAnimationGraphMesh && AvailableAnimations.IsEmpty())
+			{
+				ImGui::TextDisabled("No Animation Sequence uses this Skeleton.");
+			}
+
 			ImGui::EndPopup();
 		}
 	}
@@ -361,6 +531,69 @@ bool FContentDrawerPanel::CreateBlendSpaceFile(USkeletalMesh* InSkeletalMesh)
 	if (OpenBlendSpace)
 	{
 		OpenBlendSpace(CreatedBlendSpace);
+	}
+
+	return true;
+}
+
+bool FContentDrawerPanel::CreateAnimationGraphFile(USkeletalMesh* InSkeletalMesh, UAnimSequence* InitialAnimation)
+{
+	CreateAssetError.clear();
+
+	if (!InSkeletalMesh || !InSkeletalMesh->GetSkeleton() || !InitialAnimation || InitialAnimation->GetSkeleton() != InSkeletalMesh->GetSkeleton())
+	{
+		CreateAssetError = "Invalid Skeletal Mesh or Animation.";
+		return false;
+	}
+
+	fs::path Path = CurrentPath / "NewAnimationGraph.animgraph";
+
+	for (int32 Index = 1; fs::exists(Path); ++Index)
+	{
+		Path = CurrentPath / ("NewAnimationGraph_" + std::to_string(Index) + ".animgraph");
+	}
+
+	const FString FilePath = PathUtils::ToUtf8(Path);
+
+	UAnimationGraph* NewGraph = NewObject<UAnimationGraph>();
+
+	if (!NewGraph)
+	{
+		CreateAssetError = "Could not create Animation Graph.";
+		return false;
+	}
+
+	const FName EntryStateName("Entry");
+
+	if (!NewGraph->SetSkeleton(InSkeletalMesh->GetSkeleton()) || !NewGraph->AddSequenceState(EntryStateName, InitialAnimation) || !NewGraph->SetEntryState(EntryStateName))
+	{
+		delete NewGraph;
+
+		CreateAssetError = "Could not initialize Animation Graph.";
+		return false;
+	}
+
+	if (!FJsonArchive::SaveAnimationGraph(NewGraph, FilePath))
+	{
+		delete NewGraph;
+
+		CreateAssetError = "Could not save Animation Graph.";
+		return false;
+	}
+
+	delete NewGraph;
+
+	UAnimationGraph* CreatedGraph = UAssetManager::LoadAnimationGraph(FilePath);
+
+	if (!CreatedGraph)
+	{
+		CreateAssetError = "Could not register Animation Graph asset.";
+		return false;
+	}
+
+	if (OpenAnimationGraph)
+	{
+		OpenAnimationGraph(CreatedGraph);
 	}
 
 	return true;

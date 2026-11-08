@@ -1,1 +1,55 @@
 #pragma once
+
+#include "Editor/FEditorTab.h"
+#include "PreviewScene.h"
+#include "Animation/AnimationGraph.h"
+
+class UAnimSequence;
+class UBlendSpace1D;
+class USkeletalMesh;
+class ASkeletalMeshActor;
+class FPreviewViewportPanel;
+
+class FAnimationGraphEditorTab : public FEditorTab
+{
+public:
+    explicit FAnimationGraphEditorTab(UAnimationGraph* InGraph);
+    virtual ~FAnimationGraphEditorTab() override;
+    FAnimationGraphEditorTab(const FAnimationGraphEditorTab&) = delete;
+    FAnimationGraphEditorTab& operator=(const FAnimationGraphEditorTab&) = delete;
+    void Tick(float DeltaTime) override;
+    void RouteInput(const FViewportInput& BaseInput) override;
+    void CollectViews(TArray<FEditorTabView>& OutViews) override;
+    UWorld* GetWorld() const override;
+    const UObject* GetEditingAsset() const override { return Graph; }
+private:
+    void DrawToolbar();
+    void DrawStateEditor();
+    void FrameMesh();
+    void RefreshPreview();
+    bool CanCloseNow() override;
+    bool SaveAnimationGraphAsset();
+private:
+	UAnimationGraph* Graph = nullptr;
+	USkeletalMesh* SkeletalMesh = nullptr;
+	ASkeletalMeshActor* PreviewActor = nullptr;
+	TUniquePtr<FPreviewScene> PreviewScene;
+	FPreviewViewportPanel* ViewportPanel = nullptr;
+    TArray<UAnimSequence*> AvailableAnimations;
+    TArray<UBlendSpace1D*> AvailableBlendSpaces;
+
+    UAnimSequence* NewSequence = nullptr;
+    UBlendSpace1D* NewBlendSpace = nullptr;
+
+    int32 SelectedStateIndex = -1;
+
+    char NewStateNameBuffer[64] = "NewState";
+    char RenameStateBuffer[64] = {};
+
+    FString ErrorMessage;
+
+    bool bShowClosePopup = false;
+    bool bDirty = false;
+    bool bPlaying = false;
+    bool bFramed = false;
+};

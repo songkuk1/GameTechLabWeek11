@@ -222,7 +222,7 @@ bool UAnimationGraph::RenameParameter(const FName& OldName, const FName& NewName
 
     if (OldName == NewName)
     {
-        return false;
+        return true;
     }
 
     if (FindParameterIndex(NewName) != -1)

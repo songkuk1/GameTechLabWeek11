@@ -1,0 +1,21 @@
+{
+    "AnimationGraph": {
+        "EntryState": "Entry",
+        "Parameters": [],
+        "Properties": {},
+        "Skeleton": "Models/UAL1_Standard_Skeleton",
+        "States": [
+            {
+                "BlendParameterName": "None",
+                "BlendSpace": null,
+                "Looping": true,
+                "Name": "Entry",
+                "NodeType": 0,
+                "PlayRate": 1.0,
+                "Sequence": "Models/UAL1_Standard.fbx::Armature|Idle_Loop"
+            }
+        ],
+        "Transitions": []
+    },
+    "Version": 1
+}
