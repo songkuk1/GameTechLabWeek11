@@ -1745,7 +1745,7 @@ void FAnimationGraphEditorTab::DrawGraphCanvas()
     constexpr float NodeWidth = 220.0f;
     constexpr float NodeHeight = 92.0f;
 
-    constexpr float ColumnGap = 115.0f;
+    constexpr float ColumnGap = 170.0f;
     constexpr float RowGap = 55.0f;
 
     constexpr float LeftPadding = 55.0f;
@@ -1912,6 +1912,7 @@ void FAnimationGraphEditorTab::DrawGraphCanvas()
         ImVec2 Control2;
         ImVec2 SourcePin;
         ImVec2 DestinationPin;
+        ImVec2 LabelOffset(0.0f, 0.0f);
 
         if (Transition.bAnyState)
         {
@@ -1948,22 +1949,28 @@ void FAnimationGraphEditorTab::DrawGraphCanvas()
 
             const float DX = DestinationCenter.x - SourceCenter.x;
             const float DY = DestinationCenter.y - SourceCenter.y;
-            const float LaneOffset = SourceIndex < DestinationIndex ? -18.0f : 18.0f;
+            float LaneOffset = SourceIndex < DestinationIndex ? -18.0f : 18.0f;
+            
 
             if (std::abs(DX) >= std::abs(DY))
             {
                 const float Direction = DX >= 0.0f ? 1.0f : -1.0f;
+                LaneOffset = DX >= 0.0f ? -18.0f : 18.0f;
 
                 SourcePin = ImVec2(CanvasOrigin.x + SourceCenter.x + Direction * NodeWidth * 0.5f, CanvasOrigin.y + SourceCenter.y + LaneOffset);
                 DestinationPin = ImVec2(CanvasOrigin.x + DestinationCenter.x - Direction * NodeWidth * 0.5f, CanvasOrigin.y + DestinationCenter.y + LaneOffset);
 
                 Start = ImVec2(SourcePin.x + Direction * 6.0f, SourcePin.y);
-                End = ImVec2(DestinationPin.x - Direction * 18.0f, DestinationPin.y);
+                End = ImVec2(DestinationPin.x - Direction * 8.0f, DestinationPin.y);
 
-                const float ControlDistance = std::max(60.0f, std::abs(DX) * 0.4f);
+                const float RouteLength = std::abs(End.x - Start.x);
+                const float ControlDistance = std::min(55.0f, RouteLength * 0.42f);
+                const float CurveOffset = LaneOffset * 0.85f;
 
-                Control1 = ImVec2(Start.x + Direction * ControlDistance, Start.y + LaneOffset * 0.55f);
-                Control2 = ImVec2(End.x - Direction * ControlDistance, End.y + LaneOffset * 0.55f);
+                Control1 = ImVec2(Start.x + Direction * ControlDistance, Start.y + CurveOffset);
+                Control2 = ImVec2(End.x - Direction * ControlDistance, End.y + CurveOffset);
+
+                LabelOffset = ImVec2(0.0f, LaneOffset < 0.0f ? -16.0f : 16.0f);
             }
             else
             {
@@ -1973,12 +1980,16 @@ void FAnimationGraphEditorTab::DrawGraphCanvas()
                 DestinationPin = ImVec2(CanvasOrigin.x + DestinationCenter.x + LaneOffset, CanvasOrigin.y + DestinationCenter.y - Direction * NodeHeight * 0.5f);
 
                 Start = ImVec2(SourcePin.x, SourcePin.y + Direction * 6.0f);
-                End = ImVec2(DestinationPin.x, DestinationPin.y - Direction * 18.0f);
+                End = ImVec2(DestinationPin.x, DestinationPin.y - Direction * 8.0f);
 
-                const float ControlDistance = std::max(60.0f, std::abs(DY) * 0.4f);
+                const float RouteLength = std::abs(End.y - Start.y);
+                const float ControlDistance = std::min(55.0f, RouteLength * 0.42f);
+                const float CurveOffset = LaneOffset * 0.85f;
 
-                Control1 = ImVec2(Start.x + LaneOffset * 0.55f, Start.y + Direction * ControlDistance);
-                Control2 = ImVec2(End.x + LaneOffset * 0.55f, End.y - Direction * ControlDistance);
+                Control1 = ImVec2(Start.x + CurveOffset, Start.y + Direction * ControlDistance);
+                Control2 = ImVec2(End.x + CurveOffset, End.y - Direction * ControlDistance);
+
+                LabelOffset = ImVec2(LaneOffset < 0.0f ? -16.0f : 16.0f, 0.0f);
             }
         }
 
@@ -1995,11 +2006,12 @@ void FAnimationGraphEditorTab::DrawGraphCanvas()
         DrawTransitionCurve(DrawList, Start, Control1, Control2, End, Color, bSelected || bLastTransition ? 3.0f : 2.0f);
 
         const ImVec2 Center = EvaluateBezier(Start, Control1, Control2, End, 0.5f);
+        const ImVec2 LabelCenter(Center.x + LabelOffset.x, Center.y + LabelOffset.y);
         const char* RuleLabel = GetTransitionRuleLabel(Transition.Rule);
         const ImVec2 LabelSize = ImGui::CalcTextSize(RuleLabel);
 
-        DrawList->AddRectFilled(ImVec2(Center.x - LabelSize.x * 0.5f - 5.0f, Center.y - 10.0f), ImVec2(Center.x + LabelSize.x * 0.5f + 5.0f, Center.y + 10.0f), IM_COL32(35, 38, 44, 245), 4.0f);
-        DrawList->AddText(ImVec2(Center.x - LabelSize.x * 0.5f, Center.y - LabelSize.y * 0.5f), IM_COL32(220, 225, 235, 255), RuleLabel);
+        DrawList->AddRectFilled(ImVec2(LabelCenter.x - LabelSize.x * 0.5f - 5.0f, LabelCenter.y - 10.0f), ImVec2(LabelCenter.x + LabelSize.x * 0.5f + 5.0f, LabelCenter.y + 10.0f), IM_COL32(35, 38, 44, 245), 4.0f);
+        DrawList->AddText(ImVec2(LabelCenter.x - LabelSize.x * 0.5f, LabelCenter.y - LabelSize.y * 0.5f), IM_COL32(220, 225, 235, 255), RuleLabel);
 
         if (ImGui::IsWindowHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
         {
