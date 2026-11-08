@@ -1,5 +1,7 @@
 #include "EnginePCH.h"
 #include "AnimNode_StateMachine.h"
+#include "Animation/AnimInstance.h"
+#include <limits>
 
 bool FAnimNode_StateMachine::AddState(const FName& StateName, FAnimNode_Base* StateNode)
 {
@@ -75,8 +77,24 @@ bool FAnimNode_StateMachine::IsCurrentStateFinished() const
 	return false;
 }
 
+bool FAnimNode_StateMachine::AddTransition(const FName& FromState, const FName& ToState, EAnimTransitionRule Rule, const FName& ParameterName, int32 Priority)
+{
+	return AddTransitionInternal(FromState, ToState, Rule, ParameterName, Priority, false);
+}
+
+bool FAnimNode_StateMachine::AddAnyStateTransition(const FName& ToState, EAnimTransitionRule Rule, const FName& ParameterName, int32 Priority)
+{
+	return AddTransitionInternal(NAME_None, ToState, Rule, ParameterName, Priority, true);
+}
+
+void FAnimNode_StateMachine::ClearTransitions()
+{
+	Transitions.Reset();
+}
+
 void FAnimNode_StateMachine::Update(const FAnimationUpdateContext& Context)
 {
+	EvaluateTransitions(Context);
 	FAnimNode_Base* ActiveNode = GetActiveStateNode();
 
 	if (ActiveNode)
@@ -135,4 +153,86 @@ const FAnimNode_Base* FAnimNode_StateMachine::GetActiveStateNode() const
 		return nullptr;
 	}
 	return States[CurrentStateIndex].Node;
+}
+
+bool FAnimNode_StateMachine::AddTransitionInternal(const FName& FromState, const FName& ToState, EAnimTransitionRule Rule, const FName& ParameterName, int32 Priority, bool bAnyState)
+{
+	if (ToState.IsNone() || FindStateIndex(ToState) == -1)
+	{
+		return false;
+	}
+	if (!bAnyState && (FromState.IsNone() || FindStateIndex(FromState) == -1))
+	{
+		return false;
+	}
+
+	if ((Rule == EAnimTransitionRule::BoolTrue || Rule == EAnimTransitionRule::BoolFalse) && ParameterName.IsNone())
+	{
+		return false;
+	}
+
+	FAnimStateTransition Transition;
+	Transition.FromState = FromState;
+	Transition.ToState = ToState;
+	Transition.ParameterName = ParameterName;
+	Transition.Rule = Rule;
+	Transition.Priority = Priority;
+	Transition.bAnyState = bAnyState;
+
+	Transitions.Add(Transition);
+
+	return true;
+}
+
+void FAnimNode_StateMachine::EvaluateTransitions(const FAnimationUpdateContext& Context)
+{
+	const FName CurrentState = GetCurrentStateName();
+	if (CurrentState.IsNone())
+	{
+		return;
+	}
+	int32 SelectedTransitionIndex = -1;
+	int32 BestPriority = std::numeric_limits<int32>::min();
+	for (int32 Index = 0; Index < Transitions.Num(); ++Index)
+	{
+		const FAnimStateTransition& Transition = Transitions[Index];
+		if (!Transition.bAnyState && Transition.FromState != CurrentState)
+		{
+			continue;
+		}
+		if (Transition.ToState == CurrentState)
+		{
+			continue;
+		}
+		if (!IsTransitionRuleMet(Transition, Context))
+		{
+			continue;
+		}
+		if (Transition.Priority > BestPriority)
+		{
+			BestPriority = Transition.Priority;
+			SelectedTransitionIndex = Index;
+		}
+	}
+	if (SelectedTransitionIndex != -1)
+	{
+		SetState(Transitions[SelectedTransitionIndex].ToState, true);
+	}
+}
+
+bool FAnimNode_StateMachine::IsTransitionRuleMet(const FAnimStateTransition& Transition, const FAnimationUpdateContext& Context) const
+{
+	switch (Transition.Rule)
+	{
+	case EAnimTransitionRule::Always:
+		return true;
+
+	case EAnimTransitionRule::BoolTrue:
+		return Context.AnimInstance && Context.AnimInstance->HasBoolParameter(Transition.ParameterName) && Context.AnimInstance->GetBoolParameter(Transition.ParameterName);
+	case EAnimTransitionRule::BoolFalse:
+		return Context.AnimInstance && Context.AnimInstance->HasBoolParameter(Transition.ParameterName) && !Context.AnimInstance->GetBoolParameter(Transition.ParameterName);
+	case EAnimTransitionRule::StateFinished:
+		return IsCurrentStateFinished();
+	}
+	return false;
 }

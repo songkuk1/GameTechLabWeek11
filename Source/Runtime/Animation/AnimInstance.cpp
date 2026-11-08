@@ -156,3 +156,45 @@ bool UAnimInstance::IsLooping() const
 	const IAnimPlaybackControl* Control = GetPlaybackControl();
 	return Control ? Control->IsLooping() : true;
 }
+
+void UAnimInstance::SetBoolParameter(const FName& Name, bool Value)
+{
+	if (Name.IsNone())
+	{
+		return;
+	}
+	BoolParameters.Add(Name, Value);
+}
+
+bool UAnimInstance::GetBoolParameter(const FName& Name) const
+{
+	const bool* Value = BoolParameters.Find(Name);
+	return Value ? *Value : false;
+}
+
+bool UAnimInstance::HasBoolParameter(const FName& Name) const
+{
+	return BoolParameters.Contains(Name);
+}
+
+void UAnimInstance::SetFloatParameter(const FName& Name, float Value)
+{
+	if (Name.IsNone())
+	{
+		return;
+	}
+
+	FloatParameters.Add(Name, std::isfinite(Value) ? Value : 0.0f);
+}
+
+float UAnimInstance::GetFloatParameter(const FName& Name) const
+{
+	const float* Value = FloatParameters.Find(Name);
+	return Value ? *Value : 0.0f;
+}
+
+void UAnimInstance::ClearAnimationParameters()
+{
+	BoolParameters.Reset();
+	FloatParameters.Reset();
+}

@@ -1,9 +1,10 @@
 #pragma once
-
+#undef GetCurrentTime
 #include "UObject/Class.h"
 #include "Animation/AnimNode_SequencePlayer.h"
 #include "Animation/AnimNode_TwoWayBlend.h"
 #include "Animation/AnimNode_BlendSpacePlayer.h"
+#include "Containers/Map.h"
 
 class USkeletalMeshComponent;
 class AActor;
@@ -35,6 +36,14 @@ public:
 	float GetPlayRate() const;
 	void SetLooping(bool bInLoop);
 	bool IsLooping() const;
+
+	void SetBoolParameter(const FName& Name, bool Value);
+	bool GetBoolParameter(const FName& Name) const;
+	bool HasBoolParameter(const FName& Name) const;
+	void SetFloatParameter(const FName& Name, float Value);
+	float GetFloatParameter(const FName& Name) const;
+	void ClearAnimationParameters();
+
 	IAnimPlaybackControl* GetPlaybackControl() { return RootNode ? RootNode->GetPlaybackControl() : nullptr; }
 	const IAnimPlaybackControl* GetPlaybackControl() const { return RootNode ? RootNode->GetPlaybackControl() : nullptr; }
 protected:
@@ -45,5 +54,9 @@ private:
 	FAnimNode_BlendSpacePlayer BlendSpacePlayer;
 
 	USkeletalMeshComponent* OwningComponent = nullptr;
+
+	TMap<FName, bool, FNameHash> BoolParameters;
+	TMap<FName, float, FNameHash> FloatParameters;
+
 	bool bInitialized = false;
 };

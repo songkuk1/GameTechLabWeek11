@@ -1,4 +1,5 @@
 #pragma once
+#undef GetCurrentTime
 
 #include "Animation/AnimNode_SequencePlayer.h"
 #include "Animation/AnimNode_TwoWayBlend.h"

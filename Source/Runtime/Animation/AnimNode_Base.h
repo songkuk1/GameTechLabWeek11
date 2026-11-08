@@ -1,5 +1,5 @@
 #pragma once
-
+#undef GetCurrentTime
 #include "Containers/Array.h"
 #include "Math/Vector.h"
 #include "Math/Quat.h"
