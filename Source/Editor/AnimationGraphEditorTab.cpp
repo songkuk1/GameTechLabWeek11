@@ -134,29 +134,45 @@ namespace
         return PX * PX + PY * PY;
     }
 
-    void DrawTransitionArrow(ImDrawList* DrawList, const ImVec2& Start, const ImVec2& End, ImU32 Color, float Thickness)
+    ImVec2 EvaluateBezier(const ImVec2& Start, const ImVec2& Control1, const ImVec2& Control2, const ImVec2& End, float T)
     {
-        DrawList->AddLine(Start, End, Color, Thickness);
+        const float U = 1.0f - T;
+        const float U2 = U * U;
+        const float T2 = T * T;
 
-        const float DX = End.x - Start.x;
-        const float DY = End.y - Start.y;
+        return ImVec2(
+            U2 * U * Start.x + 3.0f * U2 * T * Control1.x + 3.0f * U * T2 * Control2.x + T2 * T * End.x,
+            U2 * U * Start.y + 3.0f * U2 * T * Control1.y + 3.0f * U * T2 * Control2.y + T2 * T * End.y);
+    }
 
-        const float Length = std::sqrt(DX * DX + DY * DY);
+    void DrawTransitionCurve(ImDrawList* DrawList, const ImVec2& Start, const ImVec2& Control1, const ImVec2& Control2, const ImVec2& End, ImU32 Color, float Thickness)
+    {
+        constexpr int32 SegmentCount = 24;
+
+        ImVec2 Previous = Start;
+
+        for (int32 Index = 1; Index <= SegmentCount; ++Index)
+        {
+            const float T = static_cast<float>(Index) / SegmentCount;
+            const ImVec2 Current = EvaluateBezier(Start, Control1, Control2, End, T);
+
+            DrawList->AddLine(Previous, Current, Color, Thickness);
+            Previous = Current;
+        }
+
+        const ImVec2 Tangent(End.x - Control2.x, End.y - Control2.y);
+        const float Length = std::sqrt(Tangent.x * Tangent.x + Tangent.y * Tangent.y);
 
         if (Length <= 1.0f)
         {
             return;
         }
 
-        const float NX = DX / Length;
-        const float NY = DY / Length;
+        const ImVec2 Direction(Tangent.x / Length, Tangent.y / Length);
+        const ImVec2 Perpendicular(-Direction.y, Direction.x);
+        const ImVec2 Base(End.x - Direction.x * 11.0f, End.y - Direction.y * 11.0f);
 
-        const float BaseX = End.x - NX * 11.0f;
-        const float BaseY = End.y - NY * 11.0f;
-
-        const ImVec2 Perpendicular(-NY * 5.0f, NX * 5.0f);
-
-        DrawList->AddTriangleFilled(End, ImVec2(BaseX + Perpendicular.x, BaseY + Perpendicular.y), ImVec2(BaseX - Perpendicular.x, BaseY - Perpendicular.y), Color);
+        DrawList->AddTriangleFilled(End, ImVec2(Base.x + Perpendicular.x * 5.0f, Base.y + Perpendicular.y * 5.0f), ImVec2(Base.x - Perpendicular.x * 5.0f, Base.y - Perpendicular.y * 5.0f), Color);
     }
 }
 
@@ -1875,6 +1891,7 @@ void FAnimationGraphEditorTab::DrawGraphCanvas()
     const bool bHasDebugInfo = AnimInstance && AnimInstance->GetStateMachineDebugInfo(DebugInfo);
 
     const ImVec2 MousePosition = ImGui::GetIO().MousePos;
+    std::vector<ImVec2> ConnectionPins;
 
     const ImVec2 AnyStatePosition(CanvasOrigin.x + 20.0f, CanvasOrigin.y + 25.0f);
 
@@ -1891,14 +1908,28 @@ void FAnimationGraphEditorTab::DrawGraphCanvas()
 
         ImVec2 Start;
         ImVec2 End;
+        ImVec2 Control1;
+        ImVec2 Control2;
+        ImVec2 SourcePin;
+        ImVec2 DestinationPin;
 
         if (Transition.bAnyState)
         {
-            Start = ImVec2(AnyStatePosition.x + 75.0f, AnyStatePosition.y + 36.0f);
+            SourcePin = ImVec2(AnyStatePosition.x + 150.0f, AnyStatePosition.y + 18.0f);
 
             const ImVec2 DestinationPosition = NodePositions[DestinationIndex];
 
-            End = ImVec2(CanvasOrigin.x + DestinationPosition.x + NodeWidth * 0.5f, CanvasOrigin.y + DestinationPosition.y);
+            DestinationPin = ImVec2(CanvasOrigin.x + DestinationPosition.x + NodeWidth * 0.5f, CanvasOrigin.y + DestinationPosition.y);
+
+            const ImVec2 Delta(DestinationPin.x - SourcePin.x, DestinationPin.y - SourcePin.y);
+            const float Length = std::sqrt(Delta.x * Delta.x + Delta.y * Delta.y);
+            const ImVec2 Direction(Delta.x / Length, Delta.y / Length);
+
+            Start = ImVec2(SourcePin.x + Direction.x * 6.0f, SourcePin.y + Direction.y * 6.0f);
+            End = ImVec2(DestinationPin.x - Direction.x * 18.0f, DestinationPin.y - Direction.y * 18.0f);
+
+            Control1 = ImVec2(Start.x + 75.0f, Start.y);
+            Control2 = ImVec2(End.x, End.y - 75.0f);
         }
         else
         {
@@ -1910,22 +1941,49 @@ void FAnimationGraphEditorTab::DrawGraphCanvas()
             }
 
             const ImVec2 SourcePosition = NodePositions[SourceIndex];
-
             const ImVec2 DestinationPosition = NodePositions[DestinationIndex];
 
-            if (DestinationPosition.x > SourcePosition.x)
-            {
-                Start = ImVec2(CanvasOrigin.x + SourcePosition.x + NodeWidth, CanvasOrigin.y + SourcePosition.y + NodeHeight * 0.5f);
+            const ImVec2 SourceCenter(SourcePosition.x + NodeWidth * 0.5f, SourcePosition.y + NodeHeight * 0.5f);
+            const ImVec2 DestinationCenter(DestinationPosition.x + NodeWidth * 0.5f, DestinationPosition.y + NodeHeight * 0.5f);
 
-                End = ImVec2(CanvasOrigin.x + DestinationPosition.x, CanvasOrigin.y + DestinationPosition.y + NodeHeight * 0.5f);
+            const float DX = DestinationCenter.x - SourceCenter.x;
+            const float DY = DestinationCenter.y - SourceCenter.y;
+            const float LaneOffset = SourceIndex < DestinationIndex ? -18.0f : 18.0f;
+
+            if (std::abs(DX) >= std::abs(DY))
+            {
+                const float Direction = DX >= 0.0f ? 1.0f : -1.0f;
+
+                SourcePin = ImVec2(CanvasOrigin.x + SourceCenter.x + Direction * NodeWidth * 0.5f, CanvasOrigin.y + SourceCenter.y + LaneOffset);
+                DestinationPin = ImVec2(CanvasOrigin.x + DestinationCenter.x - Direction * NodeWidth * 0.5f, CanvasOrigin.y + DestinationCenter.y + LaneOffset);
+
+                Start = ImVec2(SourcePin.x + Direction * 6.0f, SourcePin.y);
+                End = ImVec2(DestinationPin.x - Direction * 18.0f, DestinationPin.y);
+
+                const float ControlDistance = std::max(60.0f, std::abs(DX) * 0.4f);
+
+                Control1 = ImVec2(Start.x + Direction * ControlDistance, Start.y + LaneOffset * 0.55f);
+                Control2 = ImVec2(End.x - Direction * ControlDistance, End.y + LaneOffset * 0.55f);
             }
             else
             {
-                Start = ImVec2(CanvasOrigin.x + SourcePosition.x + NodeWidth * 0.5f, CanvasOrigin.y + SourcePosition.y + NodeHeight);
+                const float Direction = DY >= 0.0f ? 1.0f : -1.0f;
 
-                End = ImVec2(CanvasOrigin.x + DestinationPosition.x + NodeWidth * 0.5f, CanvasOrigin.y + DestinationPosition.y);
+                SourcePin = ImVec2(CanvasOrigin.x + SourceCenter.x + LaneOffset, CanvasOrigin.y + SourceCenter.y + Direction * NodeHeight * 0.5f);
+                DestinationPin = ImVec2(CanvasOrigin.x + DestinationCenter.x + LaneOffset, CanvasOrigin.y + DestinationCenter.y - Direction * NodeHeight * 0.5f);
+
+                Start = ImVec2(SourcePin.x, SourcePin.y + Direction * 6.0f);
+                End = ImVec2(DestinationPin.x, DestinationPin.y - Direction * 18.0f);
+
+                const float ControlDistance = std::max(60.0f, std::abs(DY) * 0.4f);
+
+                Control1 = ImVec2(Start.x + LaneOffset * 0.55f, Start.y + Direction * ControlDistance);
+                Control2 = ImVec2(End.x + LaneOffset * 0.55f, End.y - Direction * ControlDistance);
             }
         }
+
+        ConnectionPins.push_back(SourcePin);
+        ConnectionPins.push_back(DestinationPin);
 
         const bool bSelected = SelectedTransitionIndex == Index;
 
@@ -1934,22 +1992,35 @@ void FAnimationGraphEditorTab::DrawGraphCanvas()
 
         const ImU32 Color = bSelected ? IM_COL32(255, 200, 90, 255) : bLastTransition ? IM_COL32(90, 220, 150, 255) : IM_COL32(155, 165, 180, 255);
 
-        DrawTransitionArrow(DrawList, Start, End, Color, bSelected || bLastTransition ? 3.0f : 2.0f);
+        DrawTransitionCurve(DrawList, Start, Control1, Control2, End, Color, bSelected || bLastTransition ? 3.0f : 2.0f);
 
-        // 전환 규칙을 연결선 근처에 표시한다.
-        const ImVec2 Center((Start.x + End.x) * 0.5f, (Start.y + End.y) * 0.5f);
-
+        const ImVec2 Center = EvaluateBezier(Start, Control1, Control2, End, 0.5f);
         const char* RuleLabel = GetTransitionRuleLabel(Transition.Rule);
-
         const ImVec2 LabelSize = ImGui::CalcTextSize(RuleLabel);
 
         DrawList->AddRectFilled(ImVec2(Center.x - LabelSize.x * 0.5f - 5.0f, Center.y - 10.0f), ImVec2(Center.x + LabelSize.x * 0.5f + 5.0f, Center.y + 10.0f), IM_COL32(35, 38, 44, 245), 4.0f);
-
         DrawList->AddText(ImVec2(Center.x - LabelSize.x * 0.5f, Center.y - LabelSize.y * 0.5f), IM_COL32(220, 225, 235, 255), RuleLabel);
 
         if (ImGui::IsWindowHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
         {
-            if (DistanceSquaredToSegment(MousePosition, Start, End) <= 64.0f)
+            ImVec2 Previous = Start;
+            bool bHit = false;
+
+            for (int32 SegmentIndex = 1; SegmentIndex <= 24; ++SegmentIndex)
+            {
+                const float T = static_cast<float>(SegmentIndex) / 24.0f;
+                const ImVec2 Current = EvaluateBezier(Start, Control1, Control2, End, T);
+
+                if (DistanceSquaredToSegment(MousePosition, Previous, Current) <= 64.0f)
+                {
+                    bHit = true;
+                    break;
+                }
+
+                Previous = Current;
+            }
+
+            if (bHit)
             {
                 SelectedTransitionIndex = Index;
                 SelectedStateIndex = -1;
@@ -2030,6 +2101,12 @@ void FAnimationGraphEditorTab::DrawGraphCanvas()
         {
             DrawList->AddText(ImVec2(Position.x + 12.0f, Position.y + 67.0f), IM_COL32(130, 245, 180, 255), "ACTIVE");
         }
+    }
+
+    for (const ImVec2& Pin : ConnectionPins)
+    {
+        DrawList->AddCircleFilled(Pin, 5.0f, IM_COL32(27, 30, 36, 255));
+        DrawList->AddCircle(Pin, 5.0f, IM_COL32(190, 205, 220, 255), 0, 1.5f);
     }
 
     ImGui::EndChild();
