@@ -198,3 +198,8 @@ void UAnimInstance::ClearAnimationParameters()
 	BoolParameters.Reset();
 	FloatParameters.Reset();
 }
+
+void UAnimInstance::SetRootNode(FAnimNode_Base* InRootNode)
+{
+	RootNode = InRootNode;
+}

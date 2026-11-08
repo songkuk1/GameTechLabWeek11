@@ -44,6 +44,7 @@ public:
 	float GetFloatParameter(const FName& Name) const;
 	void ClearAnimationParameters();
 
+	void SetRootNode(FAnimNode_Base* InRootNode);
 	IAnimPlaybackControl* GetPlaybackControl() { return RootNode ? RootNode->GetPlaybackControl() : nullptr; }
 	const IAnimPlaybackControl* GetPlaybackControl() const { return RootNode ? RootNode->GetPlaybackControl() : nullptr; }
 protected:

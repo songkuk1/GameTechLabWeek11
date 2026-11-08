@@ -33,6 +33,8 @@ public:
     UAnimInstance* GetAnimInstance() const { return AnimInstance; }
     void SetAnimInstanceClass(UClass* InAnimInstanceClass);
 
+    void SetAnimationRootNode(FAnimNode_Base* InRootNode);
+
     // 애니메이션 재생 위치
     void SetAnimationPlaybackTime(float InTime);
     float GetAnimationPlaybackTime() const;
