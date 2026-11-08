@@ -1805,11 +1805,13 @@ void FAnimationGraphEditorTab::DrawGraphCanvas()
         MaxLevel = std::max(MaxLevel, Level);
     }
 
+    const int32 UnreachableLevel = EntryIndex == -1 ? 0 : MaxLevel + 1;
+
     for (int32 Index = 0; Index < StateCount; ++Index)
     {
         if (Levels[Index] == -1)
         {
-            Levels[Index] = EntryIndex == -1 ? 0 : MaxLevel + 1;
+            Levels[Index] = UnreachableLevel;
         }
 
         MaxLevel = std::max(MaxLevel, Levels[Index]);

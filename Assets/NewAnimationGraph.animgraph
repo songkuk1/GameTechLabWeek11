@@ -1,7 +1,14 @@
 {
     "AnimationGraph": {
         "EntryState": "Entry",
-        "Parameters": [],
+        "Parameters": [
+            {
+                "BoolDefault": false,
+                "FloatDefault": 100.0,
+                "Name": "Speed",
+                "Type": 1
+            }
+        ],
         "Properties": {},
         "Skeleton": "Models/UAL1_Standard_Skeleton",
         "States": [
@@ -13,9 +20,68 @@
                 "NodeType": 0,
                 "PlayRate": 1.0,
                 "Sequence": "Models/UAL1_Standard.fbx::Armature|Idle_Loop"
+            },
+            {
+                "BlendParameterName": "None",
+                "BlendSpace": null,
+                "Looping": true,
+                "Name": "Walk",
+                "NodeType": 0,
+                "PlayRate": 1.0,
+                "Sequence": "Models/UAL1_Standard.fbx::Armature|Walk_Loop"
+            },
+            {
+                "BlendParameterName": "None",
+                "BlendSpace": null,
+                "Looping": true,
+                "Name": "Run",
+                "NodeType": 0,
+                "PlayRate": 1.0,
+                "Sequence": "Models/UAL1_Standard.fbx::Armature|Sprint_Loop"
             }
         ],
-        "Transitions": []
+        "Transitions": [
+            {
+                "AnyState": false,
+                "BlendDuration": 0.20000000298023224,
+                "FloatThreshold": 150.0,
+                "FromState": "Entry",
+                "ParameterName": "Speed",
+                "Priority": 1,
+                "Rule": 4,
+                "ToState": "Walk"
+            },
+            {
+                "AnyState": false,
+                "BlendDuration": 0.20000000298023224,
+                "FloatThreshold": 450.0,
+                "FromState": "Walk",
+                "ParameterName": "Speed",
+                "Priority": 1,
+                "Rule": 4,
+                "ToState": "Run"
+            },
+            {
+                "AnyState": false,
+                "BlendDuration": 0.20000000298023224,
+                "FloatThreshold": 450.0,
+                "FromState": "Run",
+                "ParameterName": "Speed",
+                "Priority": 1,
+                "Rule": 5,
+                "ToState": "Walk"
+            },
+            {
+                "AnyState": false,
+                "BlendDuration": 0.20000000298023224,
+                "FloatThreshold": 150.0,
+                "FromState": "Walk",
+                "ParameterName": "Speed",
+                "Priority": 1,
+                "Rule": 5,
+                "ToState": "Entry"
+            }
+        ]
     },
     "Version": 1
 }
