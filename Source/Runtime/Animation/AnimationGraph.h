@@ -54,6 +54,7 @@ struct FAnimGraphTransitionDefinition
 
 class UAnimationGraph : public UAnimationAsset
 {
+    DECLARE_CLASS(UAnimationGraph, UAnimationAsset)
 public:
     bool SetSkeleton(USkeleton* InSkeleton);
     USkeleton* GetSkeleton() const { return Skeleton; }
