@@ -264,7 +264,7 @@ void USkeletalMeshComponent::SetAnimInstanceClass(UClass* InAnimInstanceClass)
     {
         return;
     }
-    AnimInstance->InitializeAnimation(this);
+    AnimInstance->InitializeAnimation(this);  
     bPlayingAnimation = true;
     EvaluateAnimationPose();
 }

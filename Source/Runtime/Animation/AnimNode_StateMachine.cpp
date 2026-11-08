@@ -2,6 +2,8 @@
 #include "AnimNode_StateMachine.h"
 #include "Animation/AnimInstance.h"
 #include <limits>
+#include <algorithm>
+#include <cmath>
 
 bool FAnimNode_StateMachine::AddState(const FName& StateName, FAnimNode_Base* StateNode)
 {
@@ -27,6 +29,9 @@ bool FAnimNode_StateMachine::SetState(const FName& StateName, bool bResetPlaybac
 	{
 		return false;
 	}
+	bIsBlending = false;
+	TransitionBlendDuration = 0.0f;
+	TransitionBlendElapsed = 0.0f;
 	CurrentStateIndex = NewIndex;
 	if (bResetPlayback)
 	{
@@ -77,14 +82,14 @@ bool FAnimNode_StateMachine::IsCurrentStateFinished() const
 	return false;
 }
 
-bool FAnimNode_StateMachine::AddTransition(const FName& FromState, const FName& ToState, EAnimTransitionRule Rule, const FName& ParameterName, int32 Priority)
+bool FAnimNode_StateMachine::AddTransition(const FName& FromState, const FName& ToState, EAnimTransitionRule Rule, const FName& ParameterName, int32 Priority, float BlendDuration, float FloatThreshold)
 {
-	return AddTransitionInternal(FromState, ToState, Rule, ParameterName, Priority, false);
+	return AddTransitionInternal(FromState, ToState, Rule, ParameterName, Priority, BlendDuration, FloatThreshold, false);
 }
 
-bool FAnimNode_StateMachine::AddAnyStateTransition(const FName& ToState, EAnimTransitionRule Rule, const FName& ParameterName, int32 Priority)
+bool FAnimNode_StateMachine::AddAnyStateTransition(const FName& ToState, EAnimTransitionRule Rule, const FName& ParameterName, int32 Priority, float BlendDuration, float FloatThreshold)
 {
-	return AddTransitionInternal(NAME_None, ToState, Rule, ParameterName, Priority, true);
+	return AddTransitionInternal(NAME_None, ToState, Rule, ParameterName, Priority, BlendDuration, FloatThreshold, true);
 }
 
 void FAnimNode_StateMachine::ClearTransitions()
@@ -94,17 +99,37 @@ void FAnimNode_StateMachine::ClearTransitions()
 
 void FAnimNode_StateMachine::Update(const FAnimationUpdateContext& Context)
 {
-	EvaluateTransitions(Context);
+	if (bIsBlending)
+	{
+		TransitionBlendNode.Update(Context);
+		const float DeltaTime = std::isfinite(Context.DeltaTime) ? std::max(Context.DeltaTime, 0.0f) : 0.0f;
+		TransitionBlendElapsed += DeltaTime;
+		const float Alpha = std::clamp(TransitionBlendElapsed / TransitionBlendDuration, 0.0f, 1.0f);
+		TransitionBlendNode.SetAlpha(Alpha);
+		if (Alpha >= 1.0f)
+		{
+			bIsBlending = false;
+			TransitionBlendDuration = 0.0f;
+			TransitionBlendElapsed = 0.0f;
+		}
+		return;
+	}
 	FAnimNode_Base* ActiveNode = GetActiveStateNode();
-
 	if (ActiveNode)
 	{
 		ActiveNode->Update(Context);
 	}
+	EvaluateTransitions(Context);
 }
 
 void FAnimNode_StateMachine::Evaluate(FPoseContext& Output)
 {
+	if (bIsBlending)
+	{
+		TransitionBlendNode.Evaluate(Output);
+		return;
+	}
+
 	FAnimNode_Base* ActiveNode = GetActiveStateNode();
 
 	if (ActiveNode)
@@ -155,7 +180,7 @@ const FAnimNode_Base* FAnimNode_StateMachine::GetActiveStateNode() const
 	return States[CurrentStateIndex].Node;
 }
 
-bool FAnimNode_StateMachine::AddTransitionInternal(const FName& FromState, const FName& ToState, EAnimTransitionRule Rule, const FName& ParameterName, int32 Priority, bool bAnyState)
+bool FAnimNode_StateMachine::AddTransitionInternal(const FName& FromState, const FName& ToState, EAnimTransitionRule Rule, const FName& ParameterName, int32 Priority, float BlendDuration, float FloatThreshold, bool bAnyState)
 {
 	if (ToState.IsNone() || FindStateIndex(ToState) == -1)
 	{
@@ -166,7 +191,11 @@ bool FAnimNode_StateMachine::AddTransitionInternal(const FName& FromState, const
 		return false;
 	}
 
-	if ((Rule == EAnimTransitionRule::BoolTrue || Rule == EAnimTransitionRule::BoolFalse) && ParameterName.IsNone())
+	const bool bUsesBoolParameter = Rule == EAnimTransitionRule::BoolTrue || Rule == EAnimTransitionRule::BoolFalse;
+
+	const bool bUsesFloatParameter = Rule == EAnimTransitionRule::FloatGreaterThan || Rule == EAnimTransitionRule::FloatLessThan || Rule == EAnimTransitionRule::FloatGreaterOrEqual || Rule == EAnimTransitionRule::FloatLessOrEqual;
+
+	if ((bUsesBoolParameter || bUsesFloatParameter) && ParameterName.IsNone())
 	{
 		return false;
 	}
@@ -177,6 +206,8 @@ bool FAnimNode_StateMachine::AddTransitionInternal(const FName& FromState, const
 	Transition.ParameterName = ParameterName;
 	Transition.Rule = Rule;
 	Transition.Priority = Priority;
+	Transition.BlendDuration = std::isfinite(BlendDuration) ? std::max(BlendDuration, 0.0f) : 0.0f;
+	Transition.FloatThreshold = std::isfinite(FloatThreshold) ? FloatThreshold : 0.0f;
 	Transition.bAnyState = bAnyState;
 
 	Transitions.Add(Transition);
@@ -216,7 +247,21 @@ void FAnimNode_StateMachine::EvaluateTransitions(const FAnimationUpdateContext& 
 	}
 	if (SelectedTransitionIndex != -1)
 	{
-		SetState(Transitions[SelectedTransitionIndex].ToState, true);
+		const FAnimStateTransition& Transition = Transitions[SelectedTransitionIndex];
+		FAnimNode_Base* PreviousNode = GetActiveStateNode();
+
+		if (SetState(Transition.ToState, true))
+		{
+			FAnimNode_Base* CurrentNode = GetActiveStateNode();
+			if (PreviousNode && CurrentNode && PreviousNode != CurrentNode && Transition.BlendDuration > 0.0f)
+			{
+				TransitionBlendNode.SetSourceNodes(PreviousNode, CurrentNode);
+				TransitionBlendNode.SetAlpha(0.0f);
+				TransitionBlendDuration = Transition.BlendDuration;
+				TransitionBlendElapsed = 0.0f;
+				bIsBlending = true;
+			}
+		}
 	}
 }
 
@@ -225,14 +270,57 @@ bool FAnimNode_StateMachine::IsTransitionRuleMet(const FAnimStateTransition& Tra
 	switch (Transition.Rule)
 	{
 	case EAnimTransitionRule::Always:
+	{
 		return true;
-
+	}
 	case EAnimTransitionRule::BoolTrue:
+	{
 		return Context.AnimInstance && Context.AnimInstance->HasBoolParameter(Transition.ParameterName) && Context.AnimInstance->GetBoolParameter(Transition.ParameterName);
+	}
 	case EAnimTransitionRule::BoolFalse:
+	{
 		return Context.AnimInstance && Context.AnimInstance->HasBoolParameter(Transition.ParameterName) && !Context.AnimInstance->GetBoolParameter(Transition.ParameterName);
+	}
 	case EAnimTransitionRule::StateFinished:
+	{
 		return IsCurrentStateFinished();
+	}
+	case EAnimTransitionRule::FloatGreaterThan:
+	{
+		if (!Context.AnimInstance || !Context.AnimInstance->HasFloatParameter(Transition.ParameterName))
+		{
+			return false;
+		}
+		return Context.AnimInstance->GetFloatParameter(Transition.ParameterName) > Transition.FloatThreshold;
+	}
+
+	case EAnimTransitionRule::FloatLessThan:
+	{
+		if (!Context.AnimInstance || !Context.AnimInstance->HasFloatParameter(Transition.ParameterName))
+		{
+			return false;
+		}
+		return Context.AnimInstance->GetFloatParameter(Transition.ParameterName) < Transition.FloatThreshold;
+	}
+
+	case EAnimTransitionRule::FloatGreaterOrEqual:
+	{
+		if (!Context.AnimInstance || !Context.AnimInstance->HasFloatParameter(Transition.ParameterName))
+		{
+			return false;
+		}
+		return Context.AnimInstance->GetFloatParameter(Transition.ParameterName) >= Transition.FloatThreshold;
+	}
+
+	case EAnimTransitionRule::FloatLessOrEqual:
+	{
+		if (!Context.AnimInstance || !Context.AnimInstance->HasFloatParameter(Transition.ParameterName))
+		{
+			return false;
+		}
+		return Context.AnimInstance->GetFloatParameter(Transition.ParameterName) <= Transition.FloatThreshold;
+	}
+		
 	}
 	return false;
 }

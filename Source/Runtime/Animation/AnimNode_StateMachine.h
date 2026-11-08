@@ -1,6 +1,7 @@
 #pragma once
 
 #include "AnimNode_Base.h"
+#include "Animation/AnimNode_TwoWayBlend.h"
 #include "Containers/Array.h"
 #include "Core/NameTypes.h"
 
@@ -9,7 +10,11 @@ enum class EAnimTransitionRule : uint8
 	Always,
 	BoolTrue,
 	BoolFalse,
-	StateFinished
+	StateFinished,
+	FloatGreaterThan,
+	FloatLessThan,
+	FloatGreaterOrEqual,
+	FloatLessOrEqual
 };
 
 struct FAnimStateTransition
@@ -19,6 +24,8 @@ struct FAnimStateTransition
 	FName ParameterName;
 	EAnimTransitionRule Rule = EAnimTransitionRule::Always;
 	int32 Priority = 0;
+	float BlendDuration;
+	float FloatThreshold = 0.0f;
 	bool bAnyState = false;
 };
 
@@ -29,8 +36,8 @@ public:
 	bool SetState(const FName& StateName, bool bResetPlayback = true);
 	FName GetCurrentStateName() const;
 	bool IsCurrentStateFinished() const;
-	bool AddTransition(const FName& FromState, const FName& ToState, EAnimTransitionRule Rule, const FName& ParameterName = NAME_None, int32 Priority = 0);
-	bool AddAnyStateTransition(const FName& ToState, EAnimTransitionRule Rule, const FName& ParameterName = NAME_None, int32 Priority = 0);
+	bool AddTransition(const FName& FromState, const FName& ToState, EAnimTransitionRule Rule, const FName& ParameterName = NAME_None, int32 Priority = 0, float BlendDuration = 0.0f, float FloatThreshold = 0.0f);
+	bool AddAnyStateTransition(const FName& ToState, EAnimTransitionRule Rule, const FName& ParameterName = NAME_None, int32 Priority = 0, float BlendDuration = 0.0f, float FloatThreshold = 0.0f);
 	void ClearTransitions();
 	virtual void Update(const FAnimationUpdateContext& Context) override;
 	virtual void Evaluate(FPoseContext& Output) override;
@@ -45,9 +52,13 @@ private:
 	int32 FindStateIndex(const FName& StateName) const;
 	FAnimNode_Base* GetActiveStateNode();
 	const FAnimNode_Base* GetActiveStateNode() const;
-	bool AddTransitionInternal(const FName& FromState, const FName& ToState, EAnimTransitionRule Rule, const FName& ParameterName, int32 Priority, bool bAnyState);
+	bool AddTransitionInternal(const FName& FromState, const FName& ToState, EAnimTransitionRule Rule, const FName& ParameterName, int32 Priority, float BlendDuration, float FloatThreshold, bool bAnyState);
 	void EvaluateTransitions(const FAnimationUpdateContext& Context);
 	bool IsTransitionRuleMet(const FAnimStateTransition& Transition, const FAnimationUpdateContext& Context) const;
+	FAnimNode_TwoWayBlend TransitionBlendNode;
+	float TransitionBlendDuration = 0.0f;
+	float TransitionBlendElapsed = 0.0f;
+	bool bIsBlending = false;
 	TArray<FAnimStateEntry> States;
 	int32 CurrentStateIndex = -1;
 	TArray<FAnimStateTransition> Transitions;

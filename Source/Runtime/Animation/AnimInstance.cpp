@@ -181,6 +181,11 @@ bool UAnimInstance::HasBoolParameter(const FName& Name) const
 	return BoolParameters.Contains(Name);
 }
 
+bool UAnimInstance::HasFloatParameter(const FName& Name) const
+{
+	return FloatParameters.Contains(Name);
+}
+
 void UAnimInstance::SetFloatParameter(const FName& Name, float Value)
 {
 	if (Name.IsNone())

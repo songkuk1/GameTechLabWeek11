@@ -43,6 +43,7 @@ public:
 	void SetBoolParameter(const FName& Name, bool Value);
 	bool GetBoolParameter(const FName& Name) const;
 	bool HasBoolParameter(const FName& Name) const;
+	bool HasFloatParameter(const FName& Name) const;
 	void SetFloatParameter(const FName& Name, float Value);
 	float GetFloatParameter(const FName& Name) const;
 	void ClearAnimationParameters();
