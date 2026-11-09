@@ -1,85 +1,119 @@
 {
     "AnimationGraph": {
-        "EntryState": "Entry",
+        "EditorNodePositions": [
+            {
+                "NodeName": "Locomotion",
+                "X": 224.0,
+                "Y": 282.0
+            },
+            {
+                "NodeName": "Attack",
+                "X": 584.0,
+                "Y": 256.0
+            },
+            {
+                "NodeName": "Hit",
+                "X": 224.0,
+                "Y": 752.0
+            },
+            {
+                "NodeName": "None",
+                "X": 710.0,
+                "Y": 806.0
+            }
+        ],
+        "EntryState": "Locomotion",
         "Parameters": [
             {
                 "BoolDefault": false,
                 "FloatDefault": 100.0,
                 "Name": "Speed",
                 "Type": 1
+            },
+            {
+                "BoolDefault": false,
+                "FloatDefault": 0.0,
+                "Name": "bIsAttacking",
+                "Type": 0
+            },
+            {
+                "BoolDefault": false,
+                "FloatDefault": 0.0,
+                "Name": "bIsHit",
+                "Type": 0
             }
         ],
         "Properties": {},
         "Skeleton": "Models/UAL1_Standard_Skeleton",
         "States": [
             {
-                "BlendParameterName": "None",
-                "BlendSpace": null,
+                "BlendParameterName": "Speed",
+                "BlendSpace": "NewBlendSpace1D.blendspace",
                 "Looping": true,
-                "Name": "Entry",
-                "NodeType": 0,
+                "Name": "Locomotion",
+                "NodeType": 1,
                 "PlayRate": 1.0,
-                "Sequence": "Models/UAL1_Standard.fbx::Armature|Idle_Loop"
+                "Sequence": null
             },
             {
                 "BlendParameterName": "None",
                 "BlendSpace": null,
                 "Looping": true,
-                "Name": "Walk",
+                "Name": "Attack",
                 "NodeType": 0,
                 "PlayRate": 1.0,
-                "Sequence": "Models/UAL1_Standard.fbx::Armature|Walk_Loop"
+                "Sequence": "Models/UAL1_Standard.fbx::Armature|Punch_Jab"
             },
             {
                 "BlendParameterName": "None",
                 "BlendSpace": null,
                 "Looping": true,
-                "Name": "Run",
+                "Name": "Hit",
                 "NodeType": 0,
                 "PlayRate": 1.0,
-                "Sequence": "Models/UAL1_Standard.fbx::Armature|Sprint_Loop"
+                "Sequence": "Models/UAL1_Standard.fbx::Armature|Hit_Chest"
             }
         ],
         "Transitions": [
             {
-                "AnyState": false,
+                "AnyState": true,
                 "BlendDuration": 0.20000000298023224,
-                "FloatThreshold": 150.0,
-                "FromState": "Entry",
-                "ParameterName": "Speed",
-                "Priority": 1,
-                "Rule": 4,
-                "ToState": "Walk"
+                "FloatThreshold": 0.0,
+                "FromState": "None",
+                "ParameterName": "None",
+                "Priority": 0,
+                "Rule": 3,
+                "ToState": "Hit"
             },
             {
                 "AnyState": false,
                 "BlendDuration": 0.20000000298023224,
-                "FloatThreshold": 450.0,
-                "FromState": "Walk",
-                "ParameterName": "Speed",
-                "Priority": 1,
-                "Rule": 4,
-                "ToState": "Run"
+                "FloatThreshold": 0.0,
+                "FromState": "Locomotion",
+                "ParameterName": "None",
+                "Priority": 0,
+                "Rule": 3,
+                "ToState": "Attack"
             },
             {
                 "AnyState": false,
                 "BlendDuration": 0.20000000298023224,
-                "FloatThreshold": 450.0,
-                "FromState": "Run",
-                "ParameterName": "Speed",
-                "Priority": 1,
-                "Rule": 5,
-                "ToState": "Walk"
+                "FloatThreshold": 0.0,
+                "FromState": "Attack",
+                "ParameterName": "None",
+                "Priority": 0,
+                "Rule": 3,
+                "ToState": "Locomotion"
             },
             {
                 "AnyState": false,
                 "BlendDuration": 0.20000000298023224,
-                "FloatThreshold": 150.0,
-                "FromState": "Walk",
-                "ParameterName": "Speed",
-                "Priority": 1,
-                "Rule": 5,
-                "ToState": "Entry"
+                "FloatThreshold": 0.0,
+                "FromState": "Hit",
+                "ParameterName": "None",
+                "Priority": 0,
+                "Rule": 3,
+                "ToState": "Locomotion"
             }
         ]
     },

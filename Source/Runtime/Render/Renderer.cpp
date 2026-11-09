@@ -90,6 +90,20 @@ bool FRenderer::Init()
 	};
 	SurfaceSkinningPipeline.Shader = FRenderResourceManager::RegisterProgram("Surface_Skinned", SurfaceSkinningSPDesc);
 
+	FShaderProgramDesc ShadowSkinningSPDesc;
+	ShadowSkinningSPDesc.Path = "Resources/Shader/ShaderMap.hlsl";
+	ShadowSkinningSPDesc.Defines = {
+		{ "USE_SKINNING", "1" }
+	};
+	ShadowSkinningSPDesc.InputLayout = {
+		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, static_cast<UINT>(offsetof(FVertexPNCT, Position)), D3D11_INPUT_PER_VERTEX_DATA, 0 },
+		{ "BLENDINDICES", 0, DXGI_FORMAT_R32G32B32A32_SINT, 1, static_cast<UINT>(offsetof(FModelVertexInfluences, BoneIndices)), D3D11_INPUT_PER_VERTEX_DATA, 0 },
+		{ "BLENDWEIGHT", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, static_cast<UINT>(offsetof(FModelVertexInfluences, Weights)), D3D11_INPUT_PER_VERTEX_DATA, 0 },
+		{ "BONECOUNT", 0, DXGI_FORMAT_R32_SINT, 1, static_cast<UINT>(offsetof(FModelVertexInfluences, InfluenceCount)), D3D11_INPUT_PER_VERTEX_DATA, 0 }
+	};
+	ShadowSkinningShader = FRenderResourceManager::RegisterProgram("Shadow_Skinned", ShadowSkinningSPDesc);
+	assert(ShadowSkinningShader);
+
 	TileLightCulling.Init();
 	GPUOcclusion.Init();   // 실패해도 오클루전만 못 쓸 뿐 렌더링은 된다
 
@@ -199,7 +213,15 @@ void FRenderer::RenderSurface()
 				RenderCommand::GetContext()->VSSetShaderResources(0, 1, &BoneMatricesSRV);
 			}
 
-			RenderCommand::DrawIndexed(Item.IndexCount, Item.StartIndex);
+			if (bUseSkinning)
+			{
+				SCOPE_CYCLE_COUNTER(STAT_GPUSkinningDrawSubmit);
+				RenderCommand::DrawIndexed(Item.IndexCount, Item.StartIndex);
+			}
+			else
+			{
+				RenderCommand::DrawIndexed(Item.IndexCount, Item.StartIndex);
+			}
 		}
 	}
 
@@ -235,7 +257,15 @@ void FRenderer::RenderSurface()
 			RenderCommand::GetContext()->VSSetShaderResources(0, 1, &BoneMatricesSRV);
 		}
 
-		RenderCommand::DrawIndexed(Packet.Geometry.IndexCount, Packet.Geometry.StartIndex);
+		if (bUseSkinning)
+		{
+			SCOPE_CYCLE_COUNTER(STAT_GPUSkinningDrawSubmit);
+			RenderCommand::DrawIndexed(Packet.Geometry.IndexCount, Packet.Geometry.StartIndex);
+		}
+		else
+		{
+			RenderCommand::DrawIndexed(Packet.Geometry.IndexCount, Packet.Geometry.StartIndex);
+		}
 	}
 
 	RenderCommand::UnbindShaderResource(0, EShaderBindFlagBits::Vertex);
@@ -857,6 +887,7 @@ void FRenderer::RenderShadowPass(
 
 	//공통 파이프라인 상태 (층마다 바뀌지 않음)
 	FShaderProgram* DepthShader = FRenderResourceManager::GetShaderProgram("Resources/Shader/ShaderMap.hlsl");
+	FShaderProgram* BoundShadowShader = DepthShader;
 
 	//VS만 바인딩
 	Context->VSSetShader(DepthShader->VertexShader->GetShader(), nullptr, 0);
@@ -892,7 +923,25 @@ void FRenderer::RenderShadowPass(
 			{
 				continue;
 			}
+			const bool bUseSkinning = Proxy->IsUsingSkinning();
+			FShaderProgram* CurrentShadowShader = bUseSkinning ? ShadowSkinningShader : DepthShader;
 
+			if (CurrentShadowShader != BoundShadowShader)
+			{
+				Context->VSSetShader(CurrentShadowShader->VertexShader->GetShader(), nullptr, 0);
+				Context->IASetInputLayout(CurrentShadowShader->VertexShader->GetLayout());
+				BoundShadowShader = CurrentShadowShader;
+			}
+
+			if (bUseSkinning)
+			{
+				Proxy->BindSRVs();
+			}
+			else
+			{
+				ID3D11ShaderResourceView* NullBoneMatrixSRV = nullptr;
+				Context->VSSetShaderResources(13, 1, &NullBoneMatrixSRV);
+			}
 			UpdatePerObjectConstants(Proxy->GetLocalToWorld(), Proxy->GetNormalMatrix(), Proxy->GetObjectMask());
 			RenderCommand::BindVertexBuffers(LOD.VertexBuffers, LOD.VertexBufferCount);
 			RenderCommand::BindIndexBuffer(LOD.IndexBuffer);

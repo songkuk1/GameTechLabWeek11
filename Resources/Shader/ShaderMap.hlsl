@@ -1,23 +1,54 @@
 #pragma pack_matrix(row_major)
 
+struct FVSInput
+{
+    float3 Position : POSITION;
+#if USE_SKINNING
+    int4 BoneIndices : BLENDINDICES;
+    float4 BoneWeights : BLENDWEIGHT;
+    int BoneInfluenceCount : BONECOUNT;
+#endif
+};
+
 cbuffer ShadowViewConstants : register(b0)
 {
     matrix LightViewProjection;
 };
 
-cbuffer PerObjectConstants : register(b2) // FRenderer의 PerObjectCB와 같은 레이아웃
+cbuffer PerObjectConstants : register(b2)
 {
     matrix World;
     matrix NormalMatrix;
 };
 
-// FVertexPNCT의 첫 요소만 받는다 : 입력 레이아웃 오프셋이 정확히 맞는다
-float4 mainVS(float3 Position : POSITION) : SV_POSITION
+#if USE_SKINNING
+StructuredBuffer<float4x4> BoneMatrices : register(t13);
+#endif
+
+float4 mainVS(FVSInput Input) : SV_POSITION
 {
-    return mul(mul(float4(Position, 1.0f), World), LightViewProjection);
+    float3 LocalPosition = Input.Position;
+
+#if USE_SKINNING
+    if (Input.BoneInfluenceCount > 0)
+    {
+        float3 SkinnedPosition = float3(0, 0, 0);
+
+        for (int i = 0; i < Input.BoneInfluenceCount; i++)
+        {
+            int BoneIndex = Input.BoneIndices[i];
+            float BoneWeight = Input.BoneWeights[i];
+            float4x4 BoneMatrix = transpose(BoneMatrices[BoneIndex]);
+            SkinnedPosition += mul(float4(Input.Position, 1.0f), BoneMatrix).xyz * BoneWeight;
+        }
+
+        LocalPosition = SkinnedPosition;
+    }
+#endif
+
+    return mul(mul(float4(LocalPosition, 1.0f), World), LightViewProjection);
 }
 
-// 로더(LoadOrCompileShader)가 mainPS를 요구하므로 둔다. 실제로는 PS를 null로 바인딩한다.
 void mainPS()
 {
 }

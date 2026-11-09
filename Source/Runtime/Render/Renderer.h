@@ -187,4 +187,6 @@ private:
 	FShadowMapManager ShadowMapManager;
 	// Init()에서 CreateConstantBuffer(sizeof(FMatrix))
 	TUniquePtr<FConstantBuffer> ShadowViewCB;   
+
+	FShaderProgram* ShadowSkinningShader = nullptr;
 };
