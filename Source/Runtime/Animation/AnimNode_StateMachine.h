@@ -67,6 +67,7 @@ public:
 	void GetDebugInfo(FAnimStateMachineDebugInfo& OutInfo) const;
 	virtual void Update(const FAnimationUpdateContext& Context) override;
 	virtual void Evaluate(FPoseContext& Output) override;
+	virtual bool EvaluateCurve(const FName& CurveName, const FName& LayerName, float& OutValue) const override;
 	IAnimPlaybackControl* GetPlaybackControl() override;
 	const IAnimPlaybackControl* GetPlaybackControl() const override;
 private:

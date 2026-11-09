@@ -11,6 +11,7 @@ public:
 	float GetAlpha() const { return Alpha; }
 	virtual void Update(const FAnimationUpdateContext& Context) override;
 	virtual void Evaluate(FPoseContext& Output) override;
+    virtual bool EvaluateCurve(const FName& CurveName, const FName& LayerName, float& OutValue) const override;
 private:
 	FAnimNode_Base* SourcePoseA = nullptr;
 	FAnimNode_Base* SourcePoseB = nullptr;
@@ -36,7 +37,7 @@ public:
     const IAnimPlaybackControl* GetPlaybackControl() const override { return this; }
     virtual void Update(const FAnimationUpdateContext& Context) override;
     virtual void Evaluate(FPoseContext& Output) override;
-
+    virtual bool EvaluateCurve(const FName& CurveName, const FName& LayerName, float& OutValue) const override;
 private:
 	FAnimNode_SequencePlayer SequencePlayerA;
 	FAnimNode_SequencePlayer SequencePlayerB;

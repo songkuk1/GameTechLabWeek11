@@ -5,6 +5,9 @@
 #include "Core/PathUtils.h"
 #include <algorithm>
 #include <stdexcept>
+#include <cmath>
+#include <numeric>
+#include <limits>
 
 namespace
 {
@@ -235,7 +238,7 @@ namespace
 
 				ExtractAnimationCurvesRecursive(Scene->GetRootNode(), NodeToIndexMap, AnimLayer, StartSeconds, PlayLength, Animation);
 			}
-			HTR_LOG(Info, "[Animation] Imported: {} | Length: {:.3f}s | Frames: {} | Tracks: {} | Curves: {}", Animation.Name.ToString(), Animation.PlayLength, Animation.NumberOfFrames, Animation.Tracks.Num(), Animation.CurveData.Curves.Num());
+			HTR_LOG(Info, "[Animation] Imported: {} | FPS: {:.5f} | Length: {:.3f}s | Frames: {} | Tracks: {} | Curves: {}", Animation.Name.ToString(), SampleRate, Animation.PlayLength, Animation.NumberOfFrames, Animation.Tracks.Num(), Animation.CurveData.Curves.Num());
 		}
 	}
 }

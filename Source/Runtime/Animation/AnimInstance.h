@@ -59,6 +59,7 @@ public:
 	float GetCurrentTime() const;
 	float GetPlayLength() const;
 	float GetFrameRate() const;
+	bool GetCurveValue(const FName& CurveName, const FName& LayerName, float& OutValue) const;
 	void SetPlayRate(float InPlayRate);
 	float GetPlayRate() const;
 	void SetLooping(bool bInLoop);

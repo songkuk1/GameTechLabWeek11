@@ -250,6 +250,18 @@ float UAnimInstance::GetFrameRate() const
 	return Control ? Control->GetFrameRate() : 0.0f;
 }
 
+bool UAnimInstance::GetCurveValue(const FName& CurveName, const FName& LayerName, float& OutValue) const
+{
+    OutValue = 0.0f;
+
+    if (!RootNode || CurveName.IsNone())
+    {
+        return false;
+    }
+
+    return RootNode->EvaluateCurve(CurveName, LayerName, OutValue);
+}
+
 void UAnimInstance::SetPlayRate(float InPlayRate)
 {
 	if (IAnimPlaybackControl* Control = GetPlaybackControl())

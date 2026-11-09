@@ -4,6 +4,7 @@
 #include "Math/Vector.h"
 #include "Math/Quat.h"
 #include "Math/Matrix.h"
+#include "Core/NameTypes.h"
 
 class UAnimInstance;
 
@@ -38,7 +39,7 @@ struct FAnimNode_Base
     virtual ~FAnimNode_Base() = default;
     virtual void Update(const FAnimationUpdateContext& Context) {}
     virtual void Evaluate(FPoseContext& Output) {}
-
+    virtual bool EvaluateCurve(const FName& CurveName, const FName& LayerName, float& OutValue) const { return false; }
     virtual IAnimPlaybackControl* GetPlaybackControl() { return nullptr; }
     virtual const IAnimPlaybackControl* GetPlaybackControl() const { return nullptr; }
 };

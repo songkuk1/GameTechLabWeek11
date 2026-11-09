@@ -185,3 +185,32 @@ void FAnimNode_SequencePlayer::Evaluate(FPoseContext& Output)
         Output.Pose[NodeIndex] = MakeAnimationMatrix(Position, Rotation, Scale);
     }
 }
+
+bool FAnimNode_SequencePlayer::EvaluateCurve(const FName& CurveName, const FName& LayerName, float& OutValue) const
+{
+    if (!Sequence || CurveName.IsNone() || !std::isfinite(CurrentTime))
+    {
+        return false;
+    }
+
+    const UAnimDataModel* DataModel = Sequence->GetDataModel();
+    if (!DataModel)
+    {
+        return false;
+    }
+
+    const FAnimationCurve* Curve = DataModel->FindCurve(CurveName, LayerName);
+    if (!Curve || Curve->Keys.IsEmpty())
+    {
+        return false;
+    }
+
+    const float Value = Curve->Evaluate(CurrentTime);
+    if (!std::isfinite(Value))
+    {
+        return false;
+    }
+
+    OutValue = Value;
+    return true;
+}

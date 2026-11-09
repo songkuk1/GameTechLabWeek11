@@ -277,8 +277,12 @@ void FAnimationSequenceViewerTab::DrawToolbar()
 	if (FrameRate > 0.0f)
 	{
 		CurrentFrame = std::clamp(static_cast<int32>(std::floor(CurrentTime * FrameRate)), 0, TotalFrames - 1);
-	}
 
+		if (!bUseBlendSpace && Duration > 0.0f && CurrentTime >= Duration - 1.0e-6f)
+		{
+			CurrentFrame = TotalFrames - 1;
+		}
+	}
 	ImGui::Text("Frame %d / %d     %.3f / %.3f sec", CurrentFrame + 1, TotalFrames, CurrentTime, Duration);
 
 	if (Duration > 0.0f)

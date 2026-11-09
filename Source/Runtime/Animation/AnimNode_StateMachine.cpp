@@ -180,6 +180,17 @@ void FAnimNode_StateMachine::Evaluate(FPoseContext& Output)
 	}
 }
 
+bool FAnimNode_StateMachine::EvaluateCurve(const FName& CurveName, const FName& LayerName, float& OutValue) const
+{
+	if (bIsBlending)
+	{
+		return TransitionBlendNode.EvaluateCurve(CurveName, LayerName, OutValue);
+	}
+
+	const FAnimNode_Base* ActiveNode = GetActiveStateNode();
+	return ActiveNode && ActiveNode->EvaluateCurve(CurveName, LayerName, OutValue);
+}
+
 IAnimPlaybackControl* FAnimNode_StateMachine::GetPlaybackControl()
 {
 	FAnimNode_Base* ActiveNode = GetActiveStateNode();

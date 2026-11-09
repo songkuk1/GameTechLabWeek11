@@ -80,6 +80,42 @@ void FAnimNode_TwoWayBlend::Evaluate(FPoseContext& Output)
     AnimationRuntime::BlendPoses(PoseA, PoseB, Alpha, Output);
 }
 
+bool FAnimNode_TwoWayBlend::EvaluateCurve(const FName& CurveName, const FName& LayerName, float& OutValue) const
+{
+    if (!SourcePoseA)
+    {
+        return SourcePoseB && SourcePoseB->EvaluateCurve(CurveName, LayerName, OutValue);
+    }
+
+    if (!SourcePoseB)
+    {
+        return SourcePoseA->EvaluateCurve(CurveName, LayerName, OutValue);
+    }
+
+    if (Alpha <= 0.0f)
+    {
+        return SourcePoseA->EvaluateCurve(CurveName, LayerName, OutValue);
+    }
+
+    if (Alpha >= 1.0f)
+    {
+        return SourcePoseB->EvaluateCurve(CurveName, LayerName, OutValue);
+    }
+
+    float ValueA = 0.0f;
+    float ValueB = 0.0f;
+
+    const bool bHasCurveA = SourcePoseA->EvaluateCurve(CurveName, LayerName, ValueA);
+    const bool bHasCurveB = SourcePoseB->EvaluateCurve(CurveName, LayerName, ValueB);
+
+    if (!bHasCurveA && !bHasCurveB)
+    {
+        return false;
+    }
+
+    OutValue = ValueA + (ValueB - ValueA) * Alpha;
+    return std::isfinite(OutValue);
+}
 FAnimNode_TwoWayBlendPlayer::FAnimNode_TwoWayBlendPlayer()
 {
     BlendNode.SetSourceNodes(&SequencePlayerA, &SequencePlayerB);
@@ -173,4 +209,9 @@ void FAnimNode_TwoWayBlendPlayer::Update(const FAnimationUpdateContext& Context)
 void FAnimNode_TwoWayBlendPlayer::Evaluate(FPoseContext& Output)
 {
     BlendNode.Evaluate(Output);
+}
+
+bool FAnimNode_TwoWayBlendPlayer::EvaluateCurve(const FName& CurveName, const FName& LayerName, float& OutValue) const
+{
+    return BlendNode.EvaluateCurve(CurveName, LayerName, OutValue);
 }

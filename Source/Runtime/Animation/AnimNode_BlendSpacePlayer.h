@@ -26,6 +26,7 @@ public:
 	float GetFrameRate() const override;
     virtual void Update(const FAnimationUpdateContext& Context) override;
     virtual void Evaluate(FPoseContext& Output) override;
+	virtual bool EvaluateCurve(const FName& CurveName, const FName& LayerName, float& OutValue) const override;
 	IAnimPlaybackControl* GetPlaybackControl() override { return this; }
 	const IAnimPlaybackControl* GetPlaybackControl() const override { return this; }
 private:

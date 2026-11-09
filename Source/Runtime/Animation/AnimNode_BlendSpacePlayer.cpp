@@ -196,3 +196,8 @@ void FAnimNode_BlendSpacePlayer::Evaluate(FPoseContext& Output)
 {
 	BlendNode.Evaluate(Output);
 }
+
+bool FAnimNode_BlendSpacePlayer::EvaluateCurve(const FName& CurveName, const FName& LayerName, float& OutValue) const
+{
+	return BlendNode.EvaluateCurve(CurveName, LayerName, OutValue);
+}
