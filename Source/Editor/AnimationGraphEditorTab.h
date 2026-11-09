@@ -10,6 +10,14 @@ class USkeletalMesh;
 class ASkeletalMeshActor;
 class FPreviewViewportPanel;
 
+namespace ax
+{
+    namespace NodeEditor
+    {
+        struct EditorContext;
+    }
+}
+
 class FAnimationGraphEditorTab : public FEditorTab
 {
 public:
@@ -43,6 +51,7 @@ private:
 	TUniquePtr<FPreviewScene> PreviewScene;
 	FPreviewViewportPanel* ViewportPanel = nullptr;
     IEditorPanel* GraphEditorPanel = nullptr;
+    ax::NodeEditor::EditorContext* NodeEditorContext = nullptr;
     bool bFocusStateDetails = false;
     bool bFocusTransitionDetails = false;
     TArray<UAnimSequence*> AvailableAnimations;
