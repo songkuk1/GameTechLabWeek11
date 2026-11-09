@@ -47,6 +47,7 @@ FAnimationSequenceViewerTab::FAnimationSequenceViewerTab(USkeletalMesh* InSkelet
 {
 	PreviewScene = MakeUnique<FPreviewScene>();
 	PreviewActor = Cast<ASkeletalMeshActor>(PreviewScene->GetWorld()->SpawnActor(ASkeletalMeshActor::StaticClass()));
+	InitialPreviewActorTransform = PreviewActor->GetActorTransform();
 	USkeletalMeshComponent* MeshComponent = PreviewActor->GetSkeletalMeshComponent();
 	MeshComponent->SetSkeletalMesh(SkeletalMesh);
 	MeshComponent->PlayAnimation(Animation);
@@ -270,6 +271,19 @@ void FAnimationSequenceViewerTab::DrawToolbar()
 	if (ImGui::Checkbox("Loop", &bLooping))
 	{
 		Component->SetAnimationLooping(bLooping);
+	}
+
+	ImGui::SameLine();
+
+	bool bRootMotionEnabled = Component->IsRootMotionEnabled();
+
+	if (ImGui::Checkbox("Root Motion", &bRootMotionEnabled))
+	{
+		Component->SetRootMotionEnabled(bRootMotionEnabled);
+		PreviewActor->SetActorTransform(InitialPreviewActorTransform);
+		Component->SetAnimationPlaybackTime(0.0f);
+		Component->TickAnimation(0.0f);
+		bPlaying = false;
 	}
 
 	const float CurrentTime = Component->GetAnimationPlaybackTime();

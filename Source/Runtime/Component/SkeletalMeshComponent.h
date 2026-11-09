@@ -58,6 +58,8 @@ public:
     void SetAnimationLooping(bool bInLoop);
     bool IsAnimationLooping() const;
 
+    void SetRootMotionEnabled(bool bEnabled) { bRootMotionEnabled = bEnabled; }
+    bool IsRootMotionEnabled() const { return bRootMotionEnabled; }
 private:
     bool EnsureAnimInstance();
     void EvaluateAnimationPose();
@@ -65,4 +67,5 @@ private:
 private:
     UAnimInstance* AnimInstance = nullptr;
     bool bPlayingAnimation = false;
+    bool bRootMotionEnabled = false;
 };

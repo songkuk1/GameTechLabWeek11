@@ -24,6 +24,7 @@ void FAnimNode_SequencePlayer::SetSequence(UAnimSequence* InSequence)
     Sequence = InSequence;
     CurrentTime = 0.0f;
     bHasUpdated = false;
+    bExtractRootMotion = false;
 }
 
 void FAnimNode_SequencePlayer::SetPlaybackPosition(float InTime)
@@ -76,6 +77,7 @@ void FAnimNode_SequencePlayer::SetPlayRate(float InPlayRate)
 
 void FAnimNode_SequencePlayer::Update(const FAnimationUpdateContext& Context)
 {
+    bExtractRootMotion = Context.AnimInstance && Context.AnimInstance->IsRootMotionEnabled();
     if (!Sequence || !Sequence->GetDataModel())
     {
         return;
@@ -117,6 +119,15 @@ void FAnimNode_SequencePlayer::Update(const FAnimationUpdateContext& Context)
                 ActualAdvance = CurrentTime - PreviousTime;
             }
         }
+    }
+
+    if (bExtractRootMotion && Context.AnimInstance && Context.BlendWeight > 0.0001f)
+    {
+        FVector RootMotionTranslation;
+        FQuat RootMotionRotation;
+
+        Sequence->ExtractRootMotion(PreviousTime, ActualAdvance, bLoop, RootMotionTranslation, RootMotionRotation);
+        Context.AnimInstance->QueueRootMotionDelta(RootMotionTranslation, RootMotionRotation, Context.BlendWeight);
     }
 
     const bool bIsFirstUpdate = !bHasUpdated;
@@ -183,6 +194,23 @@ void FAnimNode_SequencePlayer::Evaluate(FPoseContext& Output)
         const FVector Scale = RawTrack.ScaleKeys[FrameA] + (RawTrack.ScaleKeys[FrameB] - RawTrack.ScaleKeys[FrameA]) * Alpha;
 
         Output.Pose[NodeIndex] = MakeAnimationMatrix(Position, Rotation, Scale);
+    }
+
+    if (bExtractRootMotion)
+    {
+        const int32 RootNodeIndex = Sequence->GetRootBoneNodeIndex();
+
+        if (Output.Pose.IsValidIndex(RootNodeIndex))
+        {
+            FVector RootPosition;
+            FVector RootScale;
+            FQuat RootRotation;
+
+            if (Sequence->GetRootBoneTransform(0.0f, RootPosition, RootRotation, RootScale))
+            {
+                Output.Pose[RootNodeIndex] = MakeAnimationMatrix(RootPosition, RootRotation, RootScale);
+            }
+        }
     }
 }
 

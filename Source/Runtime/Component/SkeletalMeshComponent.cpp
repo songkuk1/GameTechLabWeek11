@@ -137,6 +137,21 @@ void USkeletalMeshComponent::TickAnimation(float DeltaSeconds)
 
     AnimInstance->UpdateAnimation(DeltaSeconds);
 
+    FVector RootMotionTranslation;
+    FQuat RootMotionRotation;
+
+    if (AnimInstance->ConsumeRootMotionDelta(RootMotionTranslation, RootMotionRotation))
+    {
+        if (AActor* Owner = GetOwner())
+        {
+            const FQuat ActorRotation = Owner->GetActorQuat();
+            const FVector NewLocation = Owner->GetActorLocation() + ActorRotation.RotateVector(RootMotionTranslation);
+            const FQuat NewRotation = (ActorRotation * RootMotionRotation).Normalized();
+
+            Owner->SetActorTransform(FTransform(NewLocation, Owner->GetActorScale3D(), NewRotation.ToFRotator()));
+        }
+    }
+
     EvaluateAnimationPose();
 }
  

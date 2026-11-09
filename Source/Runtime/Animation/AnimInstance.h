@@ -93,6 +93,10 @@ public:
 
 	void QueueAnimNotifyUpdate(const FAnimNode_SequencePlayer* Player, UAnimSequence* Sequence, float PreviousTime, float Advance, float CurrentTime, float PlayLength, bool bLooping, bool bIsFirstUpdate);
 	void TriggerAnimNotifies(float DeltaSeconds);
+
+	bool IsRootMotionEnabled() const;
+	void QueueRootMotionDelta(const FVector& Translation, const FQuat& Rotation, float Weight);
+	bool ConsumeRootMotionDelta(FVector& OutTranslation, FQuat& OutRotation);
 protected:
 	FAnimNode_Base* RootNode = nullptr;
 private:
@@ -112,4 +116,8 @@ private:
 	TMap<FName, float, FNameHash> FloatParameters;
 
 	bool bInitialized = false;
+
+	FVector PendingRootMotionTranslation = FVector::ZeroVector;
+	FQuat PendingRootMotionRotationSum = FQuat(0.0f, 0.0f, 0.0f, 0.0f);
+	float PendingRootMotionWeight = 0.0f;
 };

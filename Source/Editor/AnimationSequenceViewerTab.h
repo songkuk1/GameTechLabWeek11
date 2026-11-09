@@ -3,6 +3,8 @@
 #include "Editor/FEditorTab.h"
 #include "PreviewScene.h"
 #include "Animation/AnimSequence.h"
+#include "Math/Transform.h"
+
 class ASkeletalMeshActor;
 class FPreviewViewportPanel;
 class USkeletalMesh;
@@ -65,4 +67,6 @@ private:
 	float BlendInput = 0.0f;
 
 	int32 SelectedCurveIndex = -1;
+
+	FTransform InitialPreviewActorTransform;
 };

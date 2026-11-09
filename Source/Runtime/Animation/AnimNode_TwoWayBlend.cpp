@@ -21,6 +21,9 @@ void FAnimNode_TwoWayBlend::Update(const FAnimationUpdateContext& Context)
     FAnimationUpdateContext ContextB = Context;
     ContextB.NotifyWeight *= Alpha;
 
+    ContextA.BlendWeight *= (1.0f - Alpha);
+    ContextB.BlendWeight *= Alpha;
+
 	if (SourcePoseA)
 	{
 		SourcePoseA->Update(ContextA);

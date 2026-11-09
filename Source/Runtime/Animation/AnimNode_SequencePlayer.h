@@ -11,6 +11,7 @@ struct FAnimNode_SequencePlayer : public FAnimNode_Base, public IAnimPlaybackCon
 	float PlayRate = 1.0f;
 	bool bLoop = true;
 	bool bHasUpdated = false;
+	bool bExtractRootMotion = false;
 	void SetSequence(UAnimSequence* InSequence);
 	void SetPlaybackPosition(float InTime) override;
 	float GetCurrentTime() const override { return CurrentTime; }

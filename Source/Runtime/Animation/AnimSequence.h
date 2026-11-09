@@ -56,6 +56,9 @@ public:
 	void SerializeNotifies(FStructuredArchive::FRecord Record);
 	void SetSkeleton(USkeleton* InSkeleton) { Skeleton = InSkeleton; }
 	USkeleton* GetSkeleton() const { return Skeleton; }
+	int32 GetRootBoneNodeIndex() const;
+	bool GetRootBoneTransform(float Time, FVector& OutPosition, FQuat& OutRotation, FVector& OutScale) const;
+	bool ExtractRootMotion(float StartTime, float DeltaTime, bool bLooping, FVector& OutTranslation, FQuat& OutRotation) const;
 };
 
 class UAnimSequence : public UAnimSequenceBase

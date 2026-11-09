@@ -140,6 +140,9 @@ void UAnimInstance::UpdateAnimation(float DeltaSeconds)
 	}
 
 	PendingAnimNotifyUpdates.Reset();
+    PendingRootMotionTranslation = FVector::ZeroVector;
+    PendingRootMotionRotationSum = FQuat(0.0f, 0.0f, 0.0f, 0.0f);
+    PendingRootMotionWeight = 0.0f;
 
 	NativeUpdateAnimation(DeltaSeconds);
 
@@ -649,6 +652,57 @@ void UAnimInstance::TriggerAnimNotifies(float DeltaSeconds)
     }
 
     PendingAnimNotifyUpdates.Reset();
+}
+
+bool UAnimInstance::IsRootMotionEnabled() const
+{
+    return OwningComponent && OwningComponent->IsRootMotionEnabled();
+}
+
+void UAnimInstance::QueueRootMotionDelta(const FVector& Translation, const FQuat& Rotation, float Weight)
+{
+    if (!std::isfinite(Weight) || Weight <= 0.0f || !std::isfinite(Translation.X) || !std::isfinite(Translation.Y) || !std::isfinite(Translation.Z))
+    {
+        return;
+    }
+
+    FQuat Contribution = Rotation.Normalized();
+
+    if (PendingRootMotionWeight > 0.0f)
+    {
+        const float Dot = PendingRootMotionRotationSum.X * Contribution.X + PendingRootMotionRotationSum.Y * Contribution.Y + PendingRootMotionRotationSum.Z * Contribution.Z + PendingRootMotionRotationSum.W * Contribution.W;
+
+        if (Dot < 0.0f)
+        {
+            Contribution = FQuat(-Contribution.X, -Contribution.Y, -Contribution.Z, -Contribution.W);
+        }
+    }
+
+    PendingRootMotionTranslation += Translation * Weight;
+    PendingRootMotionRotationSum.X += Contribution.X * Weight;
+    PendingRootMotionRotationSum.Y += Contribution.Y * Weight;
+    PendingRootMotionRotationSum.Z += Contribution.Z * Weight;
+    PendingRootMotionRotationSum.W += Contribution.W * Weight;
+    PendingRootMotionWeight += Weight;
+}
+
+bool UAnimInstance::ConsumeRootMotionDelta(FVector& OutTranslation, FQuat& OutRotation)
+{
+    if (PendingRootMotionWeight <= 1.0e-6f)
+    {
+        OutTranslation = FVector::ZeroVector;
+        OutRotation = FQuat::Identity();
+        return false;
+    }
+
+    OutTranslation = PendingRootMotionTranslation / PendingRootMotionWeight;
+    OutRotation = PendingRootMotionRotationSum.Normalized();
+
+    PendingRootMotionTranslation = FVector::ZeroVector;
+    PendingRootMotionRotationSum = FQuat(0.0f, 0.0f, 0.0f, 0.0f);
+    PendingRootMotionWeight = 0.0f;
+
+    return true;
 }
 
 void UAnimInstance::EndActiveAnimNotifyStates()
