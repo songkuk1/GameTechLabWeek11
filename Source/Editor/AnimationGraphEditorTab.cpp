@@ -168,6 +168,27 @@ namespace
         return ed::LinkId(static_cast<std::uintptr_t>(HashNodeEditorIdentifier(Identifier)));
     }
 
+    ed::PinId MakeTransitionSourcePinId(const FAnimGraphTransitionDefinition& Transition)
+    {
+        FString Identifier = Transition.bAnyState ? "AnyStateSourcePin:" : "StateSourcePin:";
+        if (!Transition.bAnyState)
+        {
+            Identifier += Transition.FromState.ToString();
+            Identifier += "->";
+        }
+        Identifier += Transition.ToState.ToString();
+        return ed::PinId(static_cast<std::uintptr_t>(HashNodeEditorIdentifier(Identifier)));
+    }
+
+    ed::PinId MakeTransitionDestinationPinId(const FAnimGraphTransitionDefinition& Transition)
+    {
+        FString Identifier = "TransitionDestinationPin:";
+        Identifier += Transition.bAnyState ? "AnyState" : Transition.FromState.ToString();
+        Identifier += "->";
+        Identifier += Transition.ToState.ToString();
+        return ed::PinId(static_cast<std::uintptr_t>(HashNodeEditorIdentifier(Identifier)));
+    }
+
     ed::NodeId MakeEntryNodeId()
     {
         return ed::NodeId(static_cast<std::uintptr_t>(HashNodeEditorIdentifier("EntryNode")));
@@ -1948,6 +1969,87 @@ void FAnimationGraphEditorTab::DrawGraphCanvas()
             ed::PopStyleVar(2);
         };
 
+    auto SubmitTransitionPin = [](ed::PinId PinId, ed::PinKind PinKindValue, const ImVec2& NodeMin, const ImVec2& NodeMax, int32 Side, float TangentOffset)
+        {
+            constexpr float PinSize = 4.0f;
+
+            const float CenterX = (NodeMin.x + NodeMax.x) * 0.5f;
+            const float CenterY = (NodeMin.y + NodeMax.y) * 0.5f;
+
+            ImVec2 PinPosition;
+            ImVec2 PivotAlignment;
+            ImVec2 PinDirection;
+
+            switch (Side)
+            {
+            case GraphPinSideLeft:
+                PinPosition = ImVec2(NodeMin.x, CenterY + TangentOffset - PinSize * 0.5f);
+                PivotAlignment = ImVec2(0.0f, 0.5f);
+                PinDirection = ImVec2(-1.0f, 0.0f);
+                break;
+
+            case GraphPinSideRight:
+                PinPosition = ImVec2(NodeMax.x - PinSize, CenterY + TangentOffset - PinSize * 0.5f);
+                PivotAlignment = ImVec2(1.0f, 0.5f);
+                PinDirection = ImVec2(1.0f, 0.0f);
+                break;
+
+            case GraphPinSideTop:
+                PinPosition = ImVec2(CenterX + TangentOffset - PinSize * 0.5f, NodeMin.y);
+                PivotAlignment = ImVec2(0.5f, 0.0f);
+                PinDirection = ImVec2(0.0f, -1.0f);
+                break;
+
+            case GraphPinSideBottom:
+                PinPosition = ImVec2(CenterX + TangentOffset - PinSize * 0.5f, NodeMax.y - PinSize);
+                PivotAlignment = ImVec2(0.5f, 1.0f);
+                PinDirection = ImVec2(0.0f, 1.0f);
+                break;
+
+            default:
+                return;
+            }
+
+            ImGui::SetCursorScreenPos(PinPosition);
+            ed::PushStyleVar(ed::StyleVar_SourceDirection, PinDirection);
+            ed::PushStyleVar(ed::StyleVar_TargetDirection, PinDirection);
+            ed::BeginPin(PinId, PinKindValue);
+            ed::PinPivotAlignment(PivotAlignment);
+            ed::PinPivotSize(ImVec2(0.0f, 0.0f));
+            ImGui::Dummy(ImVec2(PinSize, PinSize));
+            ed::EndPin();
+            ed::PopStyleVar(2);
+        };
+
+    constexpr float StateNodeWidth = 240.0f;
+    constexpr float StateNodeHeight = 150.0f;
+    constexpr float AnyStateNodeWidth = 180.0f;
+    constexpr float AnyStateNodeHeight = 58.0f;
+    constexpr float EntryNodeWidth = 104.0f;
+    constexpr float EntryNodeHeight = 36.0f;
+
+    auto GetKnownNodeSize = [&](ed::NodeId NodeId)
+        {
+            if (NodeId == AnyStateNodeId)
+            {
+                return ImVec2(AnyStateNodeWidth, AnyStateNodeHeight);
+            }
+
+            if (NodeId == MakeEntryNodeId())
+            {
+                return ImVec2(EntryNodeWidth, EntryNodeHeight);
+            }
+
+            return ImVec2(StateNodeWidth, StateNodeHeight);
+        };
+
+    auto GetNodeCenter = [&](ed::NodeId NodeId)
+        {
+            const ImVec2 Position = ed::GetNodePosition(NodeId);
+            const ImVec2 Size = GetKnownNodeSize(NodeId);
+            return ImVec2(Position.x + Size.x * 0.5f, Position.y + Size.y * 0.5f);
+        };
+
     auto GetFacingPinSides = [&](ed::NodeId SourceNodeId, ed::NodeId DestinationNodeId, int32& OutSourceSide, int32& OutDestinationSide)
         {
             OutSourceSide = GraphPinSideRight;
@@ -1956,22 +2058,16 @@ void FAnimationGraphEditorTab::DrawGraphCanvas()
             const ImVec2 SourcePosition = ed::GetNodePosition(SourceNodeId);
             const ImVec2 DestinationPosition = ed::GetNodePosition(DestinationNodeId);
 
-            const ImVec2 SourceSize = ed::GetNodeSize(SourceNodeId);
-            const ImVec2 DestinationSize = ed::GetNodeSize(DestinationNodeId);
-
-            if (SourcePosition.x == InvalidPosition || DestinationPosition.x == InvalidPosition || SourceSize.x <= 0.0f || DestinationSize.x <= 0.0f)
+            if (SourcePosition.x == InvalidPosition || DestinationPosition.x == InvalidPosition)
             {
                 return;
             }
 
-            const float SourceCenterX = SourcePosition.x + SourceSize.x * 0.5f;
-            const float SourceCenterY = SourcePosition.y + SourceSize.y * 0.5f;
+            const ImVec2 SourceCenter = GetNodeCenter(SourceNodeId);
+            const ImVec2 DestinationCenter = GetNodeCenter(DestinationNodeId);
 
-            const float DestinationCenterX = DestinationPosition.x + DestinationSize.x * 0.5f;
-            const float DestinationCenterY = DestinationPosition.y + DestinationSize.y * 0.5f;
-
-            const float DeltaX = DestinationCenterX - SourceCenterX;
-            const float DeltaY = DestinationCenterY - SourceCenterY;
+            const float DeltaX = DestinationCenter.x - SourceCenter.x;
+            const float DeltaY = DestinationCenter.y - SourceCenter.y;
 
             if (std::abs(DeltaX) >= std::abs(DeltaY))
             {
@@ -1984,6 +2080,89 @@ void FAnimationGraphEditorTab::DrawGraphCanvas()
                 OutDestinationSide = DeltaY >= 0.0f ? GraphPinSideTop : GraphPinSideBottom;
             }
         };
+
+    struct FTransitionRoute
+    {
+        FAnimGraphTransitionDefinition Transition;
+        ed::NodeId SourceNodeId;
+        ed::NodeId DestinationNodeId;
+        int32 SourceSide = GraphPinSideRight;
+        int32 DestinationSide = GraphPinSideLeft;
+        float SourceOffset = 0.0f;
+        float DestinationOffset = 0.0f;
+    };
+
+    std::vector<FTransitionRoute> TransitionRoutes;
+    TransitionRoutes.reserve(Transitions.Num());
+
+    for (int32 Index = 0; Index < Transitions.Num(); ++Index)
+    {
+        FTransitionRoute Route;
+        Route.Transition = Transitions[Index];
+        Route.SourceNodeId = Route.Transition.bAnyState ? AnyStateNodeId : MakeStateNodeId(Route.Transition.FromState);
+        Route.DestinationNodeId = MakeStateNodeId(Route.Transition.ToState);
+
+        GetFacingPinSides(Route.SourceNodeId, Route.DestinationNodeId, Route.SourceSide, Route.DestinationSide);
+        TransitionRoutes.push_back(Route);
+    }
+
+    auto GetPeerTangentCoordinate = [&](ed::NodeId PeerNodeId, int32 Side)
+        {
+            const ImVec2 Center = GetNodeCenter(PeerNodeId);
+            return Side == GraphPinSideLeft || Side == GraphPinSideRight ? Center.y : Center.x;
+        };
+
+    auto CalculateTransitionLaneOffset = [&](int32 RouteIndex, bool bSource)
+        {
+            const FTransitionRoute& CurrentRoute = TransitionRoutes[RouteIndex];
+
+            const ed::NodeId OwnerNodeId = bSource ? CurrentRoute.SourceNodeId : CurrentRoute.DestinationNodeId;
+            const ed::NodeId PeerNodeId = bSource ? CurrentRoute.DestinationNodeId : CurrentRoute.SourceNodeId;
+            const int32 Side = bSource ? CurrentRoute.SourceSide : CurrentRoute.DestinationSide;
+
+            const float PeerCoordinate = GetPeerTangentCoordinate(PeerNodeId, Side);
+
+            int32 Count = 0;
+            int32 Rank = 0;
+
+            for (int32 OtherIndex = 0; OtherIndex < static_cast<int32>(TransitionRoutes.size()); ++OtherIndex)
+            {
+                const FTransitionRoute& OtherRoute = TransitionRoutes[OtherIndex];
+
+                const ed::NodeId OtherOwnerNodeId = bSource ? OtherRoute.SourceNodeId : OtherRoute.DestinationNodeId;
+                const int32 OtherSide = bSource ? OtherRoute.SourceSide : OtherRoute.DestinationSide;
+
+                if (OtherOwnerNodeId != OwnerNodeId || OtherSide != Side)
+                {
+                    continue;
+                }
+
+                const ed::NodeId OtherPeerNodeId = bSource ? OtherRoute.DestinationNodeId : OtherRoute.SourceNodeId;
+                const float OtherCoordinate = GetPeerTangentCoordinate(OtherPeerNodeId, Side);
+
+                ++Count;
+
+                if (OtherCoordinate < PeerCoordinate - 0.01f || (std::abs(OtherCoordinate - PeerCoordinate) <= 0.01f && OtherIndex < RouteIndex))
+                {
+                    ++Rank;
+                }
+            }
+
+            const ImVec2 NodeSize = GetKnownNodeSize(OwnerNodeId);
+            const float EdgeLength = Side == GraphPinSideLeft || Side == GraphPinSideRight ? NodeSize.y : NodeSize.x;
+            const float MaxRange = std::max(0.0f, EdgeLength * 0.5f - 16.0f);
+
+            const float NormalizedRank = Count > 1 ? (static_cast<float>(Rank) / static_cast<float>(Count - 1)) * 2.0f - 1.0f : 0.0f;
+
+            return NormalizedRank * MaxRange;
+        };
+
+    for (int32 Index = 0; Index < static_cast<int32>(TransitionRoutes.size()); ++Index)
+    {
+        FTransitionRoute& Route = TransitionRoutes[Index];
+        Route.SourceOffset = CalculateTransitionLaneOffset(Index, true) + 7.0f;
+        Route.DestinationOffset = CalculateTransitionLaneOffset(Index, false) - 7.0f;
+    }
 
     ed::Begin("AnimationGraphNodeEditor", CanvasSize);
 
@@ -2032,6 +2211,14 @@ void FAnimationGraphEditorTab::DrawGraphCanvas()
     for (int32 Side = 0; Side < GraphPinSideCount; ++Side)
     {
         SubmitEdgePin(MakeAnyStateOutputPinId(Side), ed::PinKind::Output, AnyStateMin, AnyStateMax, Side);
+    }
+
+    for (const FTransitionRoute& Route : TransitionRoutes)
+    {
+        if (Route.SourceNodeId == AnyStateNodeId)
+        {
+            SubmitTransitionPin(MakeTransitionSourcePinId(Route.Transition), ed::PinKind::Output, AnyStateMin, AnyStateMax, Route.SourceSide, Route.SourceOffset);
+        }
     }
 
     ed::EndNode();
@@ -2147,6 +2334,21 @@ void FAnimationGraphEditorTab::DrawGraphCanvas()
             SubmitEdgePin(MakeStateOutputPinId(State.Name, Side), ed::PinKind::Output, NodeMin, NodeMax, Side);
         }
 
+        const ed::NodeId CurrentStateNodeId = MakeStateNodeId(State.Name);
+
+        for (const FTransitionRoute& Route : TransitionRoutes)
+        {
+            if (Route.SourceNodeId == CurrentStateNodeId)
+            {
+                SubmitTransitionPin(MakeTransitionSourcePinId(Route.Transition), ed::PinKind::Output, NodeMin, NodeMax, Route.SourceSide, Route.SourceOffset);
+            }
+
+            if (Route.DestinationNodeId == CurrentStateNodeId)
+            {
+                SubmitTransitionPin(MakeTransitionDestinationPinId(Route.Transition), ed::PinKind::Input, NodeMin, NodeMax, Route.DestinationSide, Route.DestinationOffset);
+            }
+        }
+
         ed::EndNode();
 
         ed::PopStyleVar(2);
@@ -2165,20 +2367,13 @@ void FAnimationGraphEditorTab::DrawGraphCanvas()
     }
 
 
-    for (int32 Index = 0; Index < Transitions.Num(); ++Index)
+    for (int32 Index = 0; Index < static_cast<int32>(TransitionRoutes.size()); ++Index)
     {
-        const FAnimGraphTransitionDefinition& Transition = Transitions[Index];
+        const FTransitionRoute& Route = TransitionRoutes[Index];
+        const FAnimGraphTransitionDefinition& Transition = Route.Transition;
 
-        const ed::NodeId SourceNodeId = Transition.bAnyState ? AnyStateNodeId : MakeStateNodeId(Transition.FromState);
-        const ed::NodeId DestinationNodeId = MakeStateNodeId(Transition.ToState);
-
-        int32 SourceSide = GraphPinSideRight;
-        int32 DestinationSide = GraphPinSideLeft;
-
-        GetFacingPinSides(SourceNodeId, DestinationNodeId, SourceSide, DestinationSide);
-
-        const ed::PinId SourcePin = Transition.bAnyState ? MakeAnyStateOutputPinId(SourceSide) : MakeStateOutputPinId(Transition.FromState, SourceSide);
-        const ed::PinId DestinationPin = MakeStateInputPinId(Transition.ToState, DestinationSide);
+        const ed::PinId SourcePin = MakeTransitionSourcePinId(Transition);
+        const ed::PinId DestinationPin = MakeTransitionDestinationPinId(Transition);
 
         const bool bSelected = SelectedTransitionIndex == Index;
 
@@ -2396,7 +2591,27 @@ void FAnimationGraphEditorTab::DrawGraphCanvas()
         const ImVec2 SourceCenter(SourcePosition.x + SourceSize.x * 0.5f, SourcePosition.y + SourceSize.y * 0.5f);
         const ImVec2 DestinationCenter(DestinationPosition.x + DestinationSize.x * 0.5f, DestinationPosition.y + DestinationSize.y * 0.5f);
 
-        const ImVec2 CanvasCenter((SourceCenter.x + DestinationCenter.x) * 0.5f, (SourceCenter.y + DestinationCenter.y) * 0.5f);
+        const float DeltaX = DestinationCenter.x - SourceCenter.x;
+        const float DeltaY = DestinationCenter.y - SourceCenter.y;
+        const float Length = std::sqrt(DeltaX * DeltaX + DeltaY * DeltaY);
+
+        const ImVec2 Perpendicular = Length > 0.001f ? ImVec2(-DeltaY / Length, DeltaX / Length) : ImVec2(0.0f, 1.0f);
+
+        float RouteOffset = 0.0f;
+
+        for (const FTransitionRoute& Route : TransitionRoutes)
+        {
+            if (MakeTransitionLinkId(Route.Transition) == MakeTransitionLinkId(Transition))
+            {
+                RouteOffset = (Route.SourceOffset + Route.DestinationOffset) * 0.25f;
+                break;
+            }
+        }
+
+        const ImVec2 CanvasCenter(
+            (SourceCenter.x + DestinationCenter.x) * 0.5f + Perpendicular.x * RouteOffset,
+            (SourceCenter.y + DestinationCenter.y) * 0.5f + Perpendicular.y * RouteOffset);
+
         const ImVec2 LabelCenter = ed::CanvasToScreen(CanvasCenter);
 
         const FString RuleLabel = GetTransitionConditionLabel(Transition);
