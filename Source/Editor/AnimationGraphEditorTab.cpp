@@ -1551,6 +1551,35 @@ void FAnimationGraphEditorTab::DrawRuntimeDebug()
         return;
     }
 
+    ImGui::Separator();
+    ImGui::TextUnformatted("Runtime Parameters");
+
+    for (const FAnimGraphParameterDefinition& Parameter : Graph->GetParameters())
+    {
+        const FString ParameterName = Parameter.Name.ToString();
+
+        if (Parameter.Type == EAnimGraphParameterType::Bool)
+        {
+            bool Value = AnimInstance->GetBoolParameter(Parameter.Name);
+
+            if (ImGui::Checkbox(ParameterName.c_str(), &Value))
+            {
+                AnimInstance->SetBoolParameter(Parameter.Name, Value);
+            }
+        }
+        else if (Parameter.Type == EAnimGraphParameterType::Float)
+        {
+            float Value = AnimInstance->GetFloatParameter(Parameter.Name);
+
+            if (ImGui::DragFloat(ParameterName.c_str(), &Value, 0.1f))
+            {
+                AnimInstance->SetFloatParameter(Parameter.Name, Value);
+            }
+        }
+    }
+
+    ImGui::Separator();
+
     FAnimStateMachineDebugInfo DebugInfo;
 
     if (!AnimInstance->GetStateMachineDebugInfo(DebugInfo))

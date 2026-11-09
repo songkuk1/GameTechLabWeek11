@@ -216,7 +216,9 @@ void FAnimationSequenceViewerTab::DrawToolbar()
 
 	if (ImGui::Button("Restart"))
 	{
+		PreviewActor->SetActorTransform(InitialPreviewActorTransform);
 		Component->SetAnimationPlaybackTime(Component->GetAnimationPlayRate() < 0.0f ? Duration : 0.0f);
+		Component->TickAnimation(0.0f);
 		bPlaying = true;
 	}
 

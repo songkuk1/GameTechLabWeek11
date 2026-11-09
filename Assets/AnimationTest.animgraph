@@ -1,0 +1,215 @@
+{
+    "AnimationGraph": {
+        "EditorNodePositions": [
+            {
+                "NodeName": "Locomotion",
+                "X": 300.0,
+                "Y": 90.0
+            },
+            {
+                "NodeName": "JumpStart",
+                "X": 660.0,
+                "Y": 90.0
+            },
+            {
+                "NodeName": "JumpLoop",
+                "X": 1020.0,
+                "Y": 90.0
+            },
+            {
+                "NodeName": "JumpLand",
+                "X": 300.0,
+                "Y": 320.0
+            },
+            {
+                "NodeName": "Attack",
+                "X": 660.0,
+                "Y": 320.0
+            },
+            {
+                "NodeName": "Hit",
+                "X": 1020.0,
+                "Y": 320.0
+            },
+            {
+                "NodeName": "None",
+                "X": 30.0,
+                "Y": 60.0
+            }
+        ],
+        "EntryState": "Locomotion",
+        "Parameters": [
+            {
+                "BoolDefault": false,
+                "FloatDefault": 0.0,
+                "Name": "Speed",
+                "Type": 1
+            },
+            {
+                "BoolDefault": false,
+                "FloatDefault": 0.0,
+                "Name": "bIsAttacking",
+                "Type": 0
+            },
+            {
+                "BoolDefault": false,
+                "FloatDefault": 0.0,
+                "Name": "bIsHit",
+                "Type": 0
+            },
+            {
+                "BoolDefault": false,
+                "FloatDefault": 0.0,
+                "Name": "bIsJumping",
+                "Type": 0
+            },
+            {
+                "BoolDefault": false,
+                "FloatDefault": 0.0,
+                "Name": "bIsLanded",
+                "Type": 0
+            }
+        ],
+        "Properties": {},
+        "Skeleton": "Models/UAL1_Standard_Skeleton",
+        "States": [
+            {
+                "BlendParameterName": "Speed",
+                "BlendSpace": "NewBlendSpace1D.blendspace",
+                "Looping": true,
+                "Name": "Locomotion",
+                "NodeType": 1,
+                "PlayRate": 1.0,
+                "Sequence": null
+            },
+            {
+                "BlendParameterName": "None",
+                "BlendSpace": null,
+                "Looping": false,
+                "Name": "JumpStart",
+                "NodeType": 0,
+                "PlayRate": 1.0,
+                "Sequence": "Models/UAL1_Standard.fbx::Armature|Jump_Start"
+            },
+            {
+                "BlendParameterName": "None",
+                "BlendSpace": null,
+                "Looping": true,
+                "Name": "JumpLoop",
+                "NodeType": 0,
+                "PlayRate": 1.0,
+                "Sequence": "Models/UAL1_Standard.fbx::Armature|Jump_Loop"
+            },
+            {
+                "BlendParameterName": "None",
+                "BlendSpace": null,
+                "Looping": false,
+                "Name": "JumpLand",
+                "NodeType": 0,
+                "PlayRate": 1.0,
+                "Sequence": "Models/UAL1_Standard.fbx::Armature|Jump_Land"
+            },
+            {
+                "BlendParameterName": "None",
+                "BlendSpace": null,
+                "Looping": false,
+                "Name": "Attack",
+                "NodeType": 0,
+                "PlayRate": 1.0,
+                "Sequence": "Models/UAL1_Standard.fbx::Armature|Punch_Jab"
+            },
+            {
+                "BlendParameterName": "None",
+                "BlendSpace": null,
+                "Looping": false,
+                "Name": "Hit",
+                "NodeType": 0,
+                "PlayRate": 1.0,
+                "Sequence": "Models/UAL1_Standard.fbx::Armature|Hit_Chest"
+            }
+        ],
+        "Transitions": [
+            {
+                "AnyState": true,
+                "BlendDuration": 0.10000000149011612,
+                "FloatThreshold": 0.0,
+                "FromState": "None",
+                "ParameterName": "bIsHit",
+                "Priority": 100,
+                "Rule": 1,
+                "ToState": "Hit"
+            },
+            {
+                "AnyState": false,
+                "BlendDuration": 0.11999999731779099,
+                "FloatThreshold": 0.0,
+                "FromState": "Locomotion",
+                "ParameterName": "bIsJumping",
+                "Priority": 30,
+                "Rule": 1,
+                "ToState": "JumpStart"
+            },
+            {
+                "AnyState": false,
+                "BlendDuration": 0.10000000149011612,
+                "FloatThreshold": 0.0,
+                "FromState": "JumpStart",
+                "ParameterName": "None",
+                "Priority": 0,
+                "Rule": 3,
+                "ToState": "JumpLoop"
+            },
+            {
+                "AnyState": false,
+                "BlendDuration": 0.11999999731779099,
+                "FloatThreshold": 0.0,
+                "FromState": "JumpLoop",
+                "ParameterName": "bIsLanded",
+                "Priority": 20,
+                "Rule": 1,
+                "ToState": "JumpLand"
+            },
+            {
+                "AnyState": false,
+                "BlendDuration": 0.15000000596046448,
+                "FloatThreshold": 0.0,
+                "FromState": "JumpLand",
+                "ParameterName": "None",
+                "Priority": 0,
+                "Rule": 3,
+                "ToState": "Locomotion"
+            },
+            {
+                "AnyState": false,
+                "BlendDuration": 0.11999999731779099,
+                "FloatThreshold": 0.0,
+                "FromState": "Locomotion",
+                "ParameterName": "bIsAttacking",
+                "Priority": 10,
+                "Rule": 1,
+                "ToState": "Attack"
+            },
+            {
+                "AnyState": false,
+                "BlendDuration": 0.15000000596046448,
+                "FloatThreshold": 0.0,
+                "FromState": "Attack",
+                "ParameterName": "None",
+                "Priority": 0,
+                "Rule": 3,
+                "ToState": "Locomotion"
+            },
+            {
+                "AnyState": false,
+                "BlendDuration": 0.10000000149011612,
+                "FloatThreshold": 0.0,
+                "FromState": "Hit",
+                "ParameterName": "None",
+                "Priority": 0,
+                "Rule": 3,
+                "ToState": "Locomotion"
+            }
+        ]
+    },
+    "Version": 1
+}

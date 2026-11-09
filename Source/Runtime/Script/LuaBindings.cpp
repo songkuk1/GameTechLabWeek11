@@ -20,6 +20,11 @@
 #include "Component/SphereComponent.h"
 #include "Camera/CameraComponent.h"
 
+#include "Asset/AssetManager.h"
+#include "Animation/AnimSequence.h"
+#include "Animation/BlendSpace1D.h"
+#include "Component/SkeletalMeshComponent.h"
+
 #include "Math/Vector.h"
 #include "Math/Vector2.h"
 #include "Math/Transform.h"
@@ -33,6 +38,40 @@
 #include "Game/CoinRain.h"
 #include "Game/Bullet.h"
 #include "Sound/SoundSystem.h"
+
+static bool LuaPlayAnimationByPath(USkeletalMeshComponent* Component, sol::string_view Path)
+{
+	if (!Component || Path.empty())
+	{
+		return false;
+	}
+
+	UAnimSequence* Sequence = UAssetManager::GetAssetByPath<UAnimSequence>(FString(Path.data(), Path.size()));
+	if (!Sequence)
+	{
+		return false;
+	}
+
+	Component->PlayAnimation(Sequence);
+	return true;
+}
+
+static bool LuaPlayBlendSpaceByPath(USkeletalMeshComponent* Component, sol::string_view Path, float Input)
+{
+	if (!Component || Path.empty())
+	{
+		return false;
+	}
+
+	UBlendSpace1D* BlendSpace = UAssetManager::GetAssetByPath<UBlendSpace1D>(FString(Path.data(), Path.size()));
+	if (!BlendSpace)
+	{
+		return false;
+	}
+
+	Component->PlayBlendSpace(BlendSpace, Input);
+	return true;
+}
 
 void FLuaBindings::RegisterLuaBindings(sol::state& Lua, FLuaCoroutineScheduler* CoroutinScheduler)
 {
@@ -304,6 +343,8 @@ void FLuaBindings::RegisterLuaBindings(sol::state& Lua, FLuaCoroutineScheduler* 
 		"SetConstrainAspectRatio", &UCameraComponent::SetConstrainAspectRatio
 	);
 
+	Lua.new_usertype<USkeletalMeshComponent>("SkeletalMeshComponent", sol::no_constructor, "StaticClass", &USkeletalMeshComponent::StaticClass, "PlayAnimationByPath", &LuaPlayAnimationByPath, "PlayBlendSpaceByPath", &LuaPlayBlendSpaceByPath, "TickAnimation", &USkeletalMeshComponent::TickAnimation, "SetAnimationBlendInput", &USkeletalMeshComponent::SetAnimationBlendInput, "SetAnimationLooping", &USkeletalMeshComponent::SetAnimationLooping, "GetAnimationPlaybackTime", &USkeletalMeshComponent::GetAnimationPlaybackTime, "GetAnimationPlayLength", &USkeletalMeshComponent::GetAnimationPlayLength);
+
 	Lua.new_usertype<FWaitForSeconds>(
 		"WaitForSeconds",
 		sol::constructors<FWaitForSeconds(double)>(),
@@ -534,6 +575,11 @@ static sol::object ConvertComponentToActual(UActorComponent* Component)
 	if (UCameraComponent* Camera = Cast<UCameraComponent>(Component))
 	{
 		return sol::make_object(FLuaScriptSystem::Get().GetLuaState(), Camera);
+	}
+
+	if (USkeletalMeshComponent* SkeletalMeshComponent = Cast<USkeletalMeshComponent>(Component))
+	{
+		return sol::make_object(FLuaScriptSystem::Get().GetLuaState(), SkeletalMeshComponent);
 	}
 
 	return sol::object();
