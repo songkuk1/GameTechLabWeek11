@@ -16,6 +16,8 @@
 
 #include "Camera/CameraTypes.h"
 
+#include "Serialization/JsonArchive.h"
+
 #include <algorithm>
 #include <cmath>
 
@@ -312,6 +314,21 @@ void FAnimationSequenceViewerTab::DrawToolbar()
 		SelectNotify(-1);
 	}
 	ImGui::EndDisabled();
+	ImGui::SameLine();
+
+	if (ImGui::Button("Save Notifies"))
+	{
+		const FString NotifyPath = FJsonArchive::GetAnimationNotifyPath(Animation->GetPath());
+
+		if (FJsonArchive::SaveAnimNotifies(Animation, NotifyPath))
+		{
+			HTR_LOG(Info, "Saved animation notifies: {}", NotifyPath);
+		}
+		else
+		{
+			HTR_LOG(Error, "Failed to save animation notifies: {}", NotifyPath);
+		}
+	}
 	DrawNotifyTrack(Duration);
 	DrawNotifyDetails(Duration);
 }

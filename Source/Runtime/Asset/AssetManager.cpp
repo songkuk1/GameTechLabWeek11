@@ -641,6 +641,13 @@ void UAssetManager::LoadFbxModel(const FString& Path)
 			}
 			const FString AnimationKey = MeshKey + "::" + ModelAnimation.Name.ToString();
 			RegisterAsset(AnimationKey, AnimSequence);
+
+			const FString NotifyPath = FJsonArchive::GetAnimationNotifyPath(AnimationKey);
+
+			if (!FJsonArchive::LoadAnimNotifies(AnimSequence, NotifyPath))
+			{
+				HTR_LOG(Warning, "Failed to load animation notifies: {}", NotifyPath);
+			}
 		}
 	}
 	else

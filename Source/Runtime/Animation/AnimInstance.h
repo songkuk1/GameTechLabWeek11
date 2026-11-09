@@ -23,6 +23,7 @@ struct FQueuedAnimNotifyUpdate
 	float CurrentTime = 0.0f;
 	float PlayLength = 0.0f;
 	bool bLooping = false;
+	bool bIsFirstUpdate = false;
 };
 
 struct FActiveAnimNotifyState
@@ -89,7 +90,7 @@ public:
 
 	bool GetStateMachineDebugInfo(FAnimStateMachineDebugInfo& OutInfo) const;
 
-	void QueueAnimNotifyUpdate(const FAnimNode_SequencePlayer* Player, UAnimSequence* Sequence, float PreviousTime, float Advance, float CurrentTime, float PlayLength, bool bLooping);
+	void QueueAnimNotifyUpdate(const FAnimNode_SequencePlayer* Player, UAnimSequence* Sequence, float PreviousTime, float Advance, float CurrentTime, float PlayLength, bool bLooping, bool bIsFirstUpdate);
 	void TriggerAnimNotifies(float DeltaSeconds);
 protected:
 	FAnimNode_Base* RootNode = nullptr;
@@ -110,4 +111,5 @@ private:
 	TMap<FName, float, FNameHash> FloatParameters;
 
 	bool bInitialized = false;
+	bool bIsFirstUpdate = false;
 };

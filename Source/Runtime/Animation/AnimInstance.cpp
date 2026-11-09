@@ -5,6 +5,9 @@
 #include "Animation/AnimSequence.h"
 #include "Animation/AnimationGraph.h"
 #include "Animation/AnimNode_StateMachine.h"
+#include <algorithm>
+#include <cmath>
+
 UAnimInstance::UAnimInstance()
 {
 	RootNode = &SequencePlayer;
@@ -168,12 +171,18 @@ AActor* UAnimInstance::GetOwningActor() const
 
 void UAnimInstance::PlayAnimation(UAnimSequence* InSequence)
 {
-	SequencePlayer.SetSequence(InSequence);
-	RootNode = &SequencePlayer;
+    EndActiveAnimNotifyStates();
+    PendingAnimNotifyUpdates.Reset();
+
+    SequencePlayer.SetSequence(InSequence);
+    RootNode = &SequencePlayer;
 }
 
 void UAnimInstance::PlayBlendAnimation(UAnimSequence* InSequenceA, UAnimSequence* InSequenceB, float InAlpha)
 {
+    EndActiveAnimNotifyStates();
+    PendingAnimNotifyUpdates.Reset();
+
 	TwoWayBlendPlayer.SetAnimations(InSequenceA, InSequenceB);
 	TwoWayBlendPlayer.SetAlpha(InAlpha);
 	RootNode = &TwoWayBlendPlayer;
@@ -181,6 +190,9 @@ void UAnimInstance::PlayBlendAnimation(UAnimSequence* InSequenceA, UAnimSequence
 
 void UAnimInstance::PlayBlendSpace(UBlendSpace1D* InBlendSpace, float InInput)
 {
+    EndActiveAnimNotifyStates();
+    PendingAnimNotifyUpdates.Reset();
+
 	BlendSpacePlayer.SetBlendSpace(InBlendSpace);
 	BlendSpacePlayer.SetBlendInput(InInput);
 	RootNode = &BlendSpacePlayer;
@@ -321,6 +333,12 @@ bool UAnimInstance::SetRootNode(FAnimNode_Base* InRootNode)
 		return true;
 	}
 
+    if (RootNode != InRootNode)
+    {
+        EndActiveAnimNotifyStates();
+        PendingAnimNotifyUpdates.Reset();
+    }
+
 	if (InRootNode == &SequencePlayer || InRootNode == &TwoWayBlendPlayer || InRootNode == &BlendSpacePlayer)
 	{
 		RootNode = InRootNode;
@@ -364,7 +382,7 @@ bool UAnimInstance::GetStateMachineDebugInfo(FAnimStateMachineDebugInfo& OutInfo
 	return true;
 }
 
-void UAnimInstance::QueueAnimNotifyUpdate(const FAnimNode_SequencePlayer* Player, UAnimSequence* Sequence, float PreviousTime, float Advance, float CurrentTime, float PlayLength, bool bLooping)
+void UAnimInstance::QueueAnimNotifyUpdate(const FAnimNode_SequencePlayer* Player, UAnimSequence* Sequence, float PreviousTime, float Advance, float CurrentTime, float PlayLength, bool bLooping, bool bIsFirstUpdate)
 {
 	if (!Player || !Sequence || !Sequence->GetDataModel())
 	{
@@ -384,12 +402,242 @@ void UAnimInstance::QueueAnimNotifyUpdate(const FAnimNode_SequencePlayer* Player
 	Update.CurrentTime = CurrentTime;
 	Update.PlayLength = PlayLength;
 	Update.bLooping = bLooping;
+	Update.bIsFirstUpdate = bIsFirstUpdate;
 
 	PendingAnimNotifyUpdates.Add(std::move(Update));
 }
 
 void UAnimInstance::TriggerAnimNotifies(float DeltaSeconds)
 {
+    struct FNotifyDispatch
+    {
+        double Progress = 0.0;
+        FName NotifyName;
+        EAnimNotifyEventType EventType = EAnimNotifyEventType::Trigger;
+    };
+
+    TArray<FActiveAnimNotifyState> NextActiveStates;
+    TArray<FActiveAnimNotifyState> ProcessedActiveStates;
+
+    const float NotifyDeltaSeconds = std::isfinite(DeltaSeconds) ? std::max(DeltaSeconds, 0.0f) : 0.0f;
+    constexpr double TimeTolerance = 1.0e-6;
+
+    for (const FQueuedAnimNotifyUpdate& Update : PendingAnimNotifyUpdates)
+    {
+        if (!Update.Player || !Update.Sequence || !Update.Sequence->GetDataModel())
+        {
+            continue;
+        }
+
+        const TArray<FAnimNotifyEvent>& Notifies = Update.Sequence->GetNotifies();
+        const double PathStart = Update.PreviousTime;
+        const double PathEnd = PathStart + Update.Advance;
+
+        if (!std::isfinite(PathEnd))
+        {
+            continue;
+        }
+
+        const double MinPath = std::min(PathStart, PathEnd);
+        const double MaxPath = std::max(PathStart, PathEnd);
+
+        TArray<FNotifyDispatch> Dispatches;
+
+        auto AddDispatch = [&](double EventTime, const FName& NotifyName, EAnimNotifyEventType EventType)
+            {
+                FNotifyDispatch Dispatch;
+                Dispatch.Progress = std::abs(Update.Advance) > TimeTolerance ? std::clamp((EventTime - PathStart) / Update.Advance, 0.0, 1.0) : 0.0;
+                Dispatch.NotifyName = NotifyName;
+                Dispatch.EventType = EventType;
+                Dispatches.Add(std::move(Dispatch));
+            };
+
+        for (int32 NotifyIndex = 0; NotifyIndex < Notifies.Num(); ++NotifyIndex)
+        {
+            const FAnimNotifyEvent& Notify = Notifies[NotifyIndex];
+
+            if (Notify.NotifyName.IsNone() || !std::isfinite(Notify.TriggerTime) || !std::isfinite(Notify.Duration) || Notify.TriggerTime < 0.0f || Notify.Duration < 0.0f)
+            {
+                continue;
+            }
+
+            const double NotifyStart = Notify.TriggerTime;
+            const double NotifyEnd = NotifyStart + Notify.Duration;
+
+            if (NotifyEnd > Update.PlayLength + TimeTolerance)
+            {
+                continue;
+            }
+
+            if (Notify.Duration == 0.0f)
+            {
+                if (std::abs(Update.Advance) <= TimeTolerance && !Update.bIsFirstUpdate)
+                {
+                    continue;
+                }
+
+                const long long FirstCycle = Update.bLooping ? static_cast<long long>(std::floor((MinPath - NotifyStart) / Update.PlayLength)) : 0;
+                const long long LastCycle = Update.bLooping ? static_cast<long long>(std::ceil((MaxPath - NotifyStart) / Update.PlayLength)) : 0;
+
+                for (long long Cycle = FirstCycle; Cycle <= LastCycle; ++Cycle)
+                {
+                    const double EventTime = NotifyStart + Cycle * Update.PlayLength;
+
+                    bool bCrossed = false;
+
+                    if (Update.Advance > TimeTolerance)
+                    {
+                        bCrossed = EventTime > PathStart && EventTime <= PathEnd;
+                    }
+                    else if (Update.Advance < -TimeTolerance)
+                    {
+                        bCrossed = EventTime >= PathEnd && EventTime < PathStart;
+                    }
+
+                    if (!bCrossed && Update.bIsFirstUpdate && std::abs(EventTime - PathStart) <= TimeTolerance)
+                    {
+                        bCrossed = true;
+                    }
+
+                    if (bCrossed)
+                    {
+                        AddDispatch(EventTime, Notify.NotifyName, EAnimNotifyEventType::Trigger);
+                    }
+                }
+
+                continue;
+            }
+
+            bool bWasActive = false;
+
+            for (const FActiveAnimNotifyState& ActiveState : ActiveAnimNotifyStates)
+            {
+                if (ActiveState.Player == Update.Player && ActiveState.Sequence == Update.Sequence && ActiveState.NotifyIndex == NotifyIndex && ActiveState.NotifyName == Notify.NotifyName)
+                {
+                    bWasActive = true;
+                    ProcessedActiveStates.Add(ActiveState);
+                    break;
+                }
+            }
+
+            const bool bReverse = Update.Advance < -TimeTolerance;
+
+            const bool bEndpointInside = bReverse
+                ? Update.CurrentTime > NotifyStart && Update.CurrentTime <= NotifyEnd
+                : Update.CurrentTime >= NotifyStart && Update.CurrentTime < NotifyEnd;
+
+            const long long FirstCycle = Update.bLooping ? static_cast<long long>(std::floor((MinPath - NotifyEnd) / Update.PlayLength)) : 0;
+            const long long LastCycle = Update.bLooping ? static_cast<long long>(std::ceil((MaxPath - NotifyStart) / Update.PlayLength)) : 0;
+
+            bool bEndDispatched = false;
+
+            for (long long Cycle = FirstCycle; Cycle <= LastCycle; ++Cycle)
+            {
+                const double OccurrenceStart = NotifyStart + Cycle * Update.PlayLength;
+                const double OccurrenceEnd = NotifyEnd + Cycle * Update.PlayLength;
+
+                bool bStartInside = false;
+                bool bCrossBegin = false;
+                bool bCrossEnd = false;
+
+                if (Update.Advance > TimeTolerance)
+                {
+                    bStartInside = PathStart >= OccurrenceStart && PathStart < OccurrenceEnd;
+                    bCrossBegin = OccurrenceStart > PathStart && OccurrenceStart <= PathEnd;
+                    bCrossEnd = OccurrenceEnd > PathStart && OccurrenceEnd <= PathEnd;
+                }
+                else if (Update.Advance < -TimeTolerance)
+                {
+                    bStartInside = PathStart > OccurrenceStart && PathStart <= OccurrenceEnd;
+                    bCrossBegin = OccurrenceEnd < PathStart && OccurrenceEnd >= PathEnd;
+                    bCrossEnd = OccurrenceStart < PathStart && OccurrenceStart >= PathEnd;
+                }
+                else
+                {
+                    bStartInside = PathStart >= OccurrenceStart && PathStart < OccurrenceEnd;
+                }
+
+                if (bCrossBegin || (bStartInside && !bWasActive))
+                {
+                    const double BeginTime = bReverse ? OccurrenceEnd : OccurrenceStart;
+                    AddDispatch(bCrossBegin ? BeginTime : PathStart, Notify.NotifyName, EAnimNotifyEventType::Begin);
+                }
+
+                const double OverlapStart = std::max(MinPath, OccurrenceStart);
+                const double OverlapEnd = std::min(MaxPath, OccurrenceEnd);
+                const bool bHasOverlap = OverlapEnd > OverlapStart || (std::abs(Update.Advance) <= TimeTolerance && bStartInside);
+
+                if (bHasOverlap)
+                {
+                    const double TickTime = std::abs(Update.Advance) > TimeTolerance ? (OverlapStart + OverlapEnd) * 0.5 : PathStart;
+                    AddDispatch(TickTime, Notify.NotifyName, EAnimNotifyEventType::Tick);
+                }
+
+                if (bCrossEnd)
+                {
+                    const double EndTime = bReverse ? OccurrenceStart : OccurrenceEnd;
+                    AddDispatch(EndTime, Notify.NotifyName, EAnimNotifyEventType::End);
+                    bEndDispatched = true;
+                }
+            }
+
+            if (bWasActive && !bEndpointInside && !bEndDispatched)
+            {
+                AddDispatch(PathEnd, Notify.NotifyName, EAnimNotifyEventType::End);
+            }
+
+            if (bEndpointInside)
+            {
+                FActiveAnimNotifyState ActiveState;
+                ActiveState.Player = Update.Player;
+                ActiveState.Sequence = Update.Sequence;
+                ActiveState.NotifyIndex = NotifyIndex;
+                ActiveState.NotifyName = Notify.NotifyName;
+                NextActiveStates.Add(std::move(ActiveState));
+            }
+        }
+
+        std::stable_sort(Dispatches.begin(), Dispatches.end(), [](const FNotifyDispatch& A, const FNotifyDispatch& B)
+            {
+                return A.Progress < B.Progress;
+            });
+
+        if (OwningComponent)
+        {
+            for (const FNotifyDispatch& Dispatch : Dispatches)
+            {
+                OwningComponent->HandleAnimNotify(Dispatch.NotifyName, Dispatch.EventType, NotifyDeltaSeconds);
+            }
+        }
+    }
+
+    for (const FActiveAnimNotifyState& PreviousState : ActiveAnimNotifyStates)
+    {
+        bool bWasProcessed = false;
+
+        for (const FActiveAnimNotifyState& ProcessedState : ProcessedActiveStates)
+        {
+            if (PreviousState.Player == ProcessedState.Player && PreviousState.Sequence == ProcessedState.Sequence && PreviousState.NotifyIndex == ProcessedState.NotifyIndex && PreviousState.NotifyName == ProcessedState.NotifyName)
+            {
+                bWasProcessed = true;
+                break;
+            }
+        }
+
+        if (!bWasProcessed && OwningComponent)
+        {
+            OwningComponent->HandleAnimNotify(PreviousState.NotifyName, EAnimNotifyEventType::End, NotifyDeltaSeconds);
+        }
+    }
+
+    ActiveAnimNotifyStates.Reset();
+
+    for (const FActiveAnimNotifyState& ActiveState : NextActiveStates)
+    {
+        ActiveAnimNotifyStates.Add(ActiveState);
+    }
+
+    PendingAnimNotifyUpdates.Reset();
 }
 
 void UAnimInstance::EndActiveAnimNotifyStates()

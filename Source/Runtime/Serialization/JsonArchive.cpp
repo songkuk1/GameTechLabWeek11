@@ -12,6 +12,7 @@
 #include "Sequence/MovieSceneSequence.h"
 #include "Animation/BlendSpace1D.h"
 #include "Animation/AnimationGraph.h"
+#include "Animation/AnimSequence.h"
 #include "Core/PathUtils.h"
 
 #include "Serialization/MemoryWriter.h"
@@ -27,6 +28,7 @@ namespace
 	constexpr int32 SequenceVersion = 2;
 	constexpr int32 BlendSpaceVersion = 1;
 	constexpr int32 AnimationGraphVersion = 1;
+	constexpr int32 AnimNotifyVersion = 1;
 }
 
 bool FJsonArchive::SaveWorldToBytes(UWorld* World, TArray<uint8>& OutBytes)
@@ -498,4 +500,135 @@ bool FJsonArchive::LoadAnimationGraphFromBytes(UAnimationGraph* Graph, const TAr
 	Ar.Close();
 
 	return !Reader.IsError() && Graph->IsAnimationGraphDataValid();
+}
+
+bool FJsonArchive::SaveAnimNotifies(UAnimSequenceBase* Sequence, const FString& Path)
+{
+	if (!Sequence || Path.empty())
+	{
+		return false;
+	}
+
+	TArray<uint8> Bytes;
+	FMemoryWriter Writer(Bytes);
+
+	{
+		FJsonArchiveOutputFormatter Formatter(Writer);
+		FStructuredArchive Ar(Formatter);
+
+		FStructuredArchive::FRecord Root = Ar.Open().EnterRecord();
+
+		int32 Version = AnimNotifyVersion;
+		Root << SA_VALUE("Version", Version);
+
+		Sequence->SerializeNotifies(Root.EnterRecord("AnimationNotifies"));
+
+		Ar.Close();
+	}
+
+	if (Writer.IsError())
+	{
+		return false;
+	}
+
+	const std::filesystem::path FilePath = PathUtils::FromUtf8(Path);
+
+	std::error_code Error;
+	std::filesystem::create_directories(FilePath.parent_path(), Error);
+
+	if (Error)
+	{
+		return false;
+	}
+
+	std::ofstream File(FilePath, std::ios::binary);
+
+	if (!File.is_open())
+	{
+		return false;
+	}
+
+	File.write(reinterpret_cast<const char*>(Bytes.GetData()), Bytes.Num());
+
+	return !File.fail();
+}
+
+bool FJsonArchive::LoadAnimNotifies(UAnimSequenceBase* Sequence, const FString& Path)
+{
+	if (!Sequence || Path.empty())
+	{
+		return false;
+	}
+
+	const std::filesystem::path FilePath = PathUtils::FromUtf8(Path);
+
+	if (!std::filesystem::exists(FilePath))
+	{
+		return true;
+	}
+
+	std::ifstream File(FilePath, std::ios::binary);
+
+	if (!File.is_open())
+	{
+		return false;
+	}
+
+	const uintmax_t FileSize = std::filesystem::file_size(FilePath);
+
+	if (FileSize == 0 || FileSize > static_cast<uintmax_t>(std::numeric_limits<int32>::max()))
+	{
+		return false;
+	}
+
+	TArray<uint8> Bytes;
+	Bytes.SetNum(static_cast<int32>(FileSize));
+
+	File.read(reinterpret_cast<char*>(Bytes.GetData()), static_cast<std::streamsize>(Bytes.Num()));
+
+	if (File.fail())
+	{
+		return false;
+	}
+
+	FMemoryReader Reader(Bytes);
+	FJsonArchiveInputFormatter Formatter(Reader);
+
+	if (Reader.IsError())
+	{
+		return false;
+	}
+
+	FStructuredArchive Ar(Formatter);
+	FStructuredArchive::FRecord Root = Ar.Open().EnterRecord();
+
+	int32 Version = 0;
+	Root << SA_VALUE("Version", Version);
+
+	if (Version != AnimNotifyVersion)
+	{
+		HTR_LOG(Error, "Load: animation notify version {} is not supported", Version);
+		return false;
+	}
+
+	Sequence->SerializeNotifies(Root.EnterRecord("AnimationNotifies"));
+
+	Ar.Close();
+
+	return !Reader.IsError();
+}
+
+FString FJsonArchive::GetAnimationNotifyPath(const FString& AnimationAssetPath)
+{
+	FString NotifyPath = AnimationAssetPath;
+
+	size_t Position = 0;
+
+	while ((Position = NotifyPath.find("::", Position)) != FString::npos)
+	{
+		NotifyPath.replace(Position, 2, "_");
+		++Position;
+	}
+
+	return NotifyPath + ".animnotify";
 }

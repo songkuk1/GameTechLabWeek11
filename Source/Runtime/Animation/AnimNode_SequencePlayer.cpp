@@ -23,6 +23,7 @@ void FAnimNode_SequencePlayer::SetSequence(UAnimSequence* InSequence)
 {
     Sequence = InSequence;
     CurrentTime = 0.0f;
+    bHasUpdated = false;
 }
 
 void FAnimNode_SequencePlayer::SetPlaybackPosition(float InTime)
@@ -34,6 +35,7 @@ void FAnimNode_SequencePlayer::SetPlaybackPosition(float InTime)
         return;
     }
     CurrentTime = std::clamp(InTime, 0.0f, PlayLength);
+    bHasUpdated = false;
 }
 
 float FAnimNode_SequencePlayer::GetPlayLength() const
@@ -114,10 +116,14 @@ void FAnimNode_SequencePlayer::Update(const FAnimationUpdateContext& Context)
         }
     }
 
+    const bool bIsFirstUpdate = !bHasUpdated;
+
     if (Context.AnimInstance && std::isfinite(Context.NotifyWeight) && Context.NotifyWeight > 0.0001f)
     {
-        Context.AnimInstance->QueueAnimNotifyUpdate(this, Sequence, PreviousTime, ActualAdvance, CurrentTime, PlayLength, bLoop);
+        Context.AnimInstance->QueueAnimNotifyUpdate(this, Sequence, PreviousTime, ActualAdvance, CurrentTime, PlayLength, bLoop, bIsFirstUpdate);
     }
+
+    bHasUpdated = true;
 }
 
 void FAnimNode_SequencePlayer::Evaluate(FPoseContext& Output)

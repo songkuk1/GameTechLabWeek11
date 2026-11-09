@@ -10,6 +10,7 @@ struct FAnimNode_SequencePlayer : public FAnimNode_Base, public IAnimPlaybackCon
 	float CurrentTime = 0.0f;
 	float PlayRate = 1.0f;
 	bool bLoop = true;
+	bool bHasUpdated = false;
 	void SetSequence(UAnimSequence* InSequence);
 	void SetPlaybackPosition(float InTime) override;
 	float GetCurrentTime() const override { return CurrentTime; }
