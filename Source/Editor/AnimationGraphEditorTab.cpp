@@ -2026,7 +2026,7 @@ void FAnimationGraphEditorTab::DrawGraphCanvas()
         DrawList->AddRectFilled(ImVec2(LabelCenter.x - LabelSize.x * 0.5f - 5.0f, LabelCenter.y - 10.0f), ImVec2(LabelCenter.x + LabelSize.x * 0.5f + 5.0f, LabelCenter.y + 10.0f), IM_COL32(35, 38, 44, 245), 4.0f);
         DrawList->AddText(ImVec2(LabelCenter.x - LabelSize.x * 0.5f, LabelCenter.y - LabelSize.y * 0.5f), IM_COL32(220, 225, 235, 255), RuleLabel.c_str());
 
-        if (ImGui::IsWindowHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+        if (ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem) && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
         {
             ImVec2 Previous = Start;
             bool bHit = false;
@@ -2069,7 +2069,7 @@ void FAnimationGraphEditorTab::DrawGraphCanvas()
 
     int32 HoveredNodeIndex = -1;
 
-    if (ImGui::IsWindowHovered())
+    if (ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem))
     {
         for (int32 Index = 0; Index < StateCount; ++Index)
         {
@@ -2122,7 +2122,7 @@ void FAnimationGraphEditorTab::DrawGraphCanvas()
             {
                 const FAnimGraphTransitionDefinition& Existing = Transitions[Index];
 
-                if (!Existing.bAnyState && Existing.FromState == FromState && Existing.ToState == ToState && Existing.Rule == EAnimTransitionRule::StateFinished)
+                if (!Existing.bAnyState && Existing.FromState == FromState && Existing.ToState == ToState)
                 {
                     ExistingTransitionIndex = Index;
                     break;
@@ -2193,24 +2193,7 @@ void FAnimationGraphEditorTab::DrawGraphCanvas()
 
         const ImVec2 NodeMax(Position.x + NodeWidth, Position.y + NodeHeight);
 
-        ImGui::SetCursorScreenPos(Position);
-
-        ImGui::PushID(Index);
-
-        const bool bClicked = ImGui::InvisibleButton("##StateNode", ImVec2(NodeWidth, NodeHeight));
-
-        const bool bHovered = ImGui::IsItemHovered();
-
-        ImGui::PopID();
-
-        if (bClicked)
-        {
-            SelectedStateIndex = Index;
-            SelectedTransitionIndex = -1;
-
-            bFocusStateDetails = true;
-            bFocusTransitionDetails = false;
-        }
+        const bool bHovered = HoveredNodeIndex == Index;
 
         const bool bSelected = SelectedStateIndex == Index;
 

@@ -437,6 +437,21 @@ bool UAnimationGraph::SetTransition(int32 Index, const FAnimGraphTransitionDefin
         return false;
     }
 
+    for (int32 ExistingIndex = 0; ExistingIndex < Transitions.Num(); ++ExistingIndex)
+    {
+        if (ExistingIndex == Index)
+        {
+            continue;
+        }
+
+        const FAnimGraphTransitionDefinition& Existing = Transitions[ExistingIndex];
+
+        if (Existing.bAnyState == NewTransition.bAnyState && Existing.FromState == NewTransition.FromState && Existing.ToState == NewTransition.ToState)
+        {
+            return false;
+        }
+    }
+
     Transitions[Index] = std::move(NewTransition);
 
     return true;
@@ -629,6 +644,14 @@ bool UAnimationGraph::AddTransitionInternal(const FName& FromState, const FName&
     if (!IsTransitionDefinitionValid(Transition))
     {
         return false;
+    }
+
+    for (const FAnimGraphTransitionDefinition& Existing : Transitions)
+    {
+        if (Existing.bAnyState == bAnyState && Existing.FromState == FromState && Existing.ToState == ToState)
+        {
+            return false;
+        }
     }
 
     Transitions.Add(std::move(Transition));
