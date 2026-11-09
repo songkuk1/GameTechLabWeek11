@@ -7,12 +7,15 @@ enum NodeType
 {
 	SequencePlayer,
 	TwoWayBlend,
-	BlendSpace1D
+	BlendSpace1D,
+	StateMachine
 };
 
 class AnimNode
 {
 public:
+	virtual ~AnimNode() = default;
+
 	virtual void Update(AnimationContext& AnimContext) {};
 
 	virtual void EvaluatePose(PoseContext& Context) {};

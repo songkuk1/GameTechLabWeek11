@@ -2,6 +2,8 @@
 
 #include "EnginePCH.h"
 #include "AnimNode.h"
+#include "SequencePlayerNode.h"
+#include <cmath>
 
 struct BlendSample
 {
@@ -14,6 +16,11 @@ class BlendSpace1DNode : public AnimNode
 public:
 	TArray<BlendSample> SampleArray;
 	float Speed = 0.0f;
+	float AnimationPhase = 0.0f;
+	float Alpha = 0.0f;
+	int LowIndex = -1;
+	int HighIndex = -1;
+	int LeaderIndex = -1;
 
 	void AddSample(AnimNode* SampleInput, float SampleVal)
 	{
@@ -21,59 +28,95 @@ public:
 		SampleArray.Add(Sample);
 	}
 
-	void SetSpeed(float InSpeed) { Speed = InSpeed; }
-
 	void Update(AnimationContext& AnimContext) override
 	{
-		for (int i = 0;i < SampleArray.Num();i++)
+		LowIndex = HighIndex = -1;
+		Alpha = 0.0f;
+		// 1. Speed로 LowIndex, HighIndex, Alpha 계산
+		Speed = AnimContext.Speed;
+		const int32 SampleCount = SampleArray.Num();
+		if (SampleCount == 0 || !std::isfinite(Speed))
 		{
-			if (SampleArray[i].Input)
-				SampleArray[i].Input->Update(AnimContext);   // 전체 입력에 대해서 Update 진행
+			LeaderIndex = -1;
+			return;
 		}
+
+		// 샘플은 SampleValue 오름차순으로 등록한다. 범위 밖은 끝 샘플만 사용한다.
+		if (SampleCount == 1 || Speed <= SampleArray[0].SampleValue)
+			LowIndex = HighIndex = 0;
+		else if (Speed >= SampleArray[SampleCount - 1].SampleValue)
+			LowIndex = HighIndex = SampleCount - 1;
+		else
+		{
+			for (int i = 0; i < SampleCount - 1; ++i)
+			{
+				const float LowValue = SampleArray[i].SampleValue;
+				const float HighValue = SampleArray[i + 1].SampleValue;
+				if (LowValue <= Speed && Speed < HighValue && HighValue > LowValue)
+				{
+					LowIndex = i;
+					HighIndex = i + 1;
+					Alpha = (Speed - LowValue) / (HighValue - LowValue);
+					break;
+				}
+			}
+		}
+
+		if (!SampleArray.IsValidIndex(LowIndex) || !SampleArray.IsValidIndex(HighIndex)
+			|| !SampleArray[LowIndex].Input || !SampleArray[HighIndex].Input)
+		{
+			LowIndex = HighIndex = LeaderIndex = -1;
+			return;
+		}
+
+		// 가중치가 큰 샘플을 Leader로 선택 (동률이면 기존 Leader 유지)
+		const int PreviousLeaderIndex = LeaderIndex;
+		LeaderIndex = Alpha > 0.5f ? HighIndex : LowIndex;
+		if (Alpha == 0.5f && (PreviousLeaderIndex == LowIndex || PreviousLeaderIndex == HighIndex)) LeaderIndex = PreviousLeaderIndex;
+		const int FollowerIndex = LeaderIndex == LowIndex ? HighIndex : LowIndex;
+
+		SequencePlayerNode* Leader = static_cast<SequencePlayerNode*>(SampleArray[LeaderIndex].Input);
+		SequencePlayerNode* Follower = static_cast<SequencePlayerNode*>(SampleArray[FollowerIndex].Input);
+
+		if (!Leader->GetSequence() || !Follower->GetSequence()) return;
+
+		const float LeaderLength = Leader->GetSequence()->GetPlayLength();
+		const float FollowerLength = Follower->GetSequence()->GetPlayLength();
+
+		if (!(LeaderLength > 0.0f) || !(FollowerLength > 0.0f)) return;
+
+		// Leader가 바뀌면 이전 프레임의 진행률 전달
+		if (PreviousLeaderIndex >= 0 && PreviousLeaderIndex != LeaderIndex) Leader->SetCurrentPlayTime(AnimationPhase * LeaderLength);
+
+		// Leader만 Update
+		Leader->Update(AnimContext);
+
+		// Leader 진행률로 Follower의 재생 시간 설정
+		AnimationPhase = std::fmod(Leader->GetCurrentPlayTime(), LeaderLength) / LeaderLength;
+		if (Follower != Leader) Follower->SetCurrentPlayTime(AnimationPhase * FollowerLength);
 	}
 
 	void EvaluatePose(PoseContext& Context) override
 	{
 		Context.LocalPoseTrans = Context.ReferencePose;
-		const int32 SampleCount = SampleArray.Num();
-
-		if (SampleCount == 0 || !std::isfinite(Speed))
-			return;
-
-		if (SampleCount == 1 || Speed <= SampleArray[0].SampleValue)
+		if (!SampleArray.IsValidIndex(LowIndex) || !SampleArray.IsValidIndex(HighIndex)
+			|| !SampleArray[LowIndex].Input || !SampleArray[HighIndex].Input) return;
+		if (LowIndex == HighIndex || Alpha <= 0.0f)
 		{
-			if (SampleArray[0].Input) SampleArray[0].Input->EvaluatePose(Context);
+			SampleArray[LowIndex].Input->EvaluatePose(Context);
 			return;
 		}
-		if (Speed >= SampleArray[SampleCount - 1].SampleValue)
+		if (Alpha >= 1.0f)
 		{
-			if (SampleArray[SampleCount - 1].Input) SampleArray[SampleCount - 1].Input->EvaluatePose(Context);
+			SampleArray[HighIndex].Input->EvaluatePose(Context);
 			return;
 		}
 
-		float lowSample = 0.0f;
-		int32 lowindex = -1;
-		float highSample = 0.0f;
-		int32 highindex = -1;
-		for (int i = 0;i < SampleArray.Num()-1; i++)
-		{
-			if (SampleArray[i].SampleValue <= Speed && Speed < SampleArray[i + 1].SampleValue)
-			{
-				lowSample = SampleArray[i].SampleValue;
-				lowindex = i;
-				highSample = SampleArray[i + 1].SampleValue;
-				highindex = i+1;
-				break;
-			}
-		}
-		if (lowindex == -1 || highindex == -1|| !SampleArray[lowindex].Input || !SampleArray[highindex].Input|| !(highSample > lowSample)) return;
-
-		float Alpha = (Speed - lowSample) / (highSample - lowSample);
 		PoseContext ContextA = Context;
 		PoseContext ContextB = Context;
 
-		SampleArray[lowindex].Input->EvaluatePose(ContextA);
-		SampleArray[highindex].Input->EvaluatePose(ContextB);
+		SampleArray[LowIndex].Input->EvaluatePose(ContextA);
+		SampleArray[HighIndex].Input->EvaluatePose(ContextB);
 
 		// 본마다 위치 / 스케일은 Lerp, 회전은 Quaternion Slerp
 		BlendTwoPosesTogether(ContextA.LocalPoseTrans, ContextB.LocalPoseTrans, Alpha, Context.LocalPoseTrans);

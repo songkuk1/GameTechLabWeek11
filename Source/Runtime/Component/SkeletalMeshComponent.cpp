@@ -78,6 +78,7 @@ void USkeletalMeshComponent::TickComponent(float DeltaTime)
 		return;
 
 	PoseContext Context{ ReferencePose, ReferencePose };
+
 	AnimInstance->Tick(DeltaTime, Context);
 	if (Context.LocalPoseTrans.Num() != ReferencePose.Num())
 		return;

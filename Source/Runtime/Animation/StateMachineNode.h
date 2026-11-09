@@ -12,8 +12,11 @@ enum class EAnimState : uint8
 class StateMachineNode : public AnimNode
 {
 	EAnimState State = EAnimState::Locomotion;
-	AnimNode* StateNodes[3];        // 상태마다 포즈를 내는 노드
+	AnimNode* StateNodes[3] = {};        // 상태마다 포즈를 내는 노드
 	bool bIsCilpFinshed = false;
+
+public:
+	StateMachineNode() = default;
 
 	void SetStateNode(EAnimState InState, AnimNode* Node) { StateNodes[(int)InState] = Node; }
 
@@ -29,6 +32,7 @@ class StateMachineNode : public AnimNode
 		StateNodes[(int)State]->EvaluatePose(Context);  // 현재 상태 노드의 포즈를 그대로 쓴다
 	}
 
+private:
 	void ProcessState(AnimationContext& AnimContext)
 	{
 		if (AnimContext.bIsHit)                          // Any State: 어디서든 Hit 이 끊고 들어온다
