@@ -121,18 +121,18 @@ namespace
         return Side >= 0 && Side < GraphPinSideCount ? Names[Side] : "Unknown";
     }
 
-    ed::PinId MakeStateInputPinId(const FName& StateName, int32 Side)
+    ed::PinId MakeStatePinId(const FName& StateName, int32 Side)
     {
-        FString Identifier = "StateInput:";
+        FString Identifier = "StatePin:";
         Identifier += StateName.ToString();
         Identifier += ":";
         Identifier += GetGraphPinSideName(Side);
         return ed::PinId(static_cast<std::uintptr_t>(HashNodeEditorIdentifier(Identifier)));
     }
 
-    ed::PinId MakeStateOutputPinId(const FName& StateName, int32 Side)
+    ed::PinId MakeEntryDestinationPinId(const FName& StateName, int32 Side)
     {
-        FString Identifier = "StateOutput:";
+        FString Identifier = "EntryDestination:";
         Identifier += StateName.ToString();
         Identifier += ":";
         Identifier += GetGraphPinSideName(Side);
@@ -1936,18 +1936,14 @@ void FAnimationGraphEditorTab::DrawGraphCanvas()
             return true;
         };
 
-    auto SubmitEdgePin = [&](ed::PinId PinId, ed::PinKind PinKindValue, const ImVec2& NodeMin, const ImVec2& NodeMax, int32 Side, bool bSplitByKind, const char* PinOwner)
+    auto SubmitEdgePin = [&](ed::PinId PinId, ed::PinKind PinKindValue, const ImVec2& NodeMin, const ImVec2& NodeMax, int32 Side, const char* PinOwner)
         {
             constexpr float PinDepth = 36.0f;
 
-            const float NodeWidth = NodeMax.x - NodeMin.x;
-            const float NodeHeight = NodeMax.y - NodeMin.y;
             const float CenterX = (NodeMin.x + NodeMax.x) * 0.5f;
             const float CenterY = (NodeMin.y + NodeMax.y) * 0.5f;
-            const bool bInput = PinKindValue == ed::PinKind::Input;
 
             ImVec2 PinPosition;
-            ImVec2 PinSize;
             ImVec2 PivotAlignment;
             ImVec2 PinDirection;
             ImVec2 Anchor;
@@ -1955,35 +1951,31 @@ void FAnimationGraphEditorTab::DrawGraphCanvas()
             switch (Side)
             {
             case GraphPinSideLeft:
-                PinSize = ImVec2(PinDepth, bSplitByKind ? NodeHeight * 0.5f : NodeHeight);
-                PinPosition = ImVec2(NodeMin.x, bSplitByKind && !bInput ? CenterY : NodeMin.y);
+                PinPosition = ImVec2(NodeMin.x, CenterY - PinDepth * 0.5f);
                 PivotAlignment = ImVec2(0.0f, 0.5f);
                 PinDirection = ImVec2(-1.0f, 0.0f);
-                Anchor = ImVec2(NodeMin.x, PinPosition.y + PinSize.y * 0.5f);
+                Anchor = ImVec2(NodeMin.x, CenterY);
                 break;
 
             case GraphPinSideRight:
-                PinSize = ImVec2(PinDepth, bSplitByKind ? NodeHeight * 0.5f : NodeHeight);
-                PinPosition = ImVec2(NodeMax.x - PinDepth, bSplitByKind && !bInput ? CenterY : NodeMin.y);
+                PinPosition = ImVec2(NodeMax.x - PinDepth, CenterY - PinDepth * 0.5f);
                 PivotAlignment = ImVec2(1.0f, 0.5f);
                 PinDirection = ImVec2(1.0f, 0.0f);
-                Anchor = ImVec2(NodeMax.x, PinPosition.y + PinSize.y * 0.5f);
+                Anchor = ImVec2(NodeMax.x, CenterY);
                 break;
 
             case GraphPinSideTop:
-                PinSize = ImVec2(bSplitByKind ? NodeWidth * 0.5f : NodeWidth, PinDepth);
-                PinPosition = ImVec2(bSplitByKind && !bInput ? CenterX : NodeMin.x, NodeMin.y);
+                PinPosition = ImVec2(CenterX - PinDepth * 0.5f, NodeMin.y);
                 PivotAlignment = ImVec2(0.5f, 0.0f);
                 PinDirection = ImVec2(0.0f, -1.0f);
-                Anchor = ImVec2(PinPosition.x + PinSize.x * 0.5f, NodeMin.y);
+                Anchor = ImVec2(CenterX, NodeMin.y);
                 break;
 
             case GraphPinSideBottom:
-                PinSize = ImVec2(bSplitByKind ? NodeWidth * 0.5f : NodeWidth, PinDepth);
-                PinPosition = ImVec2(bSplitByKind && !bInput ? CenterX : NodeMin.x, NodeMax.y - PinDepth);
+                PinPosition = ImVec2(CenterX - PinDepth * 0.5f, NodeMax.y - PinDepth);
                 PivotAlignment = ImVec2(0.5f, 1.0f);
                 PinDirection = ImVec2(0.0f, 1.0f);
-                Anchor = ImVec2(PinPosition.x + PinSize.x * 0.5f, NodeMax.y);
+                Anchor = ImVec2(CenterX, NodeMax.y);
                 break;
 
             default:
@@ -2003,15 +1995,17 @@ void FAnimationGraphEditorTab::DrawGraphCanvas()
             ed::BeginPin(PinId, PinKindValue);
             ed::PinPivotAlignment(PivotAlignment);
             ed::PinPivotSize(ImVec2(0.0f, 0.0f));
-            ImGui::Dummy(PinSize);
+            ImGui::Dummy(ImVec2(PinDepth, PinDepth));
 
-            if (ImGui::IsItemHovered())
+            const bool bHovered = ImGui::IsItemHovered();
+            ImDrawList* HoverDrawList = ImGui::GetWindowDrawList();
+
+            HoverDrawList->AddCircleFilled(Anchor, bHovered ? 5.0f : 4.0f, IM_COL32(85, 175, 220, 255));
+            HoverDrawList->AddCircle(Anchor, bHovered ? 8.0f : 6.0f, IM_COL32(20, 25, 32, 255), 0, bHovered ? 1.5f : 1.0f);
+
+            if (bHovered)
             {
-                const ImU32 HoverColor = bInput ? IM_COL32(255, 180, 75, 255) : IM_COL32(65, 190, 255, 255);
-                ImDrawList* HoverDrawList = ImGui::GetWindowDrawList();
-                HoverDrawList->AddCircleFilled(Anchor, 5.0f, HoverColor);
-                HoverDrawList->AddCircle(Anchor, 8.0f, IM_COL32(245, 245, 245, 230), 0, 1.5f);
-                ImGui::SetTooltip(bInput ? "Transition Destination" : "Transition Source");
+                ImGui::SetTooltip("Drag to another State to create a Transition.");
             }
 
             ed::EndPin();
@@ -2065,16 +2059,20 @@ void FAnimationGraphEditorTab::DrawGraphCanvas()
                 return;
             }
 
+            const bool bDestinationPin = PinKindValue == ed::PinKind::Input;
+
             ImGui::SetCursorScreenPos(PinPosition);
             ed::PushStyleVar(ed::StyleVar_SourceDirection, PinDirection);
             ed::PushStyleVar(ed::StyleVar_TargetDirection, PinDirection);
+            ed::PushStyleVar(ed::StyleVar_PinArrowSize, bDestinationPin ? 10.0f : 0.0f);
+            ed::PushStyleVar(ed::StyleVar_PinArrowWidth, bDestinationPin ? 8.0f : 0.0f);
 
             ed::BeginPin(PinId, PinKindValue);
             ed::PinPivotAlignment(PivotAlignment);
             ed::PinPivotSize(ImVec2(0.0f, 0.0f));
             ImGui::Dummy(ImVec2(PinSize, PinSize));
             ed::EndPin();
-            ed::PopStyleVar(2);
+            ed::PopStyleVar(4);
         };
 
     constexpr float StateNodeWidth = 240.0f;
@@ -2216,9 +2214,10 @@ void FAnimationGraphEditorTab::DrawGraphCanvas()
             const ImVec2 NodeSize = GetKnownNodeSize(OwnerNodeId);
             const float EdgeLength = Side == GraphPinSideLeft || Side == GraphPinSideRight ? NodeSize.y : NodeSize.x;
             const float MaxRange = std::max(0.0f, EdgeLength * 0.5f - 18.0f);
-            const float Spacing = Count > 1 ? std::min(22.0f, MaxRange * 2.0f / static_cast<float>(Count - 1)) : 0.0f;
+            const float Spacing = Count > 1 ? std::min(8.0f, MaxRange * 2.0f / static_cast<float>(Count - 1)) : 0.0f;
+            const float Offset = (static_cast<float>(Rank) - static_cast<float>(Count - 1) * 0.5f) * Spacing;
 
-            return (static_cast<float>(Rank) - static_cast<float>(Count - 1) * 0.5f) * Spacing;
+            return std::clamp(Offset, -14.0f, 14.0f);
         };
 
     for (int32 Index = 0; Index < static_cast<int32>(TransitionRoutes.size()); ++Index)
@@ -2271,7 +2270,7 @@ void FAnimationGraphEditorTab::DrawGraphCanvas()
 
     for (int32 Side = 0; Side < GraphPinSideCount; ++Side)
     {
-        SubmitEdgePin(MakeAnyStateOutputPinId(Side), ed::PinKind::Output, AnyStateMin, AnyStateMax, Side, false, "AnyStateOutput");
+        SubmitEdgePin(MakeAnyStateOutputPinId(Side), ed::PinKind::Output, AnyStateMin, AnyStateMax, Side, "AnyStateOutput");
     }
 
     for (const FTransitionRoute& Route : TransitionRoutes)
@@ -2313,7 +2312,7 @@ void FAnimationGraphEditorTab::DrawGraphCanvas()
         
         for (int32 Side = 0; Side < GraphPinSideCount; ++Side)
         {
-            SubmitEdgePin(MakeEntryOutputPinId(Side), ed::PinKind::Output, EntryMin, EntryMax, Side, false, "EntryOutput");
+            SubmitEdgePin(MakeEntryOutputPinId(Side), ed::PinKind::Output, EntryMin, EntryMax, Side, "EntryOutput");
         }
 
         ImGui::SetCursorScreenPos(EntryMin);
@@ -2391,22 +2390,21 @@ void FAnimationGraphEditorTab::DrawGraphCanvas()
 
         for (int32 Side = 0; Side < GraphPinSideCount; ++Side)
         {
-            SubmitEdgePin(MakeStateInputPinId(State.Name, Side), ed::PinKind::Input, NodeMin, NodeMax, Side, true, "StateInput");
-            SubmitEdgePin(MakeStateOutputPinId(State.Name, Side), ed::PinKind::Output, NodeMin, NodeMax, Side, true, "StateOutput");
+            SubmitEdgePin(MakeStatePinId(State.Name, Side), ed::PinKind::Output, NodeMin, NodeMax, Side, "StatePin");
         }
 
         const ed::NodeId CurrentStateNodeId = MakeStateNodeId(State.Name);
 
         for (const FTransitionRoute& Route : TransitionRoutes)
         {
-            if (Route.SourceNodeId == CurrentStateNodeId)
+            if (bHasEntryState && State.Name == EntryStateName)
             {
-                SubmitTransitionPin(MakeTransitionSourcePinId(Route.Transition), ed::PinKind::Output, NodeMin, NodeMax, Route.SourceSide, Route.SourceOffset, "StateTransitionSource");
-            }
+                int32 EntrySourceSide = GraphPinSideRight;
+                int32 EntryDestinationSide = GraphPinSideLeft;
 
-            if (Route.DestinationNodeId == CurrentStateNodeId)
-            {
-                SubmitTransitionPin(MakeTransitionDestinationPinId(Route.Transition), ed::PinKind::Input, NodeMin, NodeMax, Route.DestinationSide, Route.DestinationOffset, "StateTransitionDestination");
+                GetFacingPinSides(MakeEntryNodeId(), MakeStateNodeId(State.Name), EntrySourceSide, EntryDestinationSide);
+
+                SubmitTransitionPin(MakeEntryDestinationPinId(State.Name, EntryDestinationSide), ed::PinKind::Input, NodeMin, NodeMax, EntryDestinationSide, 0.0f, "EntryDestination");
             }
         }
 
@@ -2427,7 +2425,7 @@ void FAnimationGraphEditorTab::DrawGraphCanvas()
 
         GetFacingPinSides(MakeEntryNodeId(), MakeStateNodeId(EntryStateName), EntrySourceSide, EntryDestinationSide);
 
-        ed::Link(MakeEntryLinkId(), MakeEntryOutputPinId(EntrySourceSide), MakeStateInputPinId(EntryStateName, EntryDestinationSide), ImVec4(0.88f, 0.88f, 0.88f, 1.0f), 2.0f);
+        ed::Link(MakeEntryLinkId(), MakeEntryOutputPinId(EntrySourceSide), MakeEntryDestinationPinId(EntryStateName, EntryDestinationSide), ImVec4(0.88f, 0.88f, 0.88f, 1.0f), 2.0f);
     }
 
 
@@ -2456,14 +2454,14 @@ void FAnimationGraphEditorTab::DrawGraphCanvas()
 
         if (ed::QueryNewLink(&StartPinId, &EndPinId))
         {
-            auto ResolveOutputPin = [&](ed::PinId PinId, FName& OutSourceState, bool& bOutAnyState)
+            auto ResolveGraphPin = [&](ed::PinId PinId, FName& OutState, bool& bOutAnyState)
                 {
                     if (PinId == MakeAnyStateOutputPinId(GraphPinSideLeft) ||
                         PinId == MakeAnyStateOutputPinId(GraphPinSideRight) ||
                         PinId == MakeAnyStateOutputPinId(GraphPinSideTop) ||
                         PinId == MakeAnyStateOutputPinId(GraphPinSideBottom))
                     {
-                        OutSourceState = NAME_None;
+                        OutState = NAME_None;
                         bOutAnyState = true;
                         return true;
                     }
@@ -2472,46 +2470,40 @@ void FAnimationGraphEditorTab::DrawGraphCanvas()
                     {
                         if (PinId == MakeTransitionSourcePinId(Route.Transition))
                         {
-                            OutSourceState = Route.Transition.FromState;
+                            OutState = Route.Transition.FromState;
                             bOutAnyState = Route.Transition.bAnyState;
+                            return true;
+                        }
+
+                        if (PinId == MakeTransitionDestinationPinId(Route.Transition))
+                        {
+                            OutState = Route.Transition.ToState;
+                            bOutAnyState = false;
                             return true;
                         }
                     }
 
-                    for (const FAnimGraphStateDefinition& State : States)
+                    if (bHasEntryState)
                     {
                         for (int32 Side = 0; Side < GraphPinSideCount; ++Side)
                         {
-                            if (PinId == MakeStateOutputPinId(State.Name, Side))
+                            if (PinId == MakeEntryDestinationPinId(EntryStateName, Side))
                             {
-                                OutSourceState = State.Name;
+                                OutState = EntryStateName;
                                 bOutAnyState = false;
                                 return true;
                             }
                         }
                     }
 
-                    return false;
-                };
-
-            auto ResolveInputPin = [&](ed::PinId PinId, FName& OutDestinationState)
-                {
-                    for (const FTransitionRoute& Route : TransitionRoutes)
-                    {
-                        if (PinId == MakeTransitionDestinationPinId(Route.Transition))
-                        {
-                            OutDestinationState = Route.Transition.ToState;
-                            return true;
-                        }
-                    }
-
                     for (const FAnimGraphStateDefinition& State : States)
                     {
                         for (int32 Side = 0; Side < GraphPinSideCount; ++Side)
                         {
-                            if (PinId == MakeStateInputPinId(State.Name, Side))
+                            if (PinId == MakeStatePinId(State.Name, Side))
                             {
-                                OutDestinationState = State.Name;
+                                OutState = State.Name;
+                                bOutAnyState = false;
                                 return true;
                             }
                         }
@@ -2523,9 +2515,11 @@ void FAnimationGraphEditorTab::DrawGraphCanvas()
             FName FromState = NAME_None;
             FName ToState = NAME_None;
             bool bAnyState = false;
+            bool bDestinationAnyState = false;
 
-            const bool bValidPins = (ResolveOutputPin(StartPinId, FromState, bAnyState) && ResolveInputPin(EndPinId, ToState)) ||
-                (ResolveOutputPin(EndPinId, FromState, bAnyState) && ResolveInputPin(StartPinId, ToState));
+            const bool bValidPins = ResolveGraphPin(StartPinId, FromState, bAnyState) &&
+                ResolveGraphPin(EndPinId, ToState, bDestinationAnyState) &&
+                !bDestinationAnyState;
 
             if (!bValidPins)
             {
