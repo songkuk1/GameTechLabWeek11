@@ -1425,12 +1425,16 @@ void FAnimationGraphEditorTab::DrawTransitionEditor()
 
     if (!Transitions.IsValidIndex(SelectedTransitionIndex))
     {
+        EditableTransitionIndex = -1;
         ImGui::TextDisabled("Select a Transition to edit.");
         return;
     }
 
-    FAnimGraphTransitionDefinition EditableTransition =
-        Transitions[SelectedTransitionIndex];
+    if (EditableTransitionIndex != SelectedTransitionIndex)
+    {
+        EditableTransition = Transitions[SelectedTransitionIndex];
+        EditableTransitionIndex = SelectedTransitionIndex;
+    }
 
     ImGui::Separator();
 
@@ -1503,7 +1507,7 @@ void FAnimationGraphEditorTab::DrawTransitionEditor()
         {
             bDirty = true;
             ErrorMessage.clear();
-
+            EditableTransition = Graph->GetTransitions()[SelectedTransitionIndex];
             RefreshPreview();
         }
         else
@@ -1520,6 +1524,7 @@ void FAnimationGraphEditorTab::DrawTransitionEditor()
         if (Graph->RemoveTransition(SelectedTransitionIndex))
         {
             SelectedTransitionIndex = -1;
+            EditableTransitionIndex = -1;
 
             bDirty = true;
             ErrorMessage.clear();

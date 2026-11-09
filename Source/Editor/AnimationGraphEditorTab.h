@@ -91,7 +91,8 @@ private:
 
     // Transition Editor
     int32 SelectedTransitionIndex = -1;
-
+    int32 EditableTransitionIndex = -1;
+    FAnimGraphTransitionDefinition EditableTransition;
     FAnimGraphTransitionDefinition NewTransition;
 
     // BlendSpace Parameter Binding

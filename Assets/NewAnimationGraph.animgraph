@@ -8,8 +8,8 @@
             },
             {
                 "NodeName": "Attack",
-                "X": 584.0,
-                "Y": 256.0
+                "X": 1360.0,
+                "Y": 282.0
             },
             {
                 "NodeName": "Hit",
@@ -58,7 +58,7 @@
             {
                 "BlendParameterName": "None",
                 "BlendSpace": null,
-                "Looping": true,
+                "Looping": false,
                 "Name": "Attack",
                 "NodeType": 0,
                 "PlayRate": 1.0,
@@ -67,7 +67,7 @@
             {
                 "BlendParameterName": "None",
                 "BlendSpace": null,
-                "Looping": true,
+                "Looping": false,
                 "Name": "Hit",
                 "NodeType": 0,
                 "PlayRate": 1.0,
@@ -77,27 +77,27 @@
         "Transitions": [
             {
                 "AnyState": true,
-                "BlendDuration": 0.20000000298023224,
+                "BlendDuration": 0.10000000149011612,
                 "FloatThreshold": 0.0,
                 "FromState": "None",
-                "ParameterName": "None",
-                "Priority": 0,
-                "Rule": 3,
+                "ParameterName": "bIsHit",
+                "Priority": 100,
+                "Rule": 1,
                 "ToState": "Hit"
             },
             {
                 "AnyState": false,
-                "BlendDuration": 0.20000000298023224,
+                "BlendDuration": 0.11999999731779099,
                 "FloatThreshold": 0.0,
                 "FromState": "Locomotion",
-                "ParameterName": "None",
-                "Priority": 0,
-                "Rule": 3,
+                "ParameterName": "bIsAttacking",
+                "Priority": 10,
+                "Rule": 1,
                 "ToState": "Attack"
             },
             {
                 "AnyState": false,
-                "BlendDuration": 0.20000000298023224,
+                "BlendDuration": 0.15000000596046448,
                 "FloatThreshold": 0.0,
                 "FromState": "Attack",
                 "ParameterName": "None",
@@ -107,7 +107,7 @@
             },
             {
                 "AnyState": false,
-                "BlendDuration": 0.20000000298023224,
+                "BlendDuration": 0.10000000149011612,
                 "FloatThreshold": 0.0,
                 "FromState": "Hit",
                 "ParameterName": "None",
