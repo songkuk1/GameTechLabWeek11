@@ -2226,11 +2226,13 @@ void FAnimationGraphEditorTab::DrawGraphCanvas()
 
             const ImVec2 NodeSize = GetKnownNodeSize(OwnerNodeId);
             const float EdgeLength = Side == GraphPinSideLeft || Side == GraphPinSideRight ? NodeSize.y : NodeSize.x;
-            const float MaxRange = std::max(0.0f, EdgeLength * 0.5f - 18.0f);
-            const float Spacing = Count > 1 ? std::min(8.0f, MaxRange * 2.0f / static_cast<float>(Count - 1)) : 0.0f;
+            constexpr float DesiredLaneSpacing = 18.0f;
+            constexpr float EdgeMargin = 10.0f;
+            const float MaxRange = std::max(0.0f, EdgeLength * 0.5f - EdgeMargin);
+            const float Spacing = Count > 1 ? std::min(DesiredLaneSpacing, MaxRange * 2.0f / static_cast<float>(Count - 1)) : 0.0f;
             const float Offset = (static_cast<float>(Rank) - static_cast<float>(Count - 1) * 0.5f) * Spacing;
 
-            return std::clamp(Offset, -14.0f, 14.0f);
+            return Offset;
         };
 
     for (int32 Index = 0; Index < static_cast<int32>(TransitionRoutes.size()); ++Index)
