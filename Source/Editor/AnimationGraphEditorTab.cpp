@@ -76,33 +76,50 @@ namespace
         return Settings;
     }
 
-    const char* GetTransitionRuleLabel(EAnimTransitionRule Rule)
+    FString FormatTransitionFloat(float Value)
     {
-        switch (Rule)
+        char Buffer[32];
+        std::snprintf(Buffer, sizeof(Buffer), "%.3f", Value);
+        FString Result = Buffer;
+        while (!Result.empty() && Result.back() == '0')
+        {
+            Result.pop_back();
+        }
+        if (!Result.empty() && Result.back() == '.')
+        {
+            Result.pop_back();
+        }
+        return Result;
+    }
+
+    FString GetTransitionConditionLabel(const FAnimGraphTransitionDefinition& Transition)
+    {
+        const FString ParameterName = Transition.ParameterName.IsNone() ? "?" : Transition.ParameterName.ToString();
+        switch (Transition.Rule)
         {
         case EAnimTransitionRule::Always:
             return "Always";
 
-        case EAnimTransitionRule::BoolTrue:
-            return "Bool True";
-
-        case EAnimTransitionRule::BoolFalse:
-            return "Bool False";
-
         case EAnimTransitionRule::StateFinished:
             return "State Finished";
 
+        case EAnimTransitionRule::BoolTrue:
+            return ParameterName + " = true";
+
+        case EAnimTransitionRule::BoolFalse:
+            return ParameterName + " = false";
+
         case EAnimTransitionRule::FloatGreaterThan:
-            return "Float >";
+            return ParameterName + " > " + FormatTransitionFloat(Transition.FloatThreshold);
 
         case EAnimTransitionRule::FloatLessThan:
-            return "Float <";
+            return ParameterName + " < " + FormatTransitionFloat(Transition.FloatThreshold);
 
         case EAnimTransitionRule::FloatGreaterOrEqual:
-            return "Float >=";
+            return ParameterName + " >= " + FormatTransitionFloat(Transition.FloatThreshold);
 
         case EAnimTransitionRule::FloatLessOrEqual:
-            return "Float <=";
+            return ParameterName + " <= " + FormatTransitionFloat(Transition.FloatThreshold);
         }
 
         return "Unknown";
@@ -2007,11 +2024,11 @@ void FAnimationGraphEditorTab::DrawGraphCanvas()
 
         const ImVec2 Center = EvaluateBezier(Start, Control1, Control2, End, 0.5f);
         const ImVec2 LabelCenter(Center.x + LabelOffset.x, Center.y + LabelOffset.y);
-        const char* RuleLabel = GetTransitionRuleLabel(Transition.Rule);
-        const ImVec2 LabelSize = ImGui::CalcTextSize(RuleLabel);
+        const FString RuleLabel = GetTransitionConditionLabel(Transition);
+        const ImVec2 LabelSize = ImGui::CalcTextSize(RuleLabel.c_str());
 
         DrawList->AddRectFilled(ImVec2(LabelCenter.x - LabelSize.x * 0.5f - 5.0f, LabelCenter.y - 10.0f), ImVec2(LabelCenter.x + LabelSize.x * 0.5f + 5.0f, LabelCenter.y + 10.0f), IM_COL32(35, 38, 44, 245), 4.0f);
-        DrawList->AddText(ImVec2(LabelCenter.x - LabelSize.x * 0.5f, LabelCenter.y - LabelSize.y * 0.5f), IM_COL32(220, 225, 235, 255), RuleLabel);
+        DrawList->AddText(ImVec2(LabelCenter.x - LabelSize.x * 0.5f, LabelCenter.y - LabelSize.y * 0.5f), IM_COL32(220, 225, 235, 255), RuleLabel.c_str());
 
         if (ImGui::IsWindowHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
         {
