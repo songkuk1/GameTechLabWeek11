@@ -25,6 +25,9 @@ public:
 
     void Move(const FVector& MoveInput);
     void Jump(float JumpSpeed);
+    void SetMovementSpeed(float InSpeed);
+    float GetMovementSpeed2D() const;
+    bool IsGrounded() const;
 
     UCharacterMovementComponent* GetCharacterMovementComponent();
     void SetMagnetRadius(float InMagnetRadius);

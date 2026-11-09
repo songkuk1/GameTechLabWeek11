@@ -15,6 +15,9 @@ class USkeletalMeshComponent : public USkinnedMeshComponent
 public:
     virtual ~USkeletalMeshComponent() override;
 
+    USkeletalMeshComponent();
+    virtual void TickComponent(float DeltaTime) override;
+
     void PlayAnimation(UAnimSequence* InSequence);
 
     void PlayBlendAnimation(UAnimSequence* InSequenceA, UAnimSequence* InSequenceB, float InAlpha);

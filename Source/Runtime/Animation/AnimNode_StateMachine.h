@@ -70,6 +70,8 @@ public:
 	virtual bool EvaluateCurve(const FName& CurveName, const FName& LayerName, float& OutValue) const override;
 	IAnimPlaybackControl* GetPlaybackControl() override;
 	const IAnimPlaybackControl* GetPlaybackControl() const override;
+	bool RequestState(const FName& StateName);
+	void SetExternalStateControl(bool bEnable) { bExternalStateControl = bEnable; }
 private:
 	struct FAnimStateEntry
 	{
@@ -82,6 +84,7 @@ private:
 	bool AddTransitionInternal(const FName& FromState, const FName& ToState, EAnimTransitionRule Rule, const FName& ParameterName, int32 Priority, float BlendDuration, float FloatThreshold, bool bAnyState);
 	void EvaluateTransitions(const FAnimationUpdateContext& Context);
 	bool IsTransitionRuleMet(const FAnimStateTransition& Transition, const FAnimationUpdateContext& Context) const;
+	bool TransitionTo(const FAnimStateTransition& Transition);
 	FAnimNode_TwoWayBlend TransitionBlendNode;
 	float TransitionBlendDuration = 0.0f;
 	float TransitionBlendElapsed = 0.0f;
@@ -91,4 +94,5 @@ private:
 	TArray<FAnimStateTransition> Transitions;
 	FAnimStateTransition LastTransition;
 	bool bHasLastTransition = false;
+	bool bExternalStateControl = false;
 };

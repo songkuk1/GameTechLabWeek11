@@ -167,6 +167,16 @@ void UCharacterMovementComponent::Jump(float JumpSpeed)
 	}
 }
 
+void UCharacterMovementComponent::SetMoveSpeed(float InMoveSpeed)
+{
+	if (!std::isfinite(InMoveSpeed))
+	{
+		return;
+	}
+
+	MoveSpeed = std::max(0.0f, InMoveSpeed);
+}
+
 bool UCharacterMovementComponent::IsGrounded() const
 {
 	if (!CollisionComponent || !CollisionComponent->IsBlockComponent())

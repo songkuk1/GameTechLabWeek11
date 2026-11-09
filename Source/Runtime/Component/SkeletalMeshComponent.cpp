@@ -10,6 +10,19 @@
 #include "Animation/BlendSpace1D.h"
 #include "Animation/AnimSequence.h"
 #include "Animation/AnimationGraph.h"
+
+USkeletalMeshComponent::USkeletalMeshComponent()
+{
+    PrimaryComponentTick.bCanEverTick = true;
+    PrimaryComponentTick.TickGroup = ETickingGroup::PostPhysics;
+}
+
+void USkeletalMeshComponent::TickComponent(float DeltaTime)
+{
+    Super::TickComponent(DeltaTime);
+    TickAnimation(DeltaTime);
+}
+
 USkeletalMeshComponent::~USkeletalMeshComponent()
 {
     delete AnimInstance;

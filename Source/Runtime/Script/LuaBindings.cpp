@@ -21,8 +21,8 @@
 #include "Camera/CameraComponent.h"
 
 #include "Asset/AssetManager.h"
-#include "Animation/AnimSequence.h"
-#include "Animation/BlendSpace1D.h"
+#include "Animation/AnimationGraph.h"
+#include "Animation/AnimInstance.h"
 #include "Component/SkeletalMeshComponent.h"
 
 #include "Math/Vector.h"
@@ -39,38 +39,86 @@
 #include "Game/Bullet.h"
 #include "Sound/SoundSystem.h"
 
-static bool LuaPlayAnimationByPath(USkeletalMeshComponent* Component, sol::string_view Path)
+static bool LuaSetAnimationGraphByPath(USkeletalMeshComponent* Component, sol::string_view Path, bool bExternalStateControl)
 {
 	if (!Component || Path.empty())
 	{
 		return false;
 	}
 
-	UAnimSequence* Sequence = UAssetManager::GetAssetByPath<UAnimSequence>(FString(Path.data(), Path.size()));
-	if (!Sequence)
+	UAnimationGraph* Graph = UAssetManager::GetAssetByPath<UAnimationGraph>(FString(Path.data(), Path.size()));
+
+	if (!Graph || !Component->SetAnimationGraph(Graph))
 	{
 		return false;
 	}
 
-	Component->PlayAnimation(Sequence);
+	UAnimInstance* AnimInstance = Component->GetAnimInstance();
+	return AnimInstance && AnimInstance->SetExternalStateControl(bExternalStateControl);
+}
+
+static bool LuaSetAnimationFloat(USkeletalMeshComponent* Component, sol::string_view Name, float Value)
+{
+	UAnimInstance* AnimInstance = Component ? Component->GetAnimInstance() : nullptr;
+
+	if (!AnimInstance)
+	{
+		return false;
+	}
+
+	const FName ParameterName(Name.data(), Name.size());
+
+	if (!AnimInstance->HasFloatParameter(ParameterName))
+	{
+		return false;
+	}
+
+	AnimInstance->SetFloatParameter(ParameterName, Value);
 	return true;
 }
 
-static bool LuaPlayBlendSpaceByPath(USkeletalMeshComponent* Component, sol::string_view Path, float Input)
+static bool LuaSetAnimationBool(USkeletalMeshComponent* Component, sol::string_view Name, bool Value)
 {
-	if (!Component || Path.empty())
+	UAnimInstance* AnimInstance = Component ? Component->GetAnimInstance() : nullptr;
+
+	if (!AnimInstance)
 	{
 		return false;
 	}
 
-	UBlendSpace1D* BlendSpace = UAssetManager::GetAssetByPath<UBlendSpace1D>(FString(Path.data(), Path.size()));
-	if (!BlendSpace)
+	const FName ParameterName(Name.data(), Name.size());
+
+	if (!AnimInstance->HasBoolParameter(ParameterName))
 	{
 		return false;
 	}
 
-	Component->PlayBlendSpace(BlendSpace, Input);
+	AnimInstance->SetBoolParameter(ParameterName, Value);
 	return true;
+}
+
+static bool LuaRequestAnimationState(USkeletalMeshComponent* Component, sol::string_view Name)
+{
+	UAnimInstance* AnimInstance = Component ? Component->GetAnimInstance() : nullptr;
+	return AnimInstance && AnimInstance->RequestState(FName(Name.data(), Name.size()));
+}
+
+static FString LuaGetCurrentAnimationState(USkeletalMeshComponent* Component)
+{
+	UAnimInstance* AnimInstance = Component ? Component->GetAnimInstance() : nullptr;
+	return AnimInstance ? AnimInstance->GetCurrentStateName().ToString() : FString{};
+}
+
+static bool LuaIsCurrentAnimationStateFinished(USkeletalMeshComponent* Component)
+{
+	UAnimInstance* AnimInstance = Component ? Component->GetAnimInstance() : nullptr;
+	return AnimInstance && AnimInstance->IsCurrentStateFinished();
+}
+
+static bool LuaIsAnimationBlending(USkeletalMeshComponent* Component)
+{
+	UAnimInstance* AnimInstance = Component ? Component->GetAnimInstance() : nullptr;
+	return AnimInstance && AnimInstance->IsStateMachineBlending();
 }
 
 void FLuaBindings::RegisterLuaBindings(sol::state& Lua, FLuaCoroutineScheduler* CoroutinScheduler)
@@ -343,7 +391,7 @@ void FLuaBindings::RegisterLuaBindings(sol::state& Lua, FLuaCoroutineScheduler* 
 		"SetConstrainAspectRatio", &UCameraComponent::SetConstrainAspectRatio
 	);
 
-	Lua.new_usertype<USkeletalMeshComponent>("SkeletalMeshComponent", sol::no_constructor, "StaticClass", &USkeletalMeshComponent::StaticClass, "PlayAnimationByPath", &LuaPlayAnimationByPath, "PlayBlendSpaceByPath", &LuaPlayBlendSpaceByPath, "TickAnimation", &USkeletalMeshComponent::TickAnimation, "SetAnimationBlendInput", &USkeletalMeshComponent::SetAnimationBlendInput, "SetAnimationLooping", &USkeletalMeshComponent::SetAnimationLooping, "GetAnimationPlaybackTime", &USkeletalMeshComponent::GetAnimationPlaybackTime, "GetAnimationPlayLength", &USkeletalMeshComponent::GetAnimationPlayLength);
+	Lua.new_usertype<USkeletalMeshComponent>("SkeletalMeshComponent", sol::no_constructor, "StaticClass", &USkeletalMeshComponent::StaticClass, "SetAnimationGraphByPath", &LuaSetAnimationGraphByPath, "SetAnimationFloat", &LuaSetAnimationFloat, "SetAnimationBool", &LuaSetAnimationBool, "RequestAnimationState", &LuaRequestAnimationState, "GetCurrentAnimationState", &LuaGetCurrentAnimationState, "IsCurrentAnimationStateFinished", &LuaIsCurrentAnimationStateFinished, "IsAnimationBlending", &LuaIsAnimationBlending);
 
 	Lua.new_usertype<FWaitForSeconds>(
 		"WaitForSeconds",
@@ -480,7 +528,10 @@ void FLuaBindings::RegisterLuaBindings(sol::state& Lua, FLuaCoroutineScheduler* 
 		"ApplyKnockback", &APlayerActor::ApplyKnockback,
 		"StartDeathFall", &APlayerActor::StartDeathFall,
 		"StartWandSwing", &APlayerActor::StartWandSwing,
-		"SetMagnetRadius", &APlayerActor::SetMagnetRadius
+		"SetMagnetRadius", &APlayerActor::SetMagnetRadius,
+		"SetMovementSpeed", &APlayerActor::SetMovementSpeed,
+		"GetMovementSpeed2D", &APlayerActor::GetMovementSpeed2D,
+		"IsGrounded", &APlayerActor::IsGrounded
 	);
 
 	// --------------------- Enemy ---------------------

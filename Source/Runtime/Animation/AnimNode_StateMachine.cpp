@@ -47,6 +47,51 @@ bool FAnimNode_StateMachine::SetState(const FName& StateName, bool bResetPlaybac
 	return true;
 }
 
+bool FAnimNode_StateMachine::RequestState(const FName& StateName)
+{
+	if (StateName.IsNone() || FindStateIndex(StateName) == -1)
+	{
+		return false;
+	}
+
+	if (StateName == GetCurrentStateName())
+	{
+		return true;
+	}
+
+	if (bIsBlending)
+	{
+		return false;
+	}
+
+	const FName CurrentState = GetCurrentStateName();
+	int32 SelectedTransitionIndex = -1;
+	int32 BestPriority = std::numeric_limits<int32>::min();
+
+	for (int32 Index = 0; Index < Transitions.Num(); ++Index)
+	{
+		const FAnimStateTransition& Transition = Transitions[Index];
+
+		if (Transition.ToState != StateName)
+		{
+			continue;
+		}
+
+		if (!Transition.bAnyState && Transition.FromState != CurrentState)
+		{
+			continue;
+		}
+
+		if (Transition.Priority > BestPriority)
+		{
+			BestPriority = Transition.Priority;
+			SelectedTransitionIndex = Index;
+		}
+	}
+
+	return SelectedTransitionIndex != -1 && TransitionTo(Transitions[SelectedTransitionIndex]);
+}
+
 FName FAnimNode_StateMachine::GetCurrentStateName() const
 {
 	if (!States.IsValidIndex(CurrentStateIndex))
@@ -161,7 +206,11 @@ void FAnimNode_StateMachine::Update(const FAnimationUpdateContext& Context)
 	{
 		ActiveNode->Update(Context);
 	}
-	EvaluateTransitions(Context);
+
+	if (!bExternalStateControl)
+	{
+		EvaluateTransitions(Context);
+	}
 }
 
 void FAnimNode_StateMachine::Evaluate(FPoseContext& Output)
@@ -273,6 +322,32 @@ bool FAnimNode_StateMachine::AddTransitionInternal(const FName& FromState, const
 	return true;
 }
 
+bool FAnimNode_StateMachine::TransitionTo(const FAnimStateTransition& Transition)
+{
+	FAnimNode_Base* PreviousNode = GetActiveStateNode();
+
+	if (!SetState(Transition.ToState, true))
+	{
+		return false;
+	}
+
+	LastTransition = Transition;
+	bHasLastTransition = true;
+
+	FAnimNode_Base* CurrentNode = GetActiveStateNode();
+
+	if (PreviousNode && CurrentNode && PreviousNode != CurrentNode && Transition.BlendDuration > 0.0f)
+	{
+		TransitionBlendNode.SetSourceNodes(PreviousNode, CurrentNode);
+		TransitionBlendNode.SetAlpha(0.0f);
+		TransitionBlendDuration = Transition.BlendDuration;
+		TransitionBlendElapsed = 0.0f;
+		bIsBlending = true;
+	}
+
+	return true;
+}
+
 void FAnimNode_StateMachine::EvaluateTransitions(const FAnimationUpdateContext& Context)
 {
 	const FName CurrentState = GetCurrentStateName();
@@ -308,19 +383,9 @@ void FAnimNode_StateMachine::EvaluateTransitions(const FAnimationUpdateContext& 
 		const FAnimStateTransition& Transition = Transitions[SelectedTransitionIndex];
 		FAnimNode_Base* PreviousNode = GetActiveStateNode();
 
-		if (SetState(Transition.ToState, true))
+		if (SelectedTransitionIndex != -1)
 		{
-			LastTransition = Transition;
-			bHasLastTransition = true;
-			FAnimNode_Base* CurrentNode = GetActiveStateNode();
-			if (PreviousNode && CurrentNode && PreviousNode != CurrentNode && Transition.BlendDuration > 0.0f)
-			{
-				TransitionBlendNode.SetSourceNodes(PreviousNode, CurrentNode);
-				TransitionBlendNode.SetAlpha(0.0f);
-				TransitionBlendDuration = Transition.BlendDuration;
-				TransitionBlendElapsed = 0.0f;
-				bIsBlending = true;
-			}
+			TransitionTo(Transitions[SelectedTransitionIndex]);
 		}
 	}
 }

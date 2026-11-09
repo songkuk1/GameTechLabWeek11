@@ -91,6 +91,12 @@ public:
 
 	bool GetStateMachineDebugInfo(FAnimStateMachineDebugInfo& OutInfo) const;
 
+	bool SetExternalStateControl(bool bEnable);
+	bool RequestState(const FName& StateName);
+	FName GetCurrentStateName() const;
+	bool IsCurrentStateFinished() const;
+	bool IsStateMachineBlending() const;
+
 	void QueueAnimNotifyUpdate(const FAnimNode_SequencePlayer* Player, UAnimSequence* Sequence, float PreviousTime, float Advance, float CurrentTime, float PlayLength, bool bLooping, bool bIsFirstUpdate);
 	void TriggerAnimNotifies(float DeltaSeconds);
 

@@ -385,6 +385,37 @@ bool UAnimInstance::GetStateMachineDebugInfo(FAnimStateMachineDebugInfo& OutInfo
 	return true;
 }
 
+bool UAnimInstance::SetExternalStateControl(bool bEnable)
+{
+    if (!StateMachineNode || RootNode != StateMachineNode)
+    {
+        return false;
+    }
+
+    StateMachineNode->SetExternalStateControl(bEnable);
+    return true;
+}
+
+bool UAnimInstance::RequestState(const FName& StateName)
+{
+    return StateMachineNode && RootNode == StateMachineNode && StateMachineNode->RequestState(StateName);
+}
+
+FName UAnimInstance::GetCurrentStateName() const
+{
+    return StateMachineNode && RootNode == StateMachineNode ? StateMachineNode->GetCurrentStateName() : NAME_None;
+}
+
+bool UAnimInstance::IsCurrentStateFinished() const
+{
+    return StateMachineNode && RootNode == StateMachineNode && StateMachineNode->IsCurrentStateFinished();
+}
+
+bool UAnimInstance::IsStateMachineBlending() const
+{
+    return StateMachineNode && RootNode == StateMachineNode && StateMachineNode->IsBlending();
+}
+
 void UAnimInstance::QueueAnimNotifyUpdate(const FAnimNode_SequencePlayer* Player, UAnimSequence* Sequence, float PreviousTime, float Advance, float CurrentTime, float PlayLength, bool bLooping, bool bIsFirstUpdate)
 {
 	if (!Player || !Sequence || !Sequence->GetDataModel())

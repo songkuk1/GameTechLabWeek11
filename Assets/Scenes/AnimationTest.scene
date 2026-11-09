@@ -272,42 +272,7 @@
                         {
                             "Class": "UStaticMeshComponent",
                             "Name": "PlayerMeshComponent",
-                            "OverrideMaterials": [
-                                {
-                                    "Base": "DefaultMaterial",
-                                    "Instance": {
-                                        "BaseColor": {
-                                            "A": 1.0,
-                                            "B": 0.8799999952316284,
-                                            "G": 0.41999998688697815,
-                                            "R": 0.11999999731779099
-                                        },
-                                        "BlendState": "Opaque",
-                                        "DecalColorBlendMode": "Alpha",
-                                        "MaterialDomain": "Surface",
-                                        "Properties": {},
-                                        "SamplerState": "LinearClamp",
-                                        "Shininess": 16.0,
-                                        "SpecularColor": {
-                                            "A": 1.0,
-                                            "B": 0.10000000149011612,
-                                            "G": 0.10000000149011612,
-                                            "R": 0.10000000149011612
-                                        },
-                                        "Textures": [
-                                            "WhiteTexture",
-                                            ""
-                                        ],
-                                        "UVScrollSpeed": [
-                                            0.0,
-                                            0.0
-                                        ],
-                                        "bAffectBaseColor": true,
-                                        "bAffectNormal": true,
-                                        "bFlipNormalGreen": false
-                                    }
-                                }
-                            ],
+                            "OverrideMaterials": [],
                             "Parent": "DefaultSceneRoot",
                             "Properties": {
                                 "ShowBeginOverlapLog": false,
@@ -318,7 +283,7 @@
                                     "Location": {
                                         "X": 0.0,
                                         "Y": 0.0,
-                                        "Z": -0.44999998807907104
+                                        "Z": 0.990458607673645
                                     },
                                     "Rotation": {
                                         "Pitch": 0.0,
@@ -326,14 +291,14 @@
                                         "Yaw": 0.0
                                     },
                                     "Scale": {
-                                        "X": 0.44999998807907104,
-                                        "Y": 0.44999998807907104,
-                                        "Z": 0.8999999761581421
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
                                     }
                                 },
                                 "bBlockComponet": false,
                                 "bCastShadow": true,
-                                "bGenerateOverlapEvents": false,
+                                "bGenerateOverlapEvents": true,
                                 "bReceiveShadow": true,
                                 "bReceivesDecals": true,
                                 "bVisible": false
@@ -342,42 +307,7 @@
                         {
                             "Class": "UStaticMeshComponent",
                             "Name": "WandMeshComponent",
-                            "OverrideMaterials": [
-                                {
-                                    "Base": "DefaultMaterial",
-                                    "Instance": {
-                                        "BaseColor": {
-                                            "A": 1.0,
-                                            "B": 0.18000000715255737,
-                                            "G": 0.7799999713897705,
-                                            "R": 0.949999988079071
-                                        },
-                                        "BlendState": "Opaque",
-                                        "DecalColorBlendMode": "Alpha",
-                                        "MaterialDomain": "Surface",
-                                        "Properties": {},
-                                        "SamplerState": "LinearClamp",
-                                        "Shininess": 16.0,
-                                        "SpecularColor": {
-                                            "A": 1.0,
-                                            "B": 0.10000000149011612,
-                                            "G": 0.10000000149011612,
-                                            "R": 0.10000000149011612
-                                        },
-                                        "Textures": [
-                                            "WhiteTexture",
-                                            ""
-                                        ],
-                                        "UVScrollSpeed": [
-                                            0.0,
-                                            0.0
-                                        ],
-                                        "bAffectBaseColor": true,
-                                        "bAffectNormal": true,
-                                        "bFlipNormalGreen": false
-                                    }
-                                }
-                            ],
+                            "OverrideMaterials": [],
                             "Parent": "PlayerMeshComponent",
                             "Properties": {
                                 "ShowBeginOverlapLog": false,
@@ -386,9 +316,9 @@
                                 "StaticMesh": "Cube",
                                 "Transform": {
                                     "Location": {
-                                        "X": 0.8999999761581421,
+                                        "X": 0.0,
                                         "Y": 0.0,
-                                        "Z": 0.3499999940395355
+                                        "Z": 0.0
                                     },
                                     "Rotation": {
                                         "Pitch": 0.0,
@@ -396,17 +326,17 @@
                                         "Yaw": 0.0
                                     },
                                     "Scale": {
-                                        "X": 0.6499999761581421,
-                                        "Y": 0.09000000357627869,
-                                        "Z": 0.09000000357627869
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
                                     }
                                 },
                                 "bBlockComponet": false,
                                 "bCastShadow": true,
-                                "bGenerateOverlapEvents": false,
+                                "bGenerateOverlapEvents": true,
                                 "bReceiveShadow": true,
                                 "bReceivesDecals": true,
-                                "bVisible": true
+                                "bVisible": false
                             }
                         },
                         {
@@ -430,9 +360,9 @@
                                 "ShowHitLog": false,
                                 "Transform": {
                                     "Location": {
-                                        "X": 0.0,
-                                        "Y": 0.0,
-                                        "Z": 0.0
+                                        "X": 5.748410103478818e-07,
+                                        "Y": 1.3552527156068805e-20,
+                                        "Z": 1.0
                                     },
                                     "Rotation": {
                                         "Pitch": 0.0,
@@ -490,7 +420,7 @@
                                 "bBlockComponet": false,
                                 "bCastShadow": false,
                                 "bDrawOnlyIfSelected": false,
-                                "bGenerateOverlapEvents": false,
+                                "bGenerateOverlapEvents": true,
                                 "bIsGameHidden": true,
                                 "bReceiveShadow": false,
                                 "bReceivesDecals": true,
@@ -585,7 +515,7 @@
                                     "Rotation": {
                                         "Pitch": 0.0,
                                         "Roll": 0.0,
-                                        "Yaw": 0.0
+                                        "Yaw": 90.0
                                     },
                                     "Scale": {
                                         "X": 1.0,

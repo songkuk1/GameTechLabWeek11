@@ -149,6 +149,30 @@ void APlayerActor::Jump(float JumpSpeed)
     CharacterMovementComponent->Jump(JumpSpeed);
 }
 
+void APlayerActor::SetMovementSpeed(float InSpeed)
+{
+    if (CharacterMovementComponent)
+    {
+        CharacterMovementComponent->SetMoveSpeed(InSpeed);
+    }
+}
+
+float APlayerActor::GetMovementSpeed2D() const
+{
+    if (!CharacterMovementComponent)
+    {
+        return 0.0f;
+    }
+
+    const FVector& Velocity = CharacterMovementComponent->Velocity;
+    return std::sqrt(Velocity.X * Velocity.X + Velocity.Y * Velocity.Y);
+}
+
+bool APlayerActor::IsGrounded() const
+{
+    return CharacterMovementComponent && CharacterMovementComponent->IsGrounded();
+}
+
 UCharacterMovementComponent* APlayerActor::GetCharacterMovementComponent()
 {
     return CharacterMovementComponent;
