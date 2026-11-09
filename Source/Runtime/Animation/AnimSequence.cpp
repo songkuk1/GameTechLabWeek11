@@ -156,7 +156,7 @@ bool UAnimSequenceBase::ExtractRootMotion(float StartTime, float DeltaTime, bool
     OutTranslation = FVector::ZeroVector;
     OutRotation = FQuat::Identity();
 
-    if (DataModel || !std::isfinite(StartTime) || !std::isfinite(DeltaTime) || DataModel->PlayLength <= 0.0f)
+    if (!DataModel || !std::isfinite(StartTime) || !std::isfinite(DeltaTime) || DataModel->PlayLength <= 0.0f)
     {
         return false;
     }
@@ -195,8 +195,8 @@ bool UAnimSequenceBase::ExtractRootMotion(float StartTime, float DeltaTime, bool
 
             const FMatrix FromRelative = RootStartInverse * FromMatrix;
             const FMatrix ToRelative = RootStartInverse * ToMatrix;
-            const FMatrix SegmentDelta = ToRelative * FromRelative.Inverse();
-            AccumulatedDelta = SegmentDelta * AccumulatedDelta;
+            const FMatrix SegmentDelta = FromRelative.Inverse() * ToRelative;
+            AccumulatedDelta = AccumulatedDelta * SegmentDelta;
             return true;
         };
 
