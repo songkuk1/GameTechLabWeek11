@@ -49,14 +49,14 @@ namespace
         return true;
     }
 
-    FMatrix MakeRootMotionMatrix(const FVector& Position, const FQuat& Rotation)
+    FMatrix MakeRootMotionMatrix(const FVector& Position, const FQuat& Rotation, const FVector& Scale)
     {
         const FMatrix RotationMatrix = Rotation.ToFMatrix();
 
         return FMatrix(
-            RotationMatrix[0][0], RotationMatrix[0][1], RotationMatrix[0][2], 0.0f,
-            RotationMatrix[1][0], RotationMatrix[1][1], RotationMatrix[1][2], 0.0f,
-            RotationMatrix[2][0], RotationMatrix[2][1], RotationMatrix[2][2], 0.0f,
+            RotationMatrix[0][0] * Scale.X, RotationMatrix[0][1] * Scale.X, RotationMatrix[0][2] * Scale.X, 0.0f,
+            RotationMatrix[1][0] * Scale.Y, RotationMatrix[1][1] * Scale.Y, RotationMatrix[1][2] * Scale.Y, 0.0f,
+            RotationMatrix[2][0] * Scale.Z, RotationMatrix[2][1] * Scale.Z, RotationMatrix[2][2] * Scale.Z, 0.0f,
             Position.X, Position.Y, Position.Z, 1.0f
         );
     }
@@ -161,19 +161,92 @@ bool UAnimSequenceBase::ExtractRootMotion(float StartTime, float DeltaTime, bool
         return false;
     }
 
-    FVector RootStartPosition;
-    FVector RootStartScale;
-    FQuat RootStartRotation;
+    const float PlayLength = DataModel->PlayLength;
+    const int32 RootNodeIndex = GetRootBoneNodeIndex();
 
-    if (!GetRootBoneTransform(0.0f, RootStartPosition, RootStartRotation, RootStartScale))
+    if (!Skeleton || RootNodeIndex < 0)
     {
         return false;
     }
 
-    const float PlayLength = DataModel->PlayLength;
-    const FMatrix RootStartMatrix = MakeRootMotionMatrix(RootStartPosition, RootStartRotation);
-    const FMatrix RootStartInverse = RootStartMatrix.Inverse();
+    const TArray<FModelNode>& Nodes = Skeleton->GetNodes();
 
+    if (!Nodes.IsValidIndex(RootNodeIndex))
+    {
+        return false;
+    }
+
+    TArray<int32> RootNodeChain;
+    int32 CurrentNodeIndex = RootNodeIndex;
+
+    while (CurrentNodeIndex != -1)
+    {
+        if (!Nodes.IsValidIndex(CurrentNodeIndex))
+        {
+            return false;
+        }
+
+        RootNodeChain.Add(CurrentNodeIndex);
+
+        if (RootNodeChain.Num() > Nodes.Num())
+        {
+            return false;
+        }
+
+        CurrentNodeIndex = Nodes[CurrentNodeIndex].ParentNodeIndex;
+    }
+
+    auto GetRootComponentMatrix = [&](float Time, FMatrix& OutMatrix) -> bool
+        {
+            FMatrix GlobalMatrix = FMatrix::Identity;
+
+            for (int32 ChainIndex = RootNodeChain.Num() - 1; ChainIndex >= 0; --ChainIndex)
+            {
+                const int32 NodeIndex = RootNodeChain[ChainIndex];
+                FMatrix LocalMatrix = Nodes[NodeIndex].LocalTransform;
+                bool bFoundTrack = false;
+
+                for (const FBoneAnimationTrack& Track : DataModel->GetBoneAnimationTracks())
+                {
+                    if (Track.NodeIndex != NodeIndex)
+                    {
+                        continue;
+                    }
+
+                    FVector Position;
+                    FVector Scale;
+                    FQuat Rotation;
+
+                    if (!SampleAnimationTrack(Track.InternalTrack, DataModel, Time, Position, Rotation, Scale))
+                    {
+                        return false;
+                    }
+
+                    LocalMatrix = MakeRootMotionMatrix(Position, Rotation, Scale);
+                    bFoundTrack = true;
+                    break;
+                }
+
+                if (NodeIndex == RootNodeIndex && !bFoundTrack)
+                {
+                    return false;
+                }
+
+                GlobalMatrix = LocalMatrix * GlobalMatrix;
+            }
+
+            OutMatrix = GlobalMatrix;
+            return true;
+        };
+
+    FMatrix RootStartMatrix;
+
+    if (!GetRootComponentMatrix(0.0f, RootStartMatrix))
+    {
+        return false;
+    }
+
+    const FMatrix RootStartInverse = RootStartMatrix.Inverse();
     FMatrix AccumulatedDelta = FMatrix::Identity;
 
     auto AddSegment = [&](float FromTime, float ToTime) -> bool
@@ -185,18 +258,18 @@ bool UAnimSequenceBase::ExtractRootMotion(float StartTime, float DeltaTime, bool
             FVector ToScale;
             FQuat ToRotation;
 
-            if (!GetRootBoneTransform(FromTime, FromPosition, FromRotation, FromScale) || !GetRootBoneTransform(ToTime, ToPosition, ToRotation, ToScale))
+            FMatrix FromMatrix;
+            FMatrix ToMatrix;
+
+            if (!GetRootComponentMatrix(FromTime, FromMatrix) || !GetRootComponentMatrix(ToTime, ToMatrix))
             {
                 return false;
             }
 
-            const FMatrix FromMatrix = MakeRootMotionMatrix(FromPosition, FromRotation);
-            const FMatrix ToMatrix = MakeRootMotionMatrix(ToPosition, ToRotation);
-
             const FMatrix FromRelative = RootStartInverse * FromMatrix;
             const FMatrix ToRelative = RootStartInverse * ToMatrix;
-            const FMatrix SegmentDelta = FromRelative.Inverse() * ToRelative;
-            AccumulatedDelta = AccumulatedDelta * SegmentDelta;
+            const FMatrix SegmentDelta = ToRelative * FromRelative.Inverse();
+            AccumulatedDelta = SegmentDelta * AccumulatedDelta;
             return true;
         };
 
