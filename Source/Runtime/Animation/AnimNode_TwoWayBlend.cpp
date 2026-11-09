@@ -15,13 +15,19 @@ void FAnimNode_TwoWayBlend::SetAlpha(float InAlpha)
 
 void FAnimNode_TwoWayBlend::Update(const FAnimationUpdateContext& Context)
 {
+    FAnimationUpdateContext ContextA = Context;
+    ContextA.NotifyWeight *= (1.0f - Alpha);
+
+    FAnimationUpdateContext ContextB = Context;
+    ContextB.NotifyWeight *= Alpha;
+
 	if (SourcePoseA)
 	{
-		SourcePoseA->Update(Context);
+		SourcePoseA->Update(ContextA);
 	}
 	if (SourcePoseB && SourcePoseB != SourcePoseA)
 	{
-		SourcePoseB->Update(Context);
+		SourcePoseB->Update(ContextB);
 	}
 }
 

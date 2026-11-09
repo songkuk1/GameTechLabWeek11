@@ -36,4 +36,8 @@ public:
 
 	static bool LoadAnimationGraph(UAnimationGraph* Graph, const FString& Path);
 	static bool LoadAnimationGraphFromBytes(UAnimationGraph* Graph, const TArray<uint8>& Bytes);
+
+	static bool SaveAnimNotifies(UAnimSequenceBase* Sequence, const FString& Path);
+	static bool LoadAnimNotifies(UAnimSequenceBase* Sequence, const FString& Path);
+	static FString GetAnimationNotifyPath(const FString& AnimationAssetPath);
 };

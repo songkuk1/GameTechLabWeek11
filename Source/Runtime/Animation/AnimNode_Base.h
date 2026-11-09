@@ -25,6 +25,7 @@ struct FAnimationUpdateContext
 {
     float DeltaTime = 0.0f;
     UAnimInstance* AnimInstance = nullptr;
+    float NotifyWeight = 1.0f;
 };
 
 struct FPoseContext

@@ -14,6 +14,24 @@ class UAnimationGraph;
 struct FAnimNode_StateMachine;
 struct FAnimStateMachineDebugInfo;
 
+struct FQueuedAnimNotifyUpdate
+{
+	const FAnimNode_SequencePlayer* Player = nullptr;
+	UAnimSequence* Sequence = nullptr;
+	float PreviousTime = 0.0f;
+	float Advance = 0.0f;
+	float CurrentTime = 0.0f;
+	float PlayLength = 0.0f;
+	bool bLooping = false;
+};
+
+struct FActiveAnimNotifyState
+{
+	const FAnimNode_SequencePlayer* Player = nullptr;
+	UAnimSequence* Sequence = nullptr;
+	int32 NotifyIndex = -1;
+};
+
 class UAnimInstance : public UObject
 {
 	DECLARE_CLASS(UAnimInstance, UObject)
@@ -69,6 +87,9 @@ public:
 	const IAnimPlaybackControl* GetPlaybackControl() const { return RootNode ? RootNode->GetPlaybackControl() : nullptr; }
 
 	bool GetStateMachineDebugInfo(FAnimStateMachineDebugInfo& OutInfo) const;
+
+	void QueueAnimNotifyUpdate(const FAnimNode_SequencePlayer* Player, UAnimSequence* Sequence, float PreviousTime, float Advance, float CurrentTime, float PlayLength, bool bLooping);
+	void TriggerAnimNotifies(float DeltaSeconds);
 protected:
 	FAnimNode_Base* RootNode = nullptr;
 private:
@@ -79,6 +100,8 @@ private:
 	USkeletalMeshComponent* OwningComponent = nullptr;
 	FAnimNode_StateMachine* StateMachineNode = nullptr;
 	TArray<FAnimNode_Base*> OwnedAnimationNodes;
+	TArray<FQueuedAnimNotifyUpdate> PendingAnimNotifyUpdates;
+	TArray<FActiveAnimNotifyState> ActiveAnimNotifyStates;
 
 	TMap<FName, bool, FNameHash> BoolParameters;
 	TMap<FName, float, FNameHash> FloatParameters;

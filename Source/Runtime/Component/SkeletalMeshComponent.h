@@ -38,6 +38,8 @@ public:
     void SetAnimationRootNode(FAnimNode_Base* InRootNode);
     bool SetAnimationGraph(UAnimationGraph* InGraph);
 
+    void HandleAnimNotify(const FAnimNotifyEvent& Notify, EAnimNotifyEventType EventType, float DeltaSeconds);
+
     // 애니메이션 재생 위치
     void SetAnimationPlaybackTime(float InTime);
     float GetAnimationPlaybackTime() const;

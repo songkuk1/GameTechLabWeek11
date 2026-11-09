@@ -11,6 +11,7 @@
 
 class UWorld;
 class ULevel;
+enum class EAnimNotifyEventType : uint8;
 
 class AActor : public UObject
 {
@@ -74,6 +75,9 @@ public:
 	UActorComponent* FindComponentByClass(const UClass* Name) const;
 
 	virtual bool IsOverlappingActor(const AActor* Other) const;
+
+	virtual void HandleAnimNotify(const FName& NotifyName) {}
+	virtual void HandleAnimNotifyState(const FName& NotifyName, EAnimNotifyEventType EventType, float DeltaSeconds) {}
 
 protected:
 	virtual void OnDefaultSubobjectCreated(UObject* Subobject) override;

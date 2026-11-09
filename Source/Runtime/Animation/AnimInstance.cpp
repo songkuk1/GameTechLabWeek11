@@ -354,3 +354,11 @@ bool UAnimInstance::GetStateMachineDebugInfo(FAnimStateMachineDebugInfo& OutInfo
 	StateMachineNode->GetDebugInfo(OutInfo);
 	return true;
 }
+
+void UAnimInstance::QueueAnimNotifyUpdate(const FAnimNode_SequencePlayer* Player, UAnimSequence* Sequence, float PreviousTime, float Advance, float CurrentTime, float PlayLength, bool bLooping)
+{
+}
+
+void UAnimInstance::TriggerAnimNotifies(float DeltaSeconds)
+{
+}

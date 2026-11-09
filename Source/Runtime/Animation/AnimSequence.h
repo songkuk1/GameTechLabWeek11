@@ -12,6 +12,14 @@ struct FAnimNotifyEvent
 	FName NotifyName;
 };
 
+enum class EAnimNotifyEventType : uint8
+{
+	Trigger,
+	Begin,
+	Tick,
+	End
+};
+
 class UAnimSequenceBase : public UAnimationAsset
 {
 	DECLARE_CLASS(UAnimSequenceBase, UAnimationAsset)
@@ -45,6 +53,7 @@ public:
 		Notifies.RemoveAt(static_cast<uint32>(Index));
 		return true;
 	}
+	void SerializeNotifies(FStructuredArchive::FRecord Record);
 	void SetSkeleton(USkeleton* InSkeleton) { Skeleton = InSkeleton; }
 	USkeleton* GetSkeleton() const { return Skeleton; }
 };
