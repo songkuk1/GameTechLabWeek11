@@ -2231,7 +2231,7 @@ void FAnimationGraphEditorTab::DrawGraphCanvas()
 
             const ImVec2 NodeSize = GetKnownNodeSize(OwnerNodeId);
             const float EdgeLength = Side == GraphPinSideLeft || Side == GraphPinSideRight ? NodeSize.y : NodeSize.x;
-            constexpr float DesiredLaneSpacing = 18.0f;
+            constexpr float DesiredLaneSpacing = 40.0f;
             constexpr float EdgeMargin = 10.0f;
             const float MaxRange = std::max(0.0f, EdgeLength * 0.5f - EdgeMargin);
             const float Spacing = Count > 1 ? std::min(DesiredLaneSpacing, MaxRange * 2.0f / static_cast<float>(Count - 1)) : 0.0f;
@@ -2710,10 +2710,10 @@ void FAnimationGraphEditorTab::DrawGraphCanvas()
         const float DeltaY = DestinationCenter.y - SourceCenter.y;
         const float Length = std::sqrt(DeltaX * DeltaX + DeltaY * DeltaY);
 
-        const float DirectionSign = Route.SourceNodeId.Get() < Route.DestinationNodeId.Get() ? 1.0f : -1.0f;
+        const bool bHorizontalRoute = Route.SourceSide == GraphPinSideLeft || Route.SourceSide == GraphPinSideRight;
 
-        const ImVec2 Tangent = Length > 0.001f ? ImVec2(DeltaX / Length, DeltaY / Length) : ImVec2(1.0f, 0.0f);
-        const ImVec2 Perpendicular = Length > 0.001f ? ImVec2(-DeltaY / Length * DirectionSign, DeltaX / Length * DirectionSign) : ImVec2(0.0f, 1.0f);
+        const ImVec2 Tangent = bHorizontalRoute ? ImVec2(DeltaX >= 0.0f ? 1.0f : -1.0f, 0.0f) : ImVec2(0.0f, DeltaY >= 0.0f ? 1.0f : -1.0f);
+        const ImVec2 Perpendicular = bHorizontalRoute ? ImVec2(0.0f, 1.0f) : ImVec2(1.0f, 0.0f);
 
         const float RouteOffset = (Route.SourceOffset + Route.DestinationOffset) * 0.5f;
 
