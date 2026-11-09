@@ -1913,10 +1913,10 @@ void FAnimationGraphEditorTab::DrawGraphCanvas()
 
     auto SubmitEdgePin = [](ed::PinId PinId, ed::PinKind PinKindValue, const ImVec2& NodeMin, const ImVec2& NodeMax, int32 Side)
         {
-            constexpr float PinWidth = 20.0f;
-            constexpr float PinHeight = 20.0f;
+            constexpr float PinWidth = 28.0f;
+            constexpr float PinHeight = 28.0f;
 
-            const float Offset = PinKindValue == ed::PinKind::Input ? -14.0f : 14.0f;
+            const float Offset = PinKindValue == ed::PinKind::Input ? -18.0f : 18.0f;
 
             const float CenterX = (NodeMin.x + NodeMax.x) * 0.5f;
             const float CenterY = (NodeMin.y + NodeMax.y) * 0.5f;
@@ -2129,39 +2129,47 @@ void FAnimationGraphEditorTab::DrawGraphCanvas()
             {
                 const FTransitionRoute& OtherRoute = TransitionRoutes[OtherIndex];
 
-                const ed::NodeId OtherOwnerNodeId = bSource ? OtherRoute.SourceNodeId : OtherRoute.DestinationNodeId;
-                const int32 OtherSide = bSource ? OtherRoute.SourceSide : OtherRoute.DestinationSide;
-
-                if (OtherOwnerNodeId != OwnerNodeId || OtherSide != Side)
+                for (int32 EndpointIndex = 0; EndpointIndex < 2; ++EndpointIndex)
                 {
-                    continue;
-                }
+                    const bool bOtherSource = EndpointIndex == 0;
 
-                const ed::NodeId OtherPeerNodeId = bSource ? OtherRoute.DestinationNodeId : OtherRoute.SourceNodeId;
-                const float OtherCoordinate = GetPeerTangentCoordinate(OtherPeerNodeId, Side);
+                    const ed::NodeId OtherOwnerNodeId = bOtherSource ? OtherRoute.SourceNodeId : OtherRoute.DestinationNodeId;
+                    const ed::NodeId OtherPeerNodeId = bOtherSource ? OtherRoute.DestinationNodeId : OtherRoute.SourceNodeId;
+                    const int32 OtherSide = bOtherSource ? OtherRoute.SourceSide : OtherRoute.DestinationSide;
 
-                ++Count;
+                    if (OtherOwnerNodeId != OwnerNodeId || OtherSide != Side)
+                    {
+                        continue;
+                    }
 
-                if (OtherCoordinate < PeerCoordinate - 0.01f || (std::abs(OtherCoordinate - PeerCoordinate) <= 0.01f && OtherIndex < RouteIndex))
-                {
-                    ++Rank;
+                    const float OtherCoordinate = GetPeerTangentCoordinate(OtherPeerNodeId, Side);
+
+                    ++Count;
+
+                    const bool bSameCoordinate = std::abs(OtherCoordinate - PeerCoordinate) <= 0.01f;
+                    const bool bComesBefore = OtherCoordinate < PeerCoordinate - 0.01f ||
+                        (bSameCoordinate && (OtherIndex < RouteIndex || (OtherIndex == RouteIndex && bOtherSource && !bSource)));
+
+                    if (bComesBefore)
+                    {
+                        ++Rank;
+                    }
                 }
             }
 
             const ImVec2 NodeSize = GetKnownNodeSize(OwnerNodeId);
             const float EdgeLength = Side == GraphPinSideLeft || Side == GraphPinSideRight ? NodeSize.y : NodeSize.x;
-            const float MaxRange = std::max(0.0f, EdgeLength * 0.5f - 16.0f);
+            const float MaxRange = std::max(0.0f, EdgeLength * 0.5f - 18.0f);
+            const float Spacing = Count > 1 ? std::min(22.0f, MaxRange * 2.0f / static_cast<float>(Count - 1)) : 0.0f;
 
-            const float NormalizedRank = Count > 1 ? (static_cast<float>(Rank) / static_cast<float>(Count - 1)) * 2.0f - 1.0f : 0.0f;
-
-            return NormalizedRank * MaxRange;
+            return (static_cast<float>(Rank) - static_cast<float>(Count - 1) * 0.5f) * Spacing;
         };
 
     for (int32 Index = 0; Index < static_cast<int32>(TransitionRoutes.size()); ++Index)
     {
         FTransitionRoute& Route = TransitionRoutes[Index];
-        Route.SourceOffset = CalculateTransitionLaneOffset(Index, true) + 7.0f;
-        Route.DestinationOffset = CalculateTransitionLaneOffset(Index, false) - 7.0f;
+        Route.SourceOffset = CalculateTransitionLaneOffset(Index, true);
+        Route.DestinationOffset = CalculateTransitionLaneOffset(Index, false);
     }
 
     ed::Begin("AnimationGraphNodeEditor", CanvasSize);
@@ -2194,9 +2202,6 @@ void FAnimationGraphEditorTab::DrawGraphCanvas()
 
     const ImVec2 AnyStateMin = ImGui::GetCursorScreenPos();
     const ImVec2 AnyStateMax(AnyStateMin.x + AnyStateWidth, AnyStateMin.y + AnyStateHeight);
-
-    ImGui::Dummy(ImVec2(AnyStateWidth, AnyStateHeight));
-
     ImDrawList* AnyStateDrawList = ImGui::GetWindowDrawList();
 
     AnyStateDrawList->AddRectFilled(AnyStateMin, AnyStateMax, IM_COL32(35, 48, 40, 255), 7.0f);
@@ -2221,6 +2226,9 @@ void FAnimationGraphEditorTab::DrawGraphCanvas()
         }
     }
 
+    ImGui::SetCursorScreenPos(AnyStateMin);
+    ImGui::Dummy(ImVec2(AnyStateWidth, AnyStateHeight));
+
     ed::EndNode();
 
     ed::PopStyleVar(2);
@@ -2237,9 +2245,6 @@ void FAnimationGraphEditorTab::DrawGraphCanvas()
 
         const ImVec2 EntryMin = ImGui::GetCursorScreenPos();
         const ImVec2 EntryMax(EntryMin.x + 104.0f, EntryMin.y + 36.0f);
-
-        ImGui::Dummy(ImVec2(104.0f, 36.0f));
-
         ImDrawList* DrawList = ImGui::GetWindowDrawList();
 
         DrawList->AddRectFilled(EntryMin, EntryMax, IM_COL32(55, 59, 66, 255), 6.0f);
@@ -2254,6 +2259,9 @@ void FAnimationGraphEditorTab::DrawGraphCanvas()
         {
             SubmitEdgePin(MakeEntryOutputPinId(Side), ed::PinKind::Output, EntryMin, EntryMax, Side);
         }
+
+        ImGui::SetCursorScreenPos(EntryMin);
+        ImGui::Dummy(ImVec2(104.0f, 36.0f));
 
         ed::EndNode();
 
@@ -2295,9 +2303,6 @@ void FAnimationGraphEditorTab::DrawGraphCanvas()
 
         const ImVec2 NodeMin = ImGui::GetCursorScreenPos();
         const ImVec2 NodeMax(NodeMin.x + NodeWidth, NodeMin.y + NodeHeight);
-
-        // 노드의 고정 크기 확보
-        ImGui::Dummy(ImVec2(NodeWidth, NodeHeight));
 
         ImDrawList* NodeDrawList = ImGui::GetWindowDrawList();
 
@@ -2348,6 +2353,9 @@ void FAnimationGraphEditorTab::DrawGraphCanvas()
                 SubmitTransitionPin(MakeTransitionDestinationPinId(Route.Transition), ed::PinKind::Input, NodeMin, NodeMax, Route.DestinationSide, Route.DestinationOffset);
             }
         }
+
+        ImGui::SetCursorScreenPos(NodeMin);
+        ImGui::Dummy(ImVec2(NodeWidth, NodeHeight));
 
         ed::EndNode();
 
@@ -2404,6 +2412,16 @@ void FAnimationGraphEditorTab::DrawGraphCanvas()
                         return true;
                     }
 
+                    for (const FTransitionRoute& Route : TransitionRoutes)
+                    {
+                        if (PinId == MakeTransitionSourcePinId(Route.Transition))
+                        {
+                            OutSourceState = Route.Transition.FromState;
+                            bOutAnyState = Route.Transition.bAnyState;
+                            return true;
+                        }
+                    }
+
                     for (const FAnimGraphStateDefinition& State : States)
                     {
                         for (int32 Side = 0; Side < GraphPinSideCount; ++Side)
@@ -2422,6 +2440,15 @@ void FAnimationGraphEditorTab::DrawGraphCanvas()
 
             auto ResolveInputPin = [&](ed::PinId PinId, FName& OutDestinationState)
                 {
+                    for (const FTransitionRoute& Route : TransitionRoutes)
+                    {
+                        if (PinId == MakeTransitionDestinationPinId(Route.Transition))
+                        {
+                            OutDestinationState = Route.Transition.ToState;
+                            return true;
+                        }
+                    }
+
                     for (const FAnimGraphStateDefinition& State : States)
                     {
                         for (int32 Side = 0; Side < GraphPinSideCount; ++Side)
@@ -2595,9 +2622,22 @@ void FAnimationGraphEditorTab::DrawGraphCanvas()
         const float DeltaY = DestinationCenter.y - SourceCenter.y;
         const float Length = std::sqrt(DeltaX * DeltaX + DeltaY * DeltaY);
 
-        const ImVec2 Perpendicular = Length > 0.001f ? ImVec2(-DeltaY / Length, DeltaX / Length) : ImVec2(0.0f, 1.0f);
+        const float DirectionSign = SourceNodeId.Get() < DestinationNodeId.Get() ? 1.0f : -1.0f;
+
+        const ImVec2 Perpendicular = Length > 0.001f
+            ? ImVec2(-DeltaY / Length * DirectionSign, DeltaX / Length * DirectionSign)
+            : ImVec2(0.0f, 1.0f);
 
         float RouteOffset = 0.0f;
+
+        for (const FTransitionRoute& Route : TransitionRoutes)
+        {
+            if (MakeTransitionLinkId(Route.Transition) == MakeTransitionLinkId(Transition))
+            {
+                RouteOffset = (Route.SourceOffset + Route.DestinationOffset) * 0.5f;
+                break;
+            }
+        }
 
         for (const FTransitionRoute& Route : TransitionRoutes)
         {
