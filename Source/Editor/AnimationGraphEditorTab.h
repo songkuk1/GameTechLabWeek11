@@ -52,6 +52,7 @@ private:
     UBlendSpace1D* NewBlendSpace = nullptr;
 
     int32 SelectedStateIndex = -1;
+    int32 DraggingFromStateIndex = -1;
 
     char NewStateNameBuffer[64] = "NewState";
     char RenameStateBuffer[64] = {};
