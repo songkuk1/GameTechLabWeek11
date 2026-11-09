@@ -1990,14 +1990,16 @@ void FAnimationGraphEditorTab::DrawGraphCanvas()
                 return;
             }
 
-            ImGui::SetCursorScreenPos(PinPosition);
-
-            ed::PushStyleVar(ed::StyleVar_SourceDirection, PinDirection);
-            ed::PushStyleVar(ed::StyleVar_TargetDirection, PinDirection);
             if (!RegisterSubmittedPin(PinId, PinOwner))
             {
                 return;
             }
+
+            ImGui::SetCursorScreenPos(PinPosition);
+
+            ed::PushStyleVar(ed::StyleVar_SourceDirection, PinDirection);
+            ed::PushStyleVar(ed::StyleVar_TargetDirection, PinDirection);
+
             ed::BeginPin(PinId, PinKindValue);
             ed::PinPivotAlignment(PivotAlignment);
             ed::PinPivotSize(ImVec2(0.0f, 0.0f));
@@ -2058,13 +2060,15 @@ void FAnimationGraphEditorTab::DrawGraphCanvas()
                 return;
             }
 
-            ImGui::SetCursorScreenPos(PinPosition);
-            ed::PushStyleVar(ed::StyleVar_SourceDirection, PinDirection);
-            ed::PushStyleVar(ed::StyleVar_TargetDirection, PinDirection);
             if (!RegisterSubmittedPin(PinId, PinOwner))
             {
                 return;
             }
+
+            ImGui::SetCursorScreenPos(PinPosition);
+            ed::PushStyleVar(ed::StyleVar_SourceDirection, PinDirection);
+            ed::PushStyleVar(ed::StyleVar_TargetDirection, PinDirection);
+
             ed::BeginPin(PinId, PinKindValue);
             ed::PinPivotAlignment(PivotAlignment);
             ed::PinPivotSize(ImVec2(0.0f, 0.0f));
@@ -2387,8 +2391,8 @@ void FAnimationGraphEditorTab::DrawGraphCanvas()
 
         for (int32 Side = 0; Side < GraphPinSideCount; ++Side)
         {
-            SubmitEdgePin(MakeAnyStateOutputPinId(Side), ed::PinKind::Output, AnyStateMin, AnyStateMax, Side, false, "AnyStateOutput");
-            SubmitEdgePin(MakeAnyStateOutputPinId(Side), ed::PinKind::Output, AnyStateMin, AnyStateMax, Side, false, "AnyStateOutput");
+            SubmitEdgePin(MakeStateInputPinId(State.Name, Side), ed::PinKind::Input, NodeMin, NodeMax, Side, true, "StateInput");
+            SubmitEdgePin(MakeStateOutputPinId(State.Name, Side), ed::PinKind::Output, NodeMin, NodeMax, Side, true, "StateOutput");
         }
 
         const ed::NodeId CurrentStateNodeId = MakeStateNodeId(State.Name);
@@ -2397,7 +2401,7 @@ void FAnimationGraphEditorTab::DrawGraphCanvas()
         {
             if (Route.SourceNodeId == CurrentStateNodeId)
             {
-                SubmitTransitionPin(MakeTransitionSourcePinId(Route.Transition), ed::PinKind::Output, AnyStateMin, AnyStateMax, Route.SourceSide, Route.SourceOffset, "AnyStateTransitionSource");
+                SubmitTransitionPin(MakeTransitionSourcePinId(Route.Transition), ed::PinKind::Output, NodeMin, NodeMax, Route.SourceSide, Route.SourceOffset, "StateTransitionSource");
             }
 
             if (Route.DestinationNodeId == CurrentStateNodeId)
