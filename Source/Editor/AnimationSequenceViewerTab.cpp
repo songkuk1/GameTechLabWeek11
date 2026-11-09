@@ -145,126 +145,127 @@ void FAnimationSequenceViewerTab::CollectViews(TArray<FEditorTabView>& OutViews)
 
 void FAnimationSequenceViewerTab::DrawToolbar()
 {
-	USkeletalMeshComponent* Component = PreviewActor->GetSkeletalMeshComponent();
+	USkeletalMeshComponent* Component = PreviewActor ? PreviewActor->GetSkeletalMeshComponent() : nullptr;
 	if (!Component || !Animation)
 	{
 		return;
 	}
-	const float Duration = Component->GetAnimationPlayLength();
-	const float FrameRate = Component->GetAnimationFrameRate();
-	DrawBlendSpaceControls(Component);
 
-	ImGui::TextUnformatted("Two-Way Blend");
-	ImGui::BeginDisabled(BlendAnimation == nullptr);
-	if (ImGui::Checkbox("Enable Blend", &bUseTwoWayBlend))
+	static const char* PreviewModeLabels[] =
 	{
-		if (bUseTwoWayBlend)
-		{
-			bUseBlendSpace = false;
-			Component->PlayBlendAnimation(Animation, BlendAnimation, BlendAlpha);
-		}
-		else
-		{
-			Component->PlayAnimation(Animation);
-		}
-	}
-	ImGui::EndDisabled();
+		"Sequence",
+		"Two-Way Blend",
+		"BlendSpace 1D"
+	};
 
-	if (BlendAnimation)
+	const int32 PreviewModeIndex = std::clamp(static_cast<int32>(PreviewMode), 0, IM_ARRAYSIZE(PreviewModeLabels) - 1);
+
+	ImGui::SetNextItemWidth(180.0f);
+	if (ImGui::BeginCombo("Preview Mode", PreviewModeLabels[PreviewModeIndex]))
 	{
-		const FString CurrentBlendName = BlendAnimation->GetPath().substr(SkeletalMesh->GetPath().size() + 2);
-
-		ImGui::SetNextItemWidth(250.0f);
-
-		if (ImGui::BeginCombo("Source B", CurrentBlendName.c_str()))
+		for (int32 Index = 0; Index < IM_ARRAYSIZE(PreviewModeLabels); ++Index)
 		{
-			for (UAnimSequence* Candidate : AvailableAnimations)
+			const EAnimationPreviewMode CandidateMode = static_cast<EAnimationPreviewMode>(Index);
+			const bool bSelected = PreviewMode == CandidateMode;
+			const bool bAvailable = Index == 0 || (Index == 1 && BlendAnimation) || (Index == 2 && PreviewBlendSpace && !PreviewBlendSpace->GetSamples().IsEmpty());
+
+			ImGui::BeginDisabled(!bAvailable);
+			if (ImGui::Selectable(PreviewModeLabels[Index], bSelected))
 			{
-				const FString Name = Candidate->GetPath().substr(SkeletalMesh->GetPath().size() + 2);
-
-				const bool bSelected = Candidate == BlendAnimation;
-
-				if (ImGui::Selectable(Name.c_str(), bSelected))
-				{
-					BlendAnimation = Candidate;
-
-					if (bUseTwoWayBlend)
-					{
-						Component->PlayBlendAnimation(Animation, BlendAnimation, BlendAlpha);
-					}
-				}
-				if (bSelected)
-				{
-					ImGui::SetItemDefaultFocus();
-				}
-			}
-			ImGui::EndCombo();
-		}
-	}
-
-	if (bUseTwoWayBlend)
-	{
-		if (ImGui::SliderFloat("Blend Alpha", &BlendAlpha, 0.0f, 1.0f, "%.2f"))
-		{
-			Component->SetAnimationBlendAlpha(BlendAlpha);
-		}
-	}
-
-	if (ImGui::Button(bPlaying ? "Pause" : "Play"))
-	{
-		if (!bPlaying && !bLooping && Duration > 0.0f && Component->GetAnimationPlaybackTime() >= Duration)
-		{
-			Component->SetAnimationPlaybackTime(0.0f);
-		}
-		bPlaying = !bPlaying;
-	}
-	ImGui::SameLine();
-
-	if (ImGui::Button("Restart"))
-	{
-		Component->SetAnimationPlaybackTime(0.0f);
-		bPlaying = true;
-	}
-	ImGui::SameLine();
-
-	ImGui::BeginDisabled(FrameRate <= 0.0f);
-	if (ImGui::Button("< Frame"))
-	{
-		bPlaying = false;
-		const float CurrentTime = Component->GetAnimationPlaybackTime();
-		Component->SetAnimationPlaybackTime(CurrentTime - (1.0f / FrameRate));
-	}
-	ImGui::SameLine();
-
-	if (ImGui::Button("Frame >"))
-	{
-		bPlaying = false;
-		const float CurrentTime = Component->GetAnimationPlaybackTime();
-		Component->SetAnimationPlaybackTime(CurrentTime + (1.0f / FrameRate));
-	}
-	ImGui::EndDisabled();
-	ImGui::SameLine();
-
-	static const char* SpeedLabels[] = { "0.25x", "0.5x", "1.0x", "1.5x", "2.0x" };
-
-	ImGui::SetNextItemWidth(100.0f);
-	if (ImGui::BeginCombo("Speed", SpeedLabels[PlaybackSpeedIndex]))
-	{
-		for (int32 Index = 0; Index < 5; ++Index)
-		{
-			const bool bSelected = PlaybackSpeedIndex == Index;
-			if (ImGui::Selectable(SpeedLabels[Index], bSelected))
-			{
-				PlaybackSpeedIndex = Index;
-				Component->SetAnimationPlayRate(SpeedValues[Index]);
+				SetPreviewMode(CandidateMode, Component);
 			}
 			if (bSelected)
 			{
 				ImGui::SetItemDefaultFocus();
 			}
+			ImGui::EndDisabled();
 		}
+
 		ImGui::EndCombo();
 	}
+
+	ImGui::Separator();
+	ImGui::TextUnformatted("Playback");
+	ImGui::SameLine();
+
+	const float Duration = Component->GetAnimationPlayLength();
+	const float FrameRate = Component->GetAnimationFrameRate();
+
+	if (ImGui::Button(bPlaying ? "Pause" : "Play"))
+	{
+		if (!bPlaying && !bLooping && Duration > 0.0f)
+		{
+			const float CurrentTime = Component->GetAnimationPlaybackTime();
+			const float PlayRate = Component->GetAnimationPlayRate();
+
+			if (PlayRate > 0.0f && CurrentTime >= Duration)
+			{
+				Component->SetAnimationPlaybackTime(0.0f);
+			}
+			else if (PlayRate < 0.0f && CurrentTime <= 0.0f)
+			{
+				Component->SetAnimationPlaybackTime(Duration);
+			}
+		}
+
+		bPlaying = !bPlaying;
+	}
+
+	ImGui::SameLine();
+
+	if (ImGui::Button("Restart"))
+	{
+		Component->SetAnimationPlaybackTime(Component->GetAnimationPlayRate() < 0.0f ? Duration : 0.0f);
+		bPlaying = true;
+	}
+
+	ImGui::SameLine();
+
+	ImGui::BeginDisabled(FrameRate <= 0.0f);
+
+	if (ImGui::Button("< Frame"))
+	{
+		bPlaying = false;
+		Component->SetAnimationPlaybackTime(Component->GetAnimationPlaybackTime() - (1.0f / FrameRate));
+	}
+
+	ImGui::SameLine();
+
+	if (ImGui::Button("Frame >"))
+	{
+		bPlaying = false;
+		Component->SetAnimationPlaybackTime(Component->GetAnimationPlaybackTime() + (1.0f / FrameRate));
+	}
+
+	ImGui::EndDisabled();
+
+	ImGui::SameLine();
+
+	static const char* SpeedLabels[] = { "0.25x", "0.5x", "1.0x", "1.5x", "2.0x" };
+
+	ImGui::SetNextItemWidth(90.0f);
+	if (ImGui::BeginCombo("Speed", SpeedLabels[PlaybackSpeedIndex]))
+	{
+		for (int32 Index = 0; Index < IM_ARRAYSIZE(SpeedLabels); ++Index)
+		{
+			const bool bSelected = PlaybackSpeedIndex == Index;
+
+			if (ImGui::Selectable(SpeedLabels[Index], bSelected))
+			{
+				PlaybackSpeedIndex = Index;
+				Component->SetAnimationPlayRate(SpeedValues[Index]);
+			}
+
+			if (bSelected)
+			{
+				ImGui::SetItemDefaultFocus();
+			}
+		}
+
+		ImGui::EndCombo();
+	}
+
+	ImGui::SameLine();
 
 	if (ImGui::Checkbox("Loop", &bLooping))
 	{
@@ -272,18 +273,30 @@ void FAnimationSequenceViewerTab::DrawToolbar()
 	}
 
 	const float CurrentTime = Component->GetAnimationPlaybackTime();
-	const int32 TotalFrames = std::max(1, Animation->GetDataModel()->NumberOfFrames);
-	int32 CurrentFrame = 0;
-	if (FrameRate > 0.0f)
-	{
-		CurrentFrame = std::clamp(static_cast<int32>(std::floor(CurrentTime * FrameRate)), 0, TotalFrames - 1);
+	const UAnimDataModel* DataModel = Animation->GetDataModel();
+	const int32 TotalFrames = DataModel ? std::max(1, DataModel->NumberOfFrames) : 1;
 
-		if (!bUseBlendSpace && Duration > 0.0f && CurrentTime >= Duration - 1.0e-6f)
-		{
-			CurrentFrame = TotalFrames - 1;
-		}
+	if (PreviewMode == EAnimationPreviewMode::BlendSpace)
+	{
+		ImGui::Text("Time: %.3f / %.3f sec", CurrentTime, Duration);
 	}
-	ImGui::Text("Frame %d / %d     %.3f / %.3f sec", CurrentFrame + 1, TotalFrames, CurrentTime, Duration);
+	else
+	{
+		int32 CurrentFrame = 0;
+
+		if (FrameRate > 0.0f)
+		{
+			CurrentFrame = std::clamp(static_cast<int32>(std::floor(CurrentTime * FrameRate)), 0, TotalFrames - 1);
+
+			if (Duration > 0.0f && CurrentTime >= Duration - 1.0e-6f)
+			{
+				CurrentFrame = TotalFrames - 1;
+			}
+		}
+
+		const char* FrameLabel = PreviewMode == EAnimationPreviewMode::TwoWayBlend ? "Source A Frame" : "Frame";
+		ImGui::Text("%s %d / %d     %.3f / %.3f sec", FrameLabel, CurrentFrame + 1, TotalFrames, CurrentTime, Duration);
+	}
 
 	if (Duration > 0.0f)
 	{
@@ -302,40 +315,123 @@ void FAnimationSequenceViewerTab::DrawToolbar()
 	}
 
 	ImGui::Separator();
-	ImGui::TextUnformatted("Notify Track");
-	ImGui::BeginDisabled(Duration <= 0.0f);
-	if (ImGui::Button("Add Notify"))
-	{
-		const int32 NewIndex = Animation->AddNotify(CurrentTime, 0.0f, FName("NewNotify"));
-		SelectNotify(NewIndex);
-	}
-	ImGui::EndDisabled();
-	ImGui::SameLine();
-	ImGui::BeginDisabled(!Animation->GetNotifies().IsValidIndex(SelectedNotifyIndex));
-	if (ImGui::Button("Remove Notify"))
-	{
-		Animation->RemoveNotify(SelectedNotifyIndex);
-		SelectNotify(-1);
-	}
-	ImGui::EndDisabled();
-	ImGui::SameLine();
 
-	if (ImGui::Button("Save Notifies"))
+	if (ImGui::BeginTabBar("AnimationSequenceViewerTabs"))
 	{
-		const FString NotifyPath = FJsonArchive::GetAnimationNotifyPath(Animation->GetPath());
+		if (ImGui::BeginTabItem("Setup"))
+		{
+			ImGui::Text("Source Animation: %s", Animation->GetPath().c_str());
 
-		if (FJsonArchive::SaveAnimNotifies(Animation, NotifyPath))
-		{
-			HTR_LOG(Info, "Saved animation notifies: {}", NotifyPath);
+			if (PreviewMode == EAnimationPreviewMode::TwoWayBlend)
+			{
+				ImGui::Separator();
+				ImGui::TextUnformatted("Two-Way Blend");
+
+				if (BlendAnimation)
+				{
+					const FString CurrentBlendName = BlendAnimation->GetPath().substr(SkeletalMesh->GetPath().size() + 2);
+
+					ImGui::SetNextItemWidth(250.0f);
+
+					if (ImGui::BeginCombo("Source B", CurrentBlendName.c_str()))
+					{
+						for (UAnimSequence* Candidate : AvailableAnimations)
+						{
+							const FString Name = Candidate->GetPath().substr(SkeletalMesh->GetPath().size() + 2);
+							const bool bSelected = Candidate == BlendAnimation;
+
+							if (ImGui::Selectable(Name.c_str(), bSelected))
+							{
+								BlendAnimation = Candidate;
+								SetPreviewMode(EAnimationPreviewMode::TwoWayBlend, Component);
+							}
+
+							if (bSelected)
+							{
+								ImGui::SetItemDefaultFocus();
+							}
+						}
+
+						ImGui::EndCombo();
+					}
+
+					if (ImGui::SliderFloat("Blend Alpha", &BlendAlpha, 0.0f, 1.0f, "%.2f"))
+					{
+						Component->SetAnimationBlendAlpha(BlendAlpha);
+					}
+				}
+				else
+				{
+					ImGui::TextDisabled("No compatible Source B animation.");
+				}
+			}
+
+			const ImGuiTreeNodeFlags BlendSpaceFlags = PreviewMode == EAnimationPreviewMode::BlendSpace ? ImGuiTreeNodeFlags_DefaultOpen : 0;
+
+			if (ImGui::CollapsingHeader("BlendSpace Setup", BlendSpaceFlags))
+			{
+				DrawBlendSpaceControls(Component);
+			}
+
+			ImGui::EndTabItem();
 		}
-		else
+
+		if (ImGui::BeginTabItem("Notifies"))
 		{
-			HTR_LOG(Error, "Failed to save animation notifies: {}", NotifyPath);
+			ImGui::Text("Editing: %s", Animation->GetPath().c_str());
+
+			ImGui::BeginDisabled(Duration <= 0.0f);
+
+			if (ImGui::Button("Add Notify"))
+			{
+				const int32 NewIndex = Animation->AddNotify(CurrentTime, 0.0f, FName("NewNotify"));
+				SelectNotify(NewIndex);
+			}
+
+			ImGui::EndDisabled();
+
+			ImGui::SameLine();
+
+			ImGui::BeginDisabled(!Animation->GetNotifies().IsValidIndex(SelectedNotifyIndex));
+
+			if (ImGui::Button("Remove Notify"))
+			{
+				Animation->RemoveNotify(SelectedNotifyIndex);
+				SelectNotify(-1);
+			}
+
+			ImGui::EndDisabled();
+
+			ImGui::SameLine();
+
+			if (ImGui::Button("Save Notifies"))
+			{
+				const FString NotifyPath = FJsonArchive::GetAnimationNotifyPath(Animation->GetPath());
+
+				if (FJsonArchive::SaveAnimNotifies(Animation, NotifyPath))
+				{
+					HTR_LOG(Info, "Saved animation notifies: {}", NotifyPath);
+				}
+				else
+				{
+					HTR_LOG(Error, "Failed to save animation notifies: {}", NotifyPath);
+				}
+			}
+
+			DrawNotifyTrack(Duration);
+			DrawNotifyDetails(Duration);
+
+			ImGui::EndTabItem();
 		}
+
+		if (ImGui::BeginTabItem("Curves"))
+		{
+			DrawCurveEditor(Component, Duration, Component->GetAnimationPlaybackTime());
+			ImGui::EndTabItem();
+		}
+
+		ImGui::EndTabBar();
 	}
-	DrawNotifyTrack(Duration);
-	DrawNotifyDetails(Duration);
-	DrawCurveEditor(Duration, CurrentTime);
 }
 
 void FAnimationSequenceViewerTab::FrameMesh()
@@ -393,26 +489,31 @@ void FAnimationSequenceViewerTab::DrawNotifyTrack(float Duration)
 		DrawList->AddLine(ImVec2(X, Min.y + 5.0f), ImVec2(X, Max.y - 5.0f), MarkerColor, bSelected ? 2.5f : 1.5f);
 		DrawList->AddTriangleFilled(ImVec2(X - 5.0f, Min.y + 4.0f), ImVec2(X + 5.0f, Min.y + 4.0f), ImVec2(X, Min.y + 13.0f), MarkerColor);
 
-		if (bHovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
-		{
-			const float MouseX = ImGui::GetIO().MousePos.x;
-			int32 NearestIndex = -1;
-			float NearestDistance = 12.0f;
-			for (int32 Index = 0; Index < Notifies.Num(); ++Index)
-			{
-				const float TriggerTime = std::clamp(Notifies[Index].TriggerTime, 0.0f, Duration);
-				const float X = TrackLeft + TrackWidth * (TriggerTime / Duration);
-				const float Distance = std::abs(MouseX - X);
-				if (Distance < NearestDistance)
-				{
-					NearestDistance = Distance;
-					NearestIndex = Index;
-				}
-			}
-			SelectNotify(NearestIndex);
-			bDraggingNotify = NearestIndex >= 0;
-		}
 	}
+
+	if (bHovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+	{
+		const float MouseX = ImGui::GetIO().MousePos.x;
+		int32 NearestIndex = -1;
+		float NearestDistance = 12.0f;
+
+		for (int32 Index = 0; Index < Notifies.Num(); ++Index)
+		{
+			const float TriggerTime = std::clamp(Notifies[Index].TriggerTime, 0.0f, Duration);
+			const float X = TrackLeft + TrackWidth * (TriggerTime / Duration);
+			const float Distance = std::abs(MouseX - X);
+
+			if (Distance < NearestDistance)
+			{
+				NearestDistance = Distance;
+				NearestIndex = Index;
+			}
+		}
+
+		SelectNotify(NearestIndex);
+		bDraggingNotify = NearestIndex >= 0;
+	}
+
 	if (bDraggingNotify && ImGui::IsMouseDown(ImGuiMouseButton_Left) && Notifies.IsValidIndex(SelectedNotifyIndex))
 	{
 		const float MouseX = ImGui::GetIO().MousePos.x;
@@ -456,7 +557,7 @@ void FAnimationSequenceViewerTab::DrawNotifyDetails(float Duration)
 	}
 }
 
-void FAnimationSequenceViewerTab::DrawCurveEditor(float Duration, float CurrentTime)
+void FAnimationSequenceViewerTab::DrawCurveEditor(USkeletalMeshComponent* Component, float Duration, float CurrentTime)
 {
 	if (!Animation || !Animation->GetDataModel())
 	{
@@ -483,7 +584,6 @@ void FAnimationSequenceViewerTab::DrawCurveEditor(float Duration, float CurrentT
 		SelectedCurveIndex = 0;
 	}
 
-	const FAnimationCurve& SelectedCurve = Curves[SelectedCurveIndex];
 
 	FString SelectedLabel = SelectedCurve.Name.ToString() + " [" + SelectedCurve.LayerName.ToString() + "]";
 
@@ -511,7 +611,22 @@ void FAnimationSequenceViewerTab::DrawCurveEditor(float Duration, float CurrentT
 		ImGui::EndCombo();
 	}
 
-	ImGui::Text("Node Index: %d | Keys: %d | Current Value: %.4f", SelectedCurve.NodeIndex, SelectedCurve.Keys.Num(), SelectedCurve.Evaluate(CurrentTime));
+	const FAnimationCurve& SelectedCurve = Curves[SelectedCurveIndex];
+	UAnimInstance* AnimInstance = Component ? Component->GetAnimInstance() : nullptr;
+	float RuntimeValue = 0.0f;
+	const bool bHasRuntimeValue = AnimInstance && AnimInstance->GetCurveValue(SelectedCurve.Name, SelectedCurve.LayerName, RuntimeValue);
+
+	ImGui::Text("Node Index: %d | Keys: %d", SelectedCurve.NodeIndex, SelectedCurve.Keys.Num());
+	ImGui::Text("Source Value: %.4f", SelectedCurve.Evaluate(CurrentTime));
+
+	if (bHasRuntimeValue)
+	{
+		ImGui::Text("Runtime Value: %.4f", RuntimeValue);
+	}
+	else
+	{
+		ImGui::TextDisabled("Runtime Value: Unavailable");
+	}
 
 	if (Duration <= 0.0f || SelectedCurve.Keys.IsEmpty())
 	{
@@ -524,8 +639,11 @@ void FAnimationSequenceViewerTab::DrawCurveEditor(float Duration, float CurrentT
 
 	for (const FAnimationCurveKey& Key : SelectedCurve.Keys)
 	{
-		MinValue = std::min(MinValue, Key.Value);
-		MaxValue = std::max(MaxValue, Key.Value);
+		if (bHasRuntimeValue)
+		{
+			MinValue = std::min(MinValue, RuntimeValue);
+			MaxValue = std::max(MaxValue, RuntimeValue);
+		}
 	}
 
 	if (std::abs(MaxValue - MinValue) < 1.0e-4f)
@@ -597,11 +715,63 @@ void FAnimationSequenceViewerTab::DrawCurveEditor(float Duration, float CurrentT
 		DrawList->AddCircleFilled(GetCurvePosition(Key.Time, Key.Value), 4.0f, IM_COL32(255, 190, 70, 255));
 	}
 
-	const float ClampedCurrentTime = std::clamp(CurrentTime, 0.0f, Duration);
-	const ImVec2 CurrentPoint = GetCurvePosition(ClampedCurrentTime, SelectedCurve.Evaluate(ClampedCurrentTime));
+	if (bHasRuntimeValue)
+	{
+		const float ClampedCurrentTime = std::clamp(CurrentTime, 0.0f, Duration);
+		const ImVec2 CurrentPoint = GetCurvePosition(ClampedCurrentTime, RuntimeValue);
 
-	DrawList->AddLine(ImVec2(CurrentPoint.x, Top), ImVec2(CurrentPoint.x, Bottom), IM_COL32(255, 100, 100, 200), 1.5f);
-	DrawList->AddCircleFilled(CurrentPoint, 5.0f, IM_COL32(255, 100, 100, 255));
+		DrawList->AddLine(ImVec2(CurrentPoint.x, Top), ImVec2(CurrentPoint.x, Bottom), IM_COL32(255, 100, 100, 200), 1.5f);
+		DrawList->AddCircleFilled(CurrentPoint, 5.0f, IM_COL32(255, 100, 100, 255));
+	}
+}
+
+void FAnimationSequenceViewerTab::ApplyPlaybackSettings(USkeletalMeshComponent* Component)
+{
+	if (!Component)
+	{
+		return;
+	}
+
+	Component->SetAnimationPlayRate(SpeedValues[std::clamp(PlaybackSpeedIndex, 0, 4)]);
+	Component->SetAnimationLooping(bLooping);
+}
+
+bool FAnimationSequenceViewerTab::SetPreviewMode(EAnimationPreviewMode InMode, USkeletalMeshComponent* Component)
+{
+	if (!Component || !Animation)
+	{
+		return false;
+	}
+
+	switch (InMode)
+	{
+	case EAnimationPreviewMode::Sequence:
+		Component->PlayAnimation(Animation);
+		break;
+
+	case EAnimationPreviewMode::TwoWayBlend:
+		if (!BlendAnimation)
+		{
+			return false;
+		}
+		Component->PlayBlendAnimation(Animation, BlendAnimation, BlendAlpha);
+		break;
+
+	case EAnimationPreviewMode::BlendSpace:
+		if (!PreviewBlendSpace || PreviewBlendSpace->GetSamples().IsEmpty())
+		{
+			return false;
+		}
+		Component->PlayBlendSpace(PreviewBlendSpace, BlendInput);
+		break;
+
+	default:
+		return false;
+	}
+
+	PreviewMode = InMode;
+	ApplyPlaybackSettings(Component);
+	return true;
 }
 
 void FAnimationSequenceViewerTab::SelectNotify(int32 Index)
@@ -636,7 +806,7 @@ void FAnimationSequenceViewerTab::DrawBlendSpaceControls(USkeletalMeshComponent*
 	int32 PendingRemoveIndex = -1;
 	int32 PendingValueIndex = -1;
 	float PendingSampleValue = 0.0f;
-	const float PreviousPlaybackTime = bUseBlendSpace ? Component->GetAnimationPlaybackTime() : 0.0f;
+	const float PreviousPlaybackTime = Component->GetAnimationPlaybackTime();
 	const TArray<FBlendSample1D>& Samples = PreviewBlendSpace->GetSamples();
 	ImGui::Text("Samples: %d", Samples.Num());
 	for (int32 Index = 0; Index < Samples.Num(); ++Index)
@@ -757,47 +927,29 @@ void FAnimationSequenceViewerTab::DrawBlendSpaceControls(USkeletalMeshComponent*
 		}
 	}
 
-	if (bSamplesChanged && bUseBlendSpace)
+	if (bSamplesChanged && PreviewMode == EAnimationPreviewMode::BlendSpace)
 	{
 		if (PreviewBlendSpace->GetSamples().IsEmpty())
 		{
-			bUseBlendSpace = false;
-			Component->PlayAnimation(Animation);
+			SetPreviewMode(EAnimationPreviewMode::Sequence, Component);
 		}
 		else
 		{
 			Component->PlayBlendSpace(PreviewBlendSpace, BlendInput);
-			Component->SetAnimationPlayRate(SpeedValues[PlaybackSpeedIndex]);
-			Component->SetAnimationLooping(bLooping);
+			ApplyPlaybackSettings(Component);
 			Component->SetAnimationPlaybackTime(PreviousPlaybackTime);
 		}
 	}
 
-	const bool bHasSamples = !PreviewBlendSpace->GetSamples().IsEmpty();
-
-	ImGui::BeginDisabled(!bHasSamples);
-
-	if (ImGui::Checkbox("Enable BlendSpace", &bUseBlendSpace))
-	{
-		if (bUseBlendSpace)
-		{
-			bUseTwoWayBlend = false;
-			Component->PlayBlendSpace(PreviewBlendSpace, BlendInput);
-			Component->SetAnimationPlayRate(SpeedValues[PlaybackSpeedIndex]);
-			Component->SetAnimationLooping(bLooping);
-		}
-		else
-		{
-			Component->PlayAnimation(Animation);
-		}
-	}
-
-	ImGui::EndDisabled();
-	if (bUseBlendSpace && bHasSamples)
+	if (PreviewMode == EAnimationPreviewMode::BlendSpace && !PreviewBlendSpace->GetSamples().IsEmpty())
 	{
 		if (ImGui::SliderFloat("Blend Input", &BlendInput, Axis.MinValue, Axis.MaxValue, "%.1f"))
 		{
 			Component->SetAnimationBlendInput(BlendInput);
 		}
+	}
+	else if (PreviewBlendSpace->GetSamples().IsEmpty())
+	{
+		ImGui::TextDisabled("No samples. Add a sample to use BlendSpace.");
 	}
 }

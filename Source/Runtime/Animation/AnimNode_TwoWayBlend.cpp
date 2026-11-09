@@ -92,16 +92,6 @@ bool FAnimNode_TwoWayBlend::EvaluateCurve(const FName& CurveName, const FName& L
         return SourcePoseA->EvaluateCurve(CurveName, LayerName, OutValue);
     }
 
-    if (Alpha <= 0.0f)
-    {
-        return SourcePoseA->EvaluateCurve(CurveName, LayerName, OutValue);
-    }
-
-    if (Alpha >= 1.0f)
-    {
-        return SourcePoseB->EvaluateCurve(CurveName, LayerName, OutValue);
-    }
-
     float ValueA = 0.0f;
     float ValueB = 0.0f;
 
@@ -113,7 +103,7 @@ bool FAnimNode_TwoWayBlend::EvaluateCurve(const FName& CurveName, const FName& L
         return false;
     }
 
-    OutValue = ValueA + (ValueB - ValueA) * Alpha;
+    OutValue = ValueA * (1.0f - Alpha) + ValueB * Alpha;
     return std::isfinite(OutValue);
 }
 FAnimNode_TwoWayBlendPlayer::FAnimNode_TwoWayBlendPlayer()

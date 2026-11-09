@@ -10,6 +10,13 @@ class UBlendSpace1D;
 class UAnimSequence;
 class USkeletalMeshComponent;
 
+enum class EAnimationPreviewMode : uint8
+{
+	Sequence,
+	TwoWayBlend,
+	BlendSpace
+};
+
 class FAnimationSequenceViewerTab : public FEditorTab
 {
 public:
@@ -29,7 +36,9 @@ private:
 	void FrameMesh();
 	void DrawNotifyTrack(float Duration);
 	void DrawNotifyDetails(float Duration);
-	void DrawCurveEditor(float Duration, float CurrentTime);
+	void DrawCurveEditor(USkeletalMeshComponent* Component, float Duration, float CurrentTime);
+	void ApplyPlaybackSettings(USkeletalMeshComponent* Component);
+	bool SetPreviewMode(EAnimationPreviewMode InMode, USkeletalMeshComponent* Component);
 	void SelectNotify(int32 Index);
 	void DrawBlendSpaceControls(USkeletalMeshComponent* Component);
 	
@@ -45,7 +54,7 @@ private:
 
 	UBlendSpace1D* PreviewBlendSpace = nullptr;
 	float BlendAlpha = 0.5f;
-	bool bUseTwoWayBlend = false;
+	EAnimationPreviewMode PreviewMode = EAnimationPreviewMode::Sequence;
 	int32 PlaybackSpeedIndex = 2;
 	int32 SelectedNotifyIndex = -1;
 	bool bDraggingNotify = false;
@@ -54,7 +63,6 @@ private:
 	bool bPlaying = true;
 	bool bFramed = false;
 	float BlendInput = 0.0f;
-	bool bUseBlendSpace = false;
 
 	int32 SelectedCurveIndex = -1;
 };
