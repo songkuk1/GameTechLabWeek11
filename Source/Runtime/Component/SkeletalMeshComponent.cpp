@@ -1,5 +1,7 @@
 #include "EnginePCH.h"
 #include "Component/SkeletalMeshComponent.h"
+#include "Component/CharacterMovementComponent.h"
+#include "GameFramework/Actor.h"
 
 #include "Engine/PrimitiveSceneProxy.h"
 #include "Render/RenderPacket.h"
@@ -8,6 +10,7 @@ USkeletalMeshComponent::USkeletalMeshComponent()
 {
 	PrimaryComponentTick.bCanEverTick = true;
 	PrimaryComponentTick.bStartWithTickEnabled = true;
+	PrimaryComponentTick.TickGroup = ETickingGroup::PostPhysics;
 	AnimInstance = NewObject<UAnimationInstance>(this);
 }
 
@@ -78,6 +81,16 @@ void USkeletalMeshComponent::TickComponent(float DeltaTime)
 		return;
 
 	PoseContext Context{ ReferencePose, ReferencePose };
+
+	if (AActor* Owner = GetOwner())
+	{
+		if (UCharacterMovementComponent* Movement = Cast<UCharacterMovementComponent>(
+			Owner->FindComponentByClass(UCharacterMovementComponent::StaticClass())))
+		{
+			const FVector& Velocity = Movement->Velocity;
+			AnimInstance->SetSpeed(std::sqrt(Velocity.X * Velocity.X + Velocity.Y * Velocity.Y));
+		}
+	}
 
 	AnimInstance->Tick(DeltaTime, Context);
 	if (Context.LocalPoseTrans.Num() != ReferencePose.Num())

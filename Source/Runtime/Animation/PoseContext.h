@@ -22,6 +22,8 @@ struct AnimationContext
 {
 	float deltaTime = 0.0f;
 	float Speed = 0.0f;
+	float JumpTime = 0.0f;
 	bool& bIsAttacking;
 	bool& bIsHit;
+	bool& bIsJumping;
 };

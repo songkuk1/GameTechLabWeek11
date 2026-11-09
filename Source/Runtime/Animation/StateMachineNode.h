@@ -4,15 +4,16 @@
 
 enum class EAnimState : uint8
 {
-	Locomotion,   // 안에 BlendSpace1D (Idle / Walk / Run)
+	Locomotion,   // 안에 BlendSpace1D (Idle / Walk / Run )
 	Attack,
 	Hit,
+	Jump
 };
 
 class StateMachineNode : public AnimNode
 {
 	EAnimState State = EAnimState::Locomotion;
-	AnimNode* StateNodes[3] = {};        // 상태마다 포즈를 내는 노드
+	AnimNode* StateNodes[4] = {};        // 상태마다 포즈를 내는 노드
 	bool bIsCilpFinshed = false;
 
 public:

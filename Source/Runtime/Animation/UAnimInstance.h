@@ -16,16 +16,21 @@ public:
 	void Tick(float deltaTime, PoseContext& Context);
 
 	AnimNode* AddNode(NodeType Node);
-	//TwoWayBlendNode* ConnectBlendNode(TwoWayBlendNode Blend, SequencePlayerNode A, SequencePlayerNode B);
 	void RemoveNode(AnimNode* Node);
 	void SetRoot(AnimNode* Node);
+	void SetSpeed(float InSpeed) { Speed = InSpeed; }
+	void RequestAttack() { IsAttacking = true; }
+	void RequestJumping() { IsJumping = true; }
+	void RequestHit() { IsHit = true; }
 
 protected:
 	TArray<TUniquePtr<AnimNode>> Nodes;
 	AnimNode* Root = nullptr;
-	float Speed;
+	float JumpTime = 0.0f;
+	float Speed = 0.0f;
 	float CurrentTime = 0;
 	bool bRunning = false;
 	bool IsAttacking = false;
 	bool IsHit = false;
+	bool IsJumping = false;
 };

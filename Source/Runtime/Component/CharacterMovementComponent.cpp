@@ -1,5 +1,6 @@
 #include "EnginePCH.h"
 #include "CharacterMovementComponent.h"
+#include "GameFramework/Actor.h"
 
 #include "Engine/World.h"
 
@@ -49,8 +50,22 @@ void UCharacterMovementComponent::TickComponent(float DeltaTime)
 		PendingMoveInput = PendingMoveInput.Normalized();
 	}
 
-	Velocity.X = PendingMoveInput.X * MoveSpeed;
-	Velocity.Y = PendingMoveInput.Y * MoveSpeed;
+	const float MaxSpeed = FMath::Max(0.0f, bSprinting ? RunSpeed : WalkSpeed);
+	const FVector HorizontalVelocity(Velocity.X, Velocity.Y, 0.0f);
+	const float CurrentSpeed = HorizontalVelocity.Size();
+	const float InputMagnitude = PendingMoveInput.Size();
+	const float TargetSpeed = InputMagnitude * MaxSpeed;
+	const bool bSlowingDown = TargetSpeed < CurrentSpeed;
+	const float Rate = FMath::Max(0.0f, bSlowingDown ? Deceleration : Acceleration);
+	const float MaxStep = Rate * FMath::Max(0.0f, DeltaTime);
+	const float NewSpeed = CurrentSpeed + FMath::Clamp(TargetSpeed - CurrentSpeed, -MaxStep, MaxStep);
+	// 입력 방향으로 바로 전환하고, 가속과 감속은 속력에만 적용한다.
+	const FVector MoveDirection = InputMagnitude > SMALL_NUMBER
+		? PendingMoveInput.GetSafeNormal()
+		: HorizontalVelocity.GetSafeNormal();
+	const FVector NewVelocity = MoveDirection * NewSpeed;
+	Velocity.X = NewVelocity.X;
+	Velocity.Y = NewVelocity.Y;
 
 	// 바닥 위에 서 있고 위로 뛰는 중이 아니면 중력을 쌓지 않는다.
 	// 그 외(공중, 점프 직후)에는 중력을 적용하고, 착지는 아래 MoveWithSlide의 바닥 Hit에서 처리한다.

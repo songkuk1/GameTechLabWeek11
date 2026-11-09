@@ -46,3 +46,10 @@ void UAnimSequence::CalculateCurrentPose(float CurrentTime, bool bLoop, TArray<P
 		OutPoseTrans[AnimData.BoneAnimationTracks[i].InternalTrack.NodeIndex] = PoseTrans;
 	}
 }
+
+uint32 UAnimSequence::AddNotify(NotifyData Notify)
+{
+	uint32 NotifyIndex = NotifyArray.Num();
+	NotifyArray.Add(Notify);
+	return NotifyIndex;
+}

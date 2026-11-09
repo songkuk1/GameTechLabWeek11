@@ -8,6 +8,10 @@ class UCharacterMovementComponent : public UMovementComponent
 {
 	DECLARE_CLASS(UCharacterMovementComponent, UMovementComponent)
 	REFLECT_START(ClassName)
+		PROPERTY(WalkSpeed)
+		PROPERTY(RunSpeed)
+		PROPERTY(Acceleration)
+		PROPERTY(Deceleration)
 		PROPERTY(RotationRate)
 		PROPERTY(bOrientRotationToMovement)
 	REFLECT_END()
@@ -19,6 +23,7 @@ public:
 	virtual void TickComponent(float DeltaTime) override;
 
 	void SetMoveInput(const FVector& MoveInput);
+	void SetSprinting(bool bInSprinting) { bSprinting = bInSprinting; }
 	void Jump(float JumpSpeed);
 	// 콜리전 바로 아래에 걸을 수 있는 바닥이 있는가 (아래로 짧게 sweep해서 확인)
 	bool IsGrounded() const;
@@ -33,7 +38,11 @@ private:
 
 	FVector PendingMoveInput = FVector::ZeroVector;
 
-	float MoveSpeed = 5.0f;
+	float WalkSpeed = 2.0f;
+	float RunSpeed = 5.0f;
+	float Acceleration = 10.0f;
+	float Deceleration = 40.0f;
+	bool bSprinting = false;
 
 	// Hit normal의 Z가 이 값 이상이면 걸을 수 있는 바닥 (약 45도 경사까지)
 	float WalkableFloorZ = 0.7f;

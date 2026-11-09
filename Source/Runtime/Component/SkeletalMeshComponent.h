@@ -13,6 +13,7 @@ public:
 	USkeletalMeshComponent();
 	~USkeletalMeshComponent() override;
 	void SetAnimationInstance(UAnimationInstance* InInstance);
+	UAnimationInstance* GetAnimationInstance() const { return AnimInstance; }
 
 	virtual const FModelMeshData* GetMeshData() const override;
 

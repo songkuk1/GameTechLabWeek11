@@ -13,28 +13,31 @@ UAnimationInstance::UAnimationInstance()
 	SeqPlayer1->InitializeNode(true, "Models/statemachinefbx/Mixamo_StateMachine_WithSkin.fbx_Anim_2");
 	AnimNode* Sequence2 = AddNode(SequencePlayer);
 	SequencePlayerNode* SeqPlayer2 = static_cast<SequencePlayerNode*>(Sequence2);
-	SeqPlayer2->InitializeNode(true, "Models/statemachinefbx/Mixamo_StateMachine_WithSkin.fbx_Anim_4");
+	SeqPlayer2->InitializeNode(true, "Models/statemachinefbx/Mixamo_StateMachine_WithSkin.fbx_Anim_5");
 	AnimNode* Sequence3 = AddNode(SequencePlayer);
 	SequencePlayerNode* SeqPlayer3 = static_cast<SequencePlayerNode*>(Sequence3);
-	SeqPlayer3->InitializeNode(true, "Models/statemachinefbx/Mixamo_StateMachine_WithSkin.fbx_Anim_3");
+	SeqPlayer3->InitializeNode(true, "Models/statemachinefbx/Mixamo_StateMachine_WithSkin.fbx_Anim_4");
+
 	AnimNode* Blends = AddNode(BlendSpace1D);
 	BlendSpace1DNode* Blend1Node = static_cast<BlendSpace1DNode*>(Blends);
-	Blend1Node->AddSample(Sequence1, 100);
-	Blend1Node->AddSample(Sequence2, 500);
-	Blend1Node->AddSample(Sequence3, 900);
+	Blend1Node->AddSample(Sequence1, 0.0f);
+	Blend1Node->AddSample(Sequence2, 2.0f);
+	Blend1Node->AddSample(Sequence3, 10.0f);
 	// 공격/피격 클립은 준비 전까지 기존 클립을 임시로 사용한다.
 	AnimNode* AttackNode = AddNode(SequencePlayer);
 	static_cast<SequencePlayerNode*>(AttackNode)->InitializeNode(false, "Models/statemachinefbx/Mixamo_StateMachine_WithSkin.fbx_Anim_0");
 	AnimNode* HitNode = AddNode(SequencePlayer);
 	static_cast<SequencePlayerNode*>(HitNode)->InitializeNode(false, "Models/statemachinefbx/Mixamo_StateMachine_WithSkin.fbx_Anim_1");
+	SequencePlayerNode* JumpPlayer = static_cast<SequencePlayerNode*>(AddNode(SequencePlayer));
+	JumpPlayer->InitializeNode(false, "Models/statemachinefbx/Mixamo_StateMachine_WithSkin.fbx_Anim_3");
 
 	StateMachineNode* Machine = static_cast<StateMachineNode*>(AddNode(NodeType::StateMachine));
 	Machine->SetStateNode(EAnimState::Locomotion, Blend1Node);
 	Machine->SetStateNode(EAnimState::Attack, AttackNode);
 	Machine->SetStateNode(EAnimState::Hit, HitNode);
+	Machine->SetStateNode(EAnimState::Jump, JumpPlayer);
 
 	SetRoot(Machine);
-	Speed = 101;
 }
 
 UAnimationInstance::~UAnimationInstance()
@@ -46,10 +49,8 @@ void UAnimationInstance::Tick(float deltaTime, PoseContext& Context)
 {
 	if (!Root) return;
 
-	AnimationContext AnimContext{ deltaTime, Speed, IsAttacking, IsHit };
+	AnimationContext AnimContext{ deltaTime, Speed, JumpTime, IsAttacking, IsHit, IsJumping };
 	CurrentTime += deltaTime;
-	Speed += deltaTime*18;
-	BlendSpace1DNode* Blend1Node = static_cast<BlendSpace1DNode*>(Nodes[3].get());
 	Root->Update(AnimContext);
 	Root->EvaluatePose(Context);
 }
@@ -85,13 +86,6 @@ AnimNode* UAnimationInstance::AddNode(NodeType Node)
 		return RawNode;
 	}
 }
-
-/*TwoWayBlendNode* UAnimationInstance::ConnectBlendNode(TwoWayBlendNode Blend, SequencePlayerNode A, SequencePlayerNode B)
-{
-	Blend.InputA = &A;
-	Blend.InputA = &B;
-	return &Blend;
-}*/
 
 void UAnimationInstance::RemoveNode(AnimNode* Node)
 {

@@ -34,12 +34,9 @@ APlayerActor::APlayerActor()
     CharacterMovementComponent = CreateDefaultSubobject<UCharacterMovementComponent>("UCharacterMovementComponent");
     CharacterMovementComponent->Gravity = 20.0f;
 
-    PlayerMeshComponent = CreateDefaultSubobject<UStaticMeshComponent>("PlayerMeshComponent");
+    PlayerMeshComponent = CreateDefaultSubobject<USkeletalMeshComponent>("PlayerMeshComponent");
     PlayerMeshComponent->SetupAttachment(GetRootComponent());
 
-    WandMeshComponent = CreateDefaultSubobject<UStaticMeshComponent>("WandMeshComponent");
-    WandMeshComponent->SetupAttachment(PlayerMeshComponent);
-    
     BoxComponent = CreateDefaultSubobject<UBoxComponent>("PlayerCollision");
     BoxComponent->SetupAttachment(GetRootComponent());
     BoxComponent->SetBlockComponent(true);
@@ -53,35 +50,10 @@ APlayerActor::APlayerActor()
     MagnetCollision->SetSphereRadius(MagnetRadius);
 }
 
-void APlayerActor::StartWandSwing()
-{
-    bWandSwinging = true;
-    WandSwingElapsed = 0.0f;
-    WandStartRotation = WandMeshComponent->GetRelativeRotation();
-}
-
-void APlayerActor::UpdateWandSwing(float RealDeltaTime)
-{
-    WandSwingElapsed += RealDeltaTime;
-
-    const float Alpha = FMath::Clamp(WandSwingElapsed / WandSwingDuration, 0.0f, 1.0f);
-    const float SwingAlpha = std::sin(Alpha * PI);
-
-    FRotator Rotation = WandStartRotation;
-    Rotation.Pitch += SwingAlpha * WandSwingAngle;
-    WandMeshComponent->SetRelativeRotation(Rotation);
-    if (Alpha >= 1.0f)
-    {
-        WandMeshComponent->SetRelativeRotation(WandStartRotation);
-        bWandSwinging = false;
-    }
-}
-
 void APlayerActor::BeginPlay()
 {
     Super::BeginPlay();
 
-    WandMeshComponent = Cast<UStaticMeshComponent>(FindComponentByName("WandMeshComponent"));
 }
 
 void APlayerActor::Tick(float DeltaTime)
@@ -93,11 +65,6 @@ void APlayerActor::Tick(float DeltaTime)
     if (bDying)
     {
         UpdateDeathFall(DeltaTime);
-    }
-
-    if (bWandSwinging)
-    {
-        UpdateWandSwing(DeltaTime);
     }
 
     for (UPrimitiveComponent* Other : MagnetCollision->GetOverlapComps())
@@ -142,6 +109,22 @@ void APlayerActor::Move(const FVector& MoveInput)
 {
 	const FQuat YawQuat = FRotator(0.0f, GetControlRotation().Yaw, 0.0f).Quaternion();
     CharacterMovementComponent->SetMoveInput(YawQuat.RotateVector(MoveInput));
+}
+
+void APlayerActor::SetSprinting(bool bSprinting)
+{
+    CharacterMovementComponent->SetSprinting(bSprinting);
+}
+
+void APlayerActor::Punch()
+{
+    if (PlayerMeshComponent)
+    {
+        if (UAnimationInstance* AnimInstance = PlayerMeshComponent->GetAnimationInstance())
+        {
+            AnimInstance->RequestAttack();
+        }
+    }
 }
 
 void APlayerActor::Jump(float JumpSpeed)
@@ -252,8 +235,6 @@ void APlayerActor::StartDeathFall()
     DeathStartRotation = PlayerMeshComponent->GetRelativeRotation();
     DeathStartLocation = PlayerMeshComponent->GetRelativeLocation();
 
-    bWandSwinging = false;
-    WandMeshComponent->SetRelativeRotation(WandStartRotation);
 }
 
 void APlayerActor::UpdateDeathFall(float RealDeltaTime)

@@ -48,6 +48,15 @@ public:
 
 	void ResetAnimation() override { SetCurrentPlayTime(0); }
 
+	bool IsNotifyActivated(uint32 Index)
+	{
+		if (Sequence->GetNotifyData()[Index].TriggerTime <= CurrentPlayTime && CurrentPlayTime <= Sequence->GetNotifyData()[Index].TriggerTime+ Sequence->GetNotifyData()[Index].Duration)
+		{
+			return true;
+		}
+		else return false;
+	}
+
 private:
 	UAnimSequence* Sequence = nullptr;
 	float CurrentPlayTime = 0;

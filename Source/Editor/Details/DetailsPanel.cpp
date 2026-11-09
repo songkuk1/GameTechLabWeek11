@@ -1605,6 +1605,20 @@ void FDetailsPanel::OnRender()
 				ImGui::EndDisabled();
 			}
 
+			if (USkeletalMeshComponent* MeshComponent = Cast<USkeletalMeshComponent>(TargetComponent))
+			{
+				ImGui::SeparatorText("Animation Test");
+				UAnimationInstance* Instance = MeshComponent->GetAnimationInstance();
+				UWorld* ComponentWorld = MeshComponent->GetOwner() ? MeshComponent->GetOwner()->GetWorld() : nullptr;
+				const bool bIsPIE = ComponentWorld && ComponentWorld->GetWorldType() == EWorldType::PIE;
+				ImGui::BeginDisabled(!bIsPIE || !Instance || !MeshComponent->GetSkeletalMesh());
+				if (ImGui::Button("Attack")) Instance->RequestAttack();
+				ImGui::SameLine();
+				if (ImGui::Button("Hit")) Instance->RequestHit();
+				ImGui::EndDisabled();
+				if (!bIsPIE) ImGui::TextDisabled("Select a skeletal mesh component in PIE to test.");
+			}
+
 			if(SelectCandidateComponent != TargetComponent)
 			{
 				SelectComponent(TargetComponent);

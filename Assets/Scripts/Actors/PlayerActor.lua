@@ -67,7 +67,7 @@ function Tick(deltaTime)
     state.attackCooldown = math.max(0, state.attackCooldown - deltaTime)
 
     -- 게임이 끝나면(시간 종료, 체력 0) 조작을 막는다
-    if state.IsDead or _G.GamePhase ~= "Playing" or not owner:IsInputEnabled() then
+    if state.IsDead or not owner:IsInputEnabled() then
         return
     end
 
@@ -97,14 +97,15 @@ function Tick(deltaTime)
     end
 
     local moveInput = Vector.new(x, y, 0.0)
+    owner:SetSprinting(Input.IsKeyDown(KeyCode.Shift))
     owner:Move(moveInput)
 
     if Input.IsKeyPressed(KeyCode.Space) then
-        owner:Jump(9.0)
+        owner:Jump(7.0)
     end
 
     if Input.IsMousePressed(MouseButton.Left) and state.attackCooldown <= 0 then
-        owner:StartWandSwing()
+        owner:Punch()
         owner:PlayerShot()
         GamePlayStatics.PlaySound("Assets/Sounds/Magic.wav", 0.3)
         state.attackCooldown = AttackInterval

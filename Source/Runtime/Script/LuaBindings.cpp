@@ -433,12 +433,13 @@ void FLuaBindings::RegisterLuaBindings(sol::state& Lua, FLuaCoroutineScheduler* 
 		sol::base_classes, sol::bases<APawn, AActor, UObject>(),
 		"StaticClass", &APlayerActor::StaticClass,
 		"Move", &APlayerActor::Move,
+		"SetSprinting", &APlayerActor::SetSprinting,
+		"Punch", &APlayerActor::Punch,
 		"Jump", &APlayerActor::Jump,
 		"PlayerShot", &APlayerActor::PlayerProjectile,
 		"PlayDamageEffect", &APlayerActor::PlayDamageEffect,
 		"ApplyKnockback", &APlayerActor::ApplyKnockback,
 		"StartDeathFall", &APlayerActor::StartDeathFall,
-		"StartWandSwing", &APlayerActor::StartWandSwing,
 		"SetMagnetRadius", &APlayerActor::SetMagnetRadius
 	);
 

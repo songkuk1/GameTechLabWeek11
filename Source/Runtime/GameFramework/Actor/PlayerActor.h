@@ -2,6 +2,7 @@
 
 #include "GameFramework/Pawn.h"
 #include "Component/StaticMeshComponent.h"
+#include "Component/SkeletalMeshComponent.h"
 #include "Component/CharacterMovementComponent.h"
 
 class UCameraComponent;
@@ -15,7 +16,8 @@ class APlayerActor : public APawn
     DECLARE_CLASS(APlayerActor, APawn)
 
     REFLECT_START(ClassName)
-        REFLECT_END()
+    PROPERTY(JumpSpeed)
+    REFLECT_END()
 
 public:
     APlayerActor();
@@ -24,14 +26,14 @@ public:
     virtual void Tick(float DeltaTime) override;
 
     void Move(const FVector& MoveInput);
+    void SetSprinting(bool bSprinting);
+    void Punch();
     void Jump(float JumpSpeed);
 
     UCharacterMovementComponent* GetCharacterMovementComponent();
     void SetMagnetRadius(float InMagnetRadius);
 
     void PlayerProjectile();
-    void StartWandSwing();
-    void UpdateWandSwing(float RealDeltaTime);
 
     void PlayDamageEffect();
     float GetDamageEffectIntensity() const;
@@ -43,8 +45,7 @@ private:
 	USpringArmComponent* SpringArmComponent = nullptr;
 	UCameraComponent* CameraComponent = nullptr;
     UScriptComponent* ScriptComponent = nullptr;
-    UStaticMeshComponent* PlayerMeshComponent = nullptr;
-    UStaticMeshComponent* WandMeshComponent = nullptr;
+    USkeletalMeshComponent* PlayerMeshComponent = nullptr;
     UCharacterMovementComponent* CharacterMovementComponent = nullptr;
     UBoxComponent* BoxComponent = nullptr;
 
@@ -58,12 +59,6 @@ private:
     FRotator DeathStartRotation = { 0.f, 0.f, 0.f };
     FVector DeathStartLocation = FVector::ZeroVector;
     float DeathJumpHeight = 1.5f;
-
-    bool bWandSwinging = false;
-    float WandSwingElapsed = 0.0f;
-    float WandSwingDuration = 0.2f;
-    float WandSwingAngle = 50.0f;
-    FRotator WandStartRotation = { 0.f, 0.f, 0.f };
 
     USphereComponent* MagnetCollision = nullptr;
     float MagnetRadius = 6.0f;
