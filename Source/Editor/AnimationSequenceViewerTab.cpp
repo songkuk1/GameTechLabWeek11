@@ -331,6 +331,7 @@ void FAnimationSequenceViewerTab::DrawToolbar()
 	}
 	DrawNotifyTrack(Duration);
 	DrawNotifyDetails(Duration);
+	DrawCurveEditor(Duration, CurrentTime);
 }
 
 void FAnimationSequenceViewerTab::FrameMesh()

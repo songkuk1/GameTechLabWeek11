@@ -53,4 +53,16 @@ public:
 	FAnimationCurveData CurveData;
 	virtual const TArray<FBoneAnimationTrack>& GetBoneAnimationTracks() const override { return BoneAnimationTracks; }
 	const FAnimationCurveData& GetCurveData() const { return CurveData; }
+	const FAnimationCurve* FindCurve(const FName& CurveName, const FName& LayerName) const
+	{
+		for (const FAnimationCurve& Curve : CurveData.Curves)
+		{
+			if (Curve.Name == CurveName && Curve.LayerName == LayerName)
+			{
+				return &Curve;
+			}
+		}
+
+		return nullptr;
+	}
 };
