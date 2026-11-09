@@ -2725,7 +2725,32 @@ ed::Control ed::EditorContext::BuildControl(bool allowOffscreen)
         {
             if (!pin->m_IsLive) continue;
 
-            checkInteractionsInArea(pin->m_ID, pin->m_Bounds, pin);
+            if (pin->m_Bounds.GetWidth() <= 0.0f || pin->m_Bounds.GetHeight() <= 0.0f)
+            {
+                continue;
+            }
+
+            if (emitInteractiveArea(pin->m_ID, pin->m_Bounds) >= 0)
+            {
+                clickedObject = pin->m_Node;
+            }
+
+            if (!doubleClickedObject && ImGui::IsMouseDoubleClicked(m_Config.DragButtonIndex) && ImGui::IsItemHovered())
+            {
+                doubleClickedObject = pin->m_Node;
+            }
+
+            const bool bPinGesture = ImGui::IsMouseDown(m_Config.DragButtonIndex) || ImGui::IsMouseReleased(m_Config.DragButtonIndex);
+
+            if (!hotObject && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem))
+            {
+                hotObject = bPinGesture ? static_cast<Object*>(pin) : static_cast<Object*>(pin->m_Node);
+            }
+
+            if (ImGui::IsItemActive())
+            {
+                activeObject = pin->m_Kind == PinKind::Output ? static_cast<Object*>(pin) : static_cast<Object*>(pin->m_Node);
+            }
         }
 
         // Check for interactions with node.
@@ -4980,14 +5005,14 @@ ed::EditorAction::AcceptResult ed::CreateItemAction::Accept(const Control& contr
     if (m_IsActive)
         return EditorAction::False;
 
-    if (control.ActivePin && ImGui::IsMouseDragging(Editor->GetConfig().DragButtonIndex, 1))
+    if (control.ActivePin && control.ActivePin->m_Kind == PinKind::Output && ImGui::IsMouseDragging(Editor->GetConfig().DragButtonIndex, 1))
     {
         m_DraggedPin = control.ActivePin;
         DragStart(m_DraggedPin);
 
         Editor->ClearSelection();
     }
-    else if (control.HotPin)
+    else if (control.HotPin && control.HotPin->m_Kind == PinKind::Output)
     {
         return EditorAction::Possible;
     }
