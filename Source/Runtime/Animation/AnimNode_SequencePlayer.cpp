@@ -1,6 +1,7 @@
 #include "EnginePCH.h"
 #include "AnimNode_SequencePlayer.h"
 #include "Animation/AnimSequence.h"
+#include "Animation/AnimInstance.h"
 #include <algorithm>
 #include <cmath>
 
@@ -74,29 +75,48 @@ void FAnimNode_SequencePlayer::Update(const FAnimationUpdateContext& Context)
     {
         return;
     }
+
     const float PlayLength = GetPlayLength();
+
     if (PlayLength <= 0.0f)
     {
         CurrentTime = 0.0f;
         return;
     }
 
-    if (!std::isfinite(Context.DeltaTime) || Context.DeltaTime <= 0.0f || PlayRate == 0.0f)
+    const float PreviousTime = CurrentTime;
+    float ActualAdvance = 0.0f;
+
+    if (std::isfinite(Context.DeltaTime) && Context.DeltaTime > 0.0f && std::isfinite(PlayRate) && PlayRate != 0.0f)
     {
-        return;
-    }
-    CurrentTime += Context.DeltaTime * PlayRate;
-    if (bLoop)
-    {
-        CurrentTime = std::fmod(CurrentTime, PlayLength);
-        if(CurrentTime < 0.0f)
+        const float RequestedAdvance = Context.DeltaTime * PlayRate;
+
+        if (std::isfinite(RequestedAdvance))
         {
-            CurrentTime += PlayLength;
+            const float UnwrappedTime = CurrentTime + RequestedAdvance;
+
+            if (bLoop)
+            {
+                CurrentTime = std::fmod(UnwrappedTime, PlayLength);
+
+                if (CurrentTime < 0.0f)
+                {
+                    CurrentTime += PlayLength;
+                }
+
+                ActualAdvance = RequestedAdvance;
+            }
+            else
+            {
+                CurrentTime = std::clamp(UnwrappedTime, 0.0f, PlayLength);
+                ActualAdvance = CurrentTime - PreviousTime;
+            }
         }
     }
-    else
+
+    if (Context.AnimInstance && std::isfinite(Context.NotifyWeight) && Context.NotifyWeight > 0.0001f)
     {
-        CurrentTime = std::clamp(CurrentTime, 0.0f, PlayLength);
+        Context.AnimInstance->QueueAnimNotifyUpdate(this, Sequence, PreviousTime, ActualAdvance, CurrentTime, PlayLength, bLoop);
     }
 }
 

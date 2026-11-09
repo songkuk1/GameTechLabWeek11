@@ -30,6 +30,7 @@ struct FActiveAnimNotifyState
 	const FAnimNode_SequencePlayer* Player = nullptr;
 	UAnimSequence* Sequence = nullptr;
 	int32 NotifyIndex = -1;
+	FName NotifyName;
 };
 
 class UAnimInstance : public UObject
@@ -93,6 +94,8 @@ public:
 protected:
 	FAnimNode_Base* RootNode = nullptr;
 private:
+	void EndActiveAnimNotifyStates();
+
 	FAnimNode_SequencePlayer SequencePlayer;
 	FAnimNode_TwoWayBlendPlayer TwoWayBlendPlayer;
 	FAnimNode_BlendSpacePlayer BlendSpacePlayer;

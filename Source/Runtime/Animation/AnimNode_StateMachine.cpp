@@ -140,11 +140,13 @@ void FAnimNode_StateMachine::Update(const FAnimationUpdateContext& Context)
 {
 	if (bIsBlending)
 	{
-		TransitionBlendNode.Update(Context);
 		const float DeltaTime = std::isfinite(Context.DeltaTime) ? std::max(Context.DeltaTime, 0.0f) : 0.0f;
 		TransitionBlendElapsed += DeltaTime;
+
 		const float Alpha = std::clamp(TransitionBlendElapsed / TransitionBlendDuration, 0.0f, 1.0f);
 		TransitionBlendNode.SetAlpha(Alpha);
+
+		TransitionBlendNode.Update(Context);
 		if (Alpha >= 1.0f)
 		{
 			bIsBlending = false;

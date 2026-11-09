@@ -5,3 +5,7 @@ UAnimSequenceBase::UAnimSequenceBase()
 {
 	DataModel = CreateDefaultSubobject<UAnimDataModel>(FName("DataModel"));
 }
+
+void UAnimSequenceBase::SerializeNotifies(FStructuredArchive::FRecord Record)
+{
+}

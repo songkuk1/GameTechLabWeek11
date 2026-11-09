@@ -4,6 +4,7 @@
 #include "UObject/UObjectGlobals.h"
 #include "Engine/PrimitiveSceneProxy.h"
 #include "Render/RenderPacket.h"
+#include "GameFramework/Actor.h"
 #include "Animation/Skeleton.h"
 #include "Animation/AnimInstance.h"
 #include "Animation/BlendSpace1D.h"
@@ -317,6 +318,25 @@ bool USkeletalMeshComponent::SetAnimationGraph(
     bPlayingAnimation = true;
     TickAnimation(0.0f);
     return true;
+}
+
+void USkeletalMeshComponent::HandleAnimNotify(const FName& NotifyName, EAnimNotifyEventType EventType, float DeltaSeconds)
+{
+    AActor* Owner = GetOwner();
+
+    if (!Owner || NotifyName.IsNone())
+    {
+        return;
+    }
+
+    if (EventType == EAnimNotifyEventType::Trigger)
+    {
+        Owner->HandleAnimNotify(NotifyName);
+    }
+    else
+    {
+        Owner->HandleAnimNotifyState(NotifyName, EventType, DeltaSeconds);
+    }
 }
 
 bool USkeletalMeshComponent::EnsureAnimInstance()

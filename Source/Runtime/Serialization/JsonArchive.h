@@ -5,6 +5,7 @@ class AActor;
 class UMovieSceneSequence;
 class UBlendSpace1D;
 class UAnimationGraph;
+class UAnimSequenceBase;
 
 class FJsonArchive
 {

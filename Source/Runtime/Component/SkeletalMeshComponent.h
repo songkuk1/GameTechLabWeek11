@@ -5,6 +5,8 @@
 
 class USkeleton;
 class UAnimationGraph;
+struct FAnimNotifyEvent;
+enum class EAnimNotifyEventType : uint8;
 
 class USkeletalMeshComponent : public USkinnedMeshComponent
 {
@@ -38,7 +40,7 @@ public:
     void SetAnimationRootNode(FAnimNode_Base* InRootNode);
     bool SetAnimationGraph(UAnimationGraph* InGraph);
 
-    void HandleAnimNotify(const FAnimNotifyEvent& Notify, EAnimNotifyEventType EventType, float DeltaSeconds);
+    void HandleAnimNotify(const FName& NotifyName, EAnimNotifyEventType EventType, float DeltaSeconds);
 
     // 애니메이션 재생 위치
     void SetAnimationPlaybackTime(float InTime);

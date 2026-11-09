@@ -2,6 +2,7 @@
 #include "AnimInstance.h"
 #include "Component/SkeletalMeshComponent.h"
 #include "GameFramework/Actor.h"
+#include "Animation/AnimSequence.h"
 #include "Animation/AnimationGraph.h"
 #include "Animation/AnimNode_StateMachine.h"
 UAnimInstance::UAnimInstance()
@@ -135,15 +136,20 @@ void UAnimInstance::UpdateAnimation(float DeltaSeconds)
 		return;
 	}
 
+	PendingAnimNotifyUpdates.Reset();
+
 	NativeUpdateAnimation(DeltaSeconds);
-	if (!RootNode)
-	{
-		return;
-	}
+
 	FAnimationUpdateContext Context;
 	Context.DeltaTime = DeltaSeconds;
 	Context.AnimInstance = this;
-	RootNode->Update(Context);
+
+	if (RootNode)
+	{
+		RootNode->Update(Context);
+	}
+
+	TriggerAnimNotifies(DeltaSeconds);
 }
 
 void UAnimInstance::EvaluateAnimation(FPoseContext& Output)
@@ -332,6 +338,9 @@ bool UAnimInstance::SetRootNode(FAnimNode_Base* InRootNode)
 
 void UAnimInstance::ClearAnimationNodes()
 {
+	EndActiveAnimNotifyStates();
+	PendingAnimNotifyUpdates.Reset();
+
 	RootNode = &SequencePlayer;
 	StateMachineNode = nullptr;
 
@@ -357,8 +366,40 @@ bool UAnimInstance::GetStateMachineDebugInfo(FAnimStateMachineDebugInfo& OutInfo
 
 void UAnimInstance::QueueAnimNotifyUpdate(const FAnimNode_SequencePlayer* Player, UAnimSequence* Sequence, float PreviousTime, float Advance, float CurrentTime, float PlayLength, bool bLooping)
 {
+	if (!Player || !Sequence || !Sequence->GetDataModel())
+	{
+		return;
+	}
+
+	if (!std::isfinite(PreviousTime) || !std::isfinite(Advance) || !std::isfinite(CurrentTime) || !std::isfinite(PlayLength) || PlayLength <= 0.0f)
+	{
+		return;
+	}
+
+	FQueuedAnimNotifyUpdate Update;
+	Update.Player = Player;
+	Update.Sequence = Sequence;
+	Update.PreviousTime = PreviousTime;
+	Update.Advance = Advance;
+	Update.CurrentTime = CurrentTime;
+	Update.PlayLength = PlayLength;
+	Update.bLooping = bLooping;
+
+	PendingAnimNotifyUpdates.Add(std::move(Update));
 }
 
 void UAnimInstance::TriggerAnimNotifies(float DeltaSeconds)
 {
+}
+
+void UAnimInstance::EndActiveAnimNotifyStates()
+{
+	if (OwningComponent)
+	{
+		for (const FActiveAnimNotifyState& ActiveState : ActiveAnimNotifyStates)
+		{
+			OwningComponent->HandleAnimNotify(ActiveState.NotifyName, EAnimNotifyEventType::End, 0.0f);
+		}
+	}
+	ActiveAnimNotifyStates.Reset();
 }
