@@ -11,7 +11,7 @@
 
 namespace
 {
-constexpr uint32 ModelBakeVersion = 4;
+constexpr uint32 ModelBakeVersion = 5;
 
 struct FModelBakeHeader
 {

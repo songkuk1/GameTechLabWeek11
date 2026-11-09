@@ -4,7 +4,9 @@
 #include "Containers/Map.h"
 #include <filesystem>
 #include <fbxsdk.h>
-
+#include <cmath>
+#include <numeric>
+#include <limits>
 
 class FFbxImporter
 {

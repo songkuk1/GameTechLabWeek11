@@ -157,11 +157,27 @@ void FAnimNode_SequencePlayer::Evaluate(FPoseContext& Output)
             continue;
         }
 
-        const float FramePosition = std::clamp(CurrentTime * FrameRate, 0.0f, static_cast<float>(KeyCount - 1));
+        int32 FrameA = 0;
+        int32 FrameB = 0;
+        float Alpha = 0.0f;
 
-        const int32 FrameA = static_cast<int32>(std::floor(FramePosition));
-        const int32 FrameB = std::min(FrameA + 1, KeyCount - 1);
-        const float Alpha = FramePosition - FrameA;
+        const int32 LastFullFrameIndex = static_cast<int32>(std::floor(DataModel->PlayLength * FrameRate));
+        const float LastFullFrameTime = static_cast<float>(LastFullFrameIndex) / FrameRate;
+        const bool bHasPartialLastFrame = LastFullFrameIndex < KeyCount - 1 && DataModel->PlayLength - LastFullFrameTime > 1.0e-6f;
+
+        if (bHasPartialLastFrame && CurrentTime > LastFullFrameTime)
+        {
+            FrameA = LastFullFrameIndex;
+            FrameB = std::min(FrameA + 1, KeyCount - 1);
+            Alpha = std::clamp((CurrentTime - LastFullFrameTime) / (DataModel->PlayLength - LastFullFrameTime), 0.0f, 1.0f);
+        }
+        else
+        {
+            const float FramePosition = std::clamp(CurrentTime * FrameRate, 0.0f, static_cast<float>(KeyCount - 1));
+            FrameA = static_cast<int32>(std::floor(FramePosition));
+            FrameB = std::min(FrameA + 1, KeyCount - 1);
+            Alpha = FramePosition - FrameA;
+        }
         const FVector Position = RawTrack.PosKeys[FrameA] + (RawTrack.PosKeys[FrameB] - RawTrack.PosKeys[FrameA]) * Alpha;
         const FQuat Rotation = FQuat::Slerp(RawTrack.RotKeys[FrameA], RawTrack.RotKeys[FrameB], Alpha);
         const FVector Scale = RawTrack.ScaleKeys[FrameA] + (RawTrack.ScaleKeys[FrameB] - RawTrack.ScaleKeys[FrameA]) * Alpha;

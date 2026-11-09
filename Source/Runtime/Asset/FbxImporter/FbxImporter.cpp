@@ -33,7 +33,7 @@ namespace
 
 		return EngineMatrix;
 	}
-	void ExtractAnimationTracksRecursive(fbxsdk::FbxNode* CurrentNode, const TMap<uint64, int32>& NodeToIndexMap, double StartSeconds, double PlayLength, int32 SampleRate, int32 FrameCount, FModelAnimation& OutAnimation)
+	void ExtractAnimationTracksRecursive(fbxsdk::FbxNode* CurrentNode, const TMap<uint64, int32>& NodeToIndexMap, double StartSeconds, double PlayLength, double SampleRate, int32 FrameCount, FModelAnimation& OutAnimation) 
 	{
 		if (!CurrentNode)
 		{
@@ -167,7 +167,28 @@ namespace
 		{
 			return;
 		}
-		constexpr int32 SampleRate = 30;
+		const fbxsdk::FbxGlobalSettings& GlobalSettings = Scene->GetGlobalSettings();
+		const fbxsdk::FbxTime::EMode TimeMode = GlobalSettings.GetTimeMode();
+
+		double SourceFrameRate = TimeMode == fbxsdk::FbxTime::eCustom ? GlobalSettings.GetCustomFrameRate() : fbxsdk::FbxTime::GetFrameRate(TimeMode);
+
+		if (!std::isfinite(SourceFrameRate) || SourceFrameRate <= 0.0 || SourceFrameRate > static_cast<double>(std::numeric_limits<int32>::max()) / 100000)
+		{
+			HTR_LOG(Warning, "[FBX] Invalid frame rate. Falling back to 30 FPS.");
+			SourceFrameRate = 30.0;
+		}
+
+		constexpr int32 FrameRatePrecision = 100000;
+
+		int32 FrameRateNumerator = static_cast<int32>(std::llround(SourceFrameRate * FrameRatePrecision));
+		int32 FrameRateDenominator = FrameRatePrecision;
+
+		const int32 CommonDivisor = std::gcd(FrameRateNumerator, FrameRateDenominator);
+
+		FrameRateNumerator /= CommonDivisor;
+		FrameRateDenominator /= CommonDivisor;
+
+		const double SampleRate = static_cast<double>(FrameRateNumerator) / FrameRateDenominator;
 		const int32 StackCount = Scene->GetSrcObjectCount<fbxsdk::FbxAnimStack>();
 
 		for (int32 StackIndex = 0; StackIndex < StackCount; ++StackIndex)
@@ -198,8 +219,8 @@ namespace
 			FModelAnimation& Animation = OutAnimations.AddDefaulted_GetRef();
 			Animation.Name = FName(AnimStack->GetName());
 			Animation.PlayLength = static_cast<float>(PlayLength);
-			Animation.FrameRateNumerator = SampleRate;
-			Animation.FrameRateDenominator = 1;
+			Animation.FrameRateNumerator = FrameRateNumerator;
+			Animation.FrameRateDenominator = FrameRateDenominator;
 			Animation.NumberOfFrames = FrameCount;
 			Animation.NumberOfKeys = 0;
 			ExtractAnimationTracksRecursive(Scene->GetRootNode(), NodeToIndexMap, StartSeconds, PlayLength, SampleRate, FrameCount, Animation);
@@ -307,10 +328,19 @@ namespace
 
 		for (const FModelAnimation& Animation : ModelData.Animations)
 		{
-			if (!std::isfinite(Animation.PlayLength) || Animation.PlayLength < 0.0f)
+			if (!std::isfinite(Animation.PlayLength) || Animation.PlayLength < 0.0f || Animation.FrameRateNumerator <= 0 || Animation.FrameRateDenominator <= 0 || Animation.NumberOfFrames <= 0)
 			{
-				OutError = "Animation has an invalid PlayLength.";
+				OutError = "Animation has invalid playback data.";
 				return false;
+			}
+
+			for (const FModelAnimationTrack& Track : Animation.Tracks)
+			{
+				if (!ModelData.Nodes.IsValidIndex(Track.NodeIndex) || Track.PosKeys.Num() != Animation.NumberOfFrames || Track.RotKeys.Num() != Animation.NumberOfFrames || Track.ScaleKeys.Num() != Animation.NumberOfFrames)
+				{
+					OutError = "Animation has an invalid bone track.";
+					return false;
+				}
 			}
 
 			for (const FAnimationCurve& Curve : Animation.CurveData.Curves)
