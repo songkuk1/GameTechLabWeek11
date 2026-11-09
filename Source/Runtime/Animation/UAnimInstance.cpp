@@ -35,11 +35,12 @@ void UAnimationInstance::Tick(float deltaTime, PoseContext& Context)
 {
 	if (!Root) return;
 
+	AnimationContext AnimContext{ deltaTime, Speed, IsAttacking, IsHit };
 	CurrentTime += deltaTime;
 	Speed += deltaTime*18;
 	BlendSpace1DNode* Blend1Node = static_cast<BlendSpace1DNode*>(Nodes[3].get());
 	Blend1Node->SetSpeed(Speed);
-	Root->Update(deltaTime);
+	Root->Update(AnimContext);
 	Root->EvaluatePose(Context);
 }
 

@@ -13,7 +13,12 @@ enum NodeType
 class AnimNode
 {
 public:
-	virtual void Update(float deltaTime) {};
+	virtual void Update(AnimationContext& AnimContext) {};
 
 	virtual void EvaluatePose(PoseContext& Context) {};
+
+	virtual bool IsClipFinished() { return false; }
+
+	virtual void ResetAnimation() {};
 };
+

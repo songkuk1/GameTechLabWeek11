@@ -11,10 +11,10 @@ public:
 	AnimNode* InputB;
 	float Alpha = 0.0f; 
 
-	void Update(float deltaTime) override
+	void Update(AnimationContext& AnimContext) override
 	{
-		InputA->Update(deltaTime);   // 입력 2개에 대해서 각자 Update 진행
-		InputB->Update(deltaTime);
+		InputA->Update(AnimContext);   // 입력 2개에 대해서 각자 Update 진행
+		InputB->Update(AnimContext);
 	}
 
 	void EvaluatePose(PoseContext& Context) override

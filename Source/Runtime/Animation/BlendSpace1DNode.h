@@ -23,12 +23,12 @@ public:
 
 	void SetSpeed(float InSpeed) { Speed = InSpeed; }
 
-	void Update(float deltaTime) override
+	void Update(AnimationContext& AnimContext) override
 	{
 		for (int i = 0;i < SampleArray.Num();i++)
 		{
 			if (SampleArray[i].Input)
-				SampleArray[i].Input->Update(deltaTime);   // 전체 입력에 대해서 Update 진행
+				SampleArray[i].Input->Update(AnimContext);   // 전체 입력에 대해서 Update 진행
 		}
 	}
 
@@ -96,4 +96,5 @@ public:
 			);
 		}
 	}
+
 };

@@ -19,9 +19,9 @@ public:
 		Sequence = nullptr;
 	}
 
-	void Update(float deltaTime) override
+	void Update(AnimationContext& AnimContext) override
 	{
-		CurrentPlayTime += deltaTime;
+		CurrentPlayTime += AnimContext.deltaTime;
 	}
 
 	float GetCurrentPlayTime() const { return CurrentPlayTime; }
@@ -43,6 +43,10 @@ public:
 	{
 		Sequence->CalculateCurrentPose(CurrentPlayTime, bLooping, Context.LocalPoseTrans);
 	}
+
+	bool IsClipFinished() override { return CurrentPlayTime >= Sequence->GetAnimData().PlayLength; }
+
+	void ResetAnimation() override { SetCurrentPlayTime(0); }
 
 private:
 	UAnimSequence* Sequence = nullptr;

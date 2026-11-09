@@ -26,4 +26,6 @@ protected:
 	float Speed;
 	float CurrentTime = 0;
 	bool bRunning = false;
+	bool IsAttacking = false;
+	bool IsHit = false;
 };

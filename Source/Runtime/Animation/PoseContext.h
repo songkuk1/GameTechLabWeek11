@@ -17,3 +17,11 @@ struct PoseContext
 	const TArray<PoseTransform>& ReferencePose;
 	TArray<PoseTransform> LocalPoseTrans;
 };
+
+struct AnimationContext
+{
+	float deltaTime = 0.0f;
+	float Speed = 0.0f;
+	bool& bIsAttacking;
+	bool& bIsHit;
+};
