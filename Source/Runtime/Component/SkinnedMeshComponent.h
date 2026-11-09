@@ -5,6 +5,12 @@
 
 class FLineBatcher;
 
+enum class ESkinningMode : uint8
+{
+	CPU,
+	GPU
+};
+
 class USkinnedMeshComponent : public UMeshComponent
 {
 	DECLARE_CLASS(USkinnedMeshComponent, UMeshComponent)
@@ -44,6 +50,9 @@ public:
 	// 현재 포즈의 본을 선으로 그린다. 부모 관절에서 자식 관절로 잇고, 관절마다 짧은 XYZ 축을 표시한다
 	void DrawDebugSkeleton(FLineBatcher* LineBatcher, int32 SelectedBone = -1) const;
 
+	static ESkinningMode GetSkinningMode();
+	static void SetSkinningMode(ESkinningMode InMode);
+
 protected:
 	USkeletalMesh* SkeletalMesh = nullptr;
 
@@ -51,4 +60,7 @@ protected:
 	TArray<FMatrix> LocalPose;
 	TArray<FMatrix> BoneMatrices;
 	TArray<FMatrix> NodeGlobalTransforms;
+
+private:
+	static ESkinningMode SkinningMode;
 };

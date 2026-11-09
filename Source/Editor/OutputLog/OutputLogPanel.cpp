@@ -4,6 +4,9 @@
 #include "Core/StatOverlay.h"
 #include "Engine/Scene.h"
 
+#include "Component/SkinnedMeshComponent.h"
+#include <sstream>
+
 static int TextEditCallbackStub(ImGuiInputTextCallbackData* data)
 {
 	FOutputLogPanel* OutputLog = (FOutputLogPanel*)data->UserData;
@@ -26,6 +29,7 @@ bool FOutputLogPanel::Init()
 	Commands.Add("HISTORY");
 	Commands.Add("CLEAR");
 	Commands.Add("STAT");
+	Commands.Add("SKINNING");
 
 	HistoryPos = -1;
 	InputBuf[0] = '\0';
@@ -166,6 +170,44 @@ void FOutputLogPanel::ExecCommand(const FString& CommandLine)
 		}
 	History.Add(CommandLine);
 
+	std::istringstream SkinningCommandStream(CommandLine);
+	FString SkinningCommand;
+	SkinningCommandStream >> SkinningCommand;
+
+	if (EqualsIgnoreCase(SkinningCommand, "SKINNING"))
+	{
+		FString SkinningMode;
+		FString ExtraArgument;
+		SkinningCommandStream >> SkinningMode;
+
+		if (SkinningCommandStream >> ExtraArgument)
+		{
+			FLog::Log(ELogVerbosity::Warning, "Usage: skinning <cpu|gpu>");
+		}
+		else if (SkinningMode.empty())
+		{
+			const char* ModeName = USkinnedMeshComponent::GetSkinningMode() == ESkinningMode::CPU ? "CPU" : "GPU";
+			FLog::Log(ELogVerbosity::Info, "Skinning mode: {}", ModeName);
+		}
+		else if (EqualsIgnoreCase(SkinningMode, "CPU"))
+		{
+			USkinnedMeshComponent::SetSkinningMode(ESkinningMode::CPU);
+			FLog::Log(ELogVerbosity::Info, "Skinning mode changed to CPU");
+		}
+		else if (EqualsIgnoreCase(SkinningMode, "GPU"))
+		{
+			USkinnedMeshComponent::SetSkinningMode(ESkinningMode::GPU);
+			FLog::Log(ELogVerbosity::Info, "Skinning mode changed to GPU");
+		}
+		else
+		{
+			FLog::Log(ELogVerbosity::Warning, "Usage: skinning <cpu|gpu>");
+		}
+
+		ScrollToBottom = true;
+		return;
+	}
+
 	// Process command
 	// 인자를 받는 명령은 문자열 전체 비교로는 걸러지지 않으므로 먼저 위임한다.
 	FString StatMessage;
@@ -201,7 +243,8 @@ void FOutputLogPanel::ExecCommand(const FString& CommandLine)
 		FLog::Log(ELogVerbosity::Info, "Commands:");
 		for (const FString& Command : Commands)
 			FLog::Log(ELogVerbosity::Info, "- {}", Command);
-		OnLog(ELogVerbosity::Info, "- STAT <fps|memory|all|none>");
+		OnLog(ELogVerbosity::Info, "- STAT <fps|memory|profile|shadow|decal|all|none>");
+		OnLog(ELogVerbosity::Info, "- SKINNING <cpu|gpu>");
 	}
 	else if (EqualsIgnoreCase(CommandLine, "HISTORY"))
 	{

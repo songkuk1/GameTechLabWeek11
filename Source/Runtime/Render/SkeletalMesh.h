@@ -24,6 +24,8 @@ public:
 
 	const FModelMeshData& GetMeshData() const;
 
+	const TArray<FModelVertexInfluences>& GetVertexInfluencesList() const { return VertexInfluencesList; }
+
 	FVertexBuffer* GetVertexBuffer() const;
 
 	FVertexBuffer* GetSkinWeightBuffer() const;

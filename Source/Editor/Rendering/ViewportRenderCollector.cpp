@@ -27,7 +27,7 @@ void FViewportRenderCollector::CaptureWorld(UWorld& World, bool bDrawSkeletalMes
         if (!Scene.PrimitiveFlags[i]) continue;
 
         // 스켈레탈 표시 설정에 따른 렌더 후보 제외
-        if (!bDrawSkeletalMeshes && Scene.Proxies[i]->IsUsingSkinning())
+        if (!bDrawSkeletalMeshes && Scene.Proxies[i]->IsSkeletalMesh())
         {
             continue;
         }

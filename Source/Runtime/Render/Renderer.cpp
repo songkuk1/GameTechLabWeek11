@@ -25,6 +25,7 @@ DECLARE_CYCLE_STAT("Draw Render Packets", STAT_DrawRenderPackets);
 DECLARE_CYCLE_STAT("Render Queue Sorting", STAT_RenderQueueSorting);
 DECLARE_CYCLE_STAT("Upload Per-Object CB", STAT_UploadPerObjectCB);
 DECLARE_CYCLE_STAT("Shadow Pass (Total)", STAT_Shadow);
+DECLARE_CYCLE_STAT("GPU Skinning Draw Submit", STAT_GPUSkinningDrawSubmit);
 
 namespace
 {
@@ -474,7 +475,15 @@ void FRenderer::DrawPackets(uint32 Begin, uint32 End)
 			RenderPacket.Proxy->BindSRVs();
 		}
 
-		RenderCommand::DrawIndexed(RenderPacket.Geometry.IndexCount, RenderPacket.Geometry.StartIndex);
+		if (bUseSkinning)
+		{
+			SCOPE_CYCLE_COUNTER(STAT_GPUSkinningDrawSubmit);
+			RenderCommand::DrawIndexed(RenderPacket.Geometry.IndexCount, RenderPacket.Geometry.StartIndex);
+		}
+		else
+		{
+			RenderCommand::DrawIndexed(RenderPacket.Geometry.IndexCount, RenderPacket.Geometry.StartIndex);
+		}
 
 		LastMaterial = RenderPacket.Material;
 		LastReceiveShadow = CurrentRS;
@@ -868,7 +877,7 @@ void FRenderer::RenderShadowPass(
 	auto DrawCasters = [&]() {
 		for (FPrimitiveSceneProxy* Proxy : Casters)
 		{
-			if (!Proxy || !Proxy->IsVisible() || !Proxy->GetRenderState() || (!bDrawSkeletalMeshes && Proxy->IsUsingSkinning()))
+			if (!Proxy || !Proxy->IsVisible() || !Proxy->GetRenderState() || (!bDrawSkeletalMeshes && Proxy->IsSkeletalMesh()))
 			{
 				continue;
 			}

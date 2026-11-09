@@ -57,6 +57,7 @@ public:
     const FCachedMeshSection& GetSection(uint32 Index) const { return RenderState->Sections[Index]; }
     FScene* GetScene() const { return Scene; }
 
+    virtual bool IsSkeletalMesh() const { return false; }
 protected:
     friend class FScene;
 
@@ -118,6 +119,9 @@ public:
         return BoneMatrixSRV.Get();
     }
 
+    bool IsSkeletalMesh() const override { return Mesh != nullptr; }
+    bool UpdateCPUSkinnedVertexBuffer();
+
 protected:
     FBox GetLocalBounds() const override;
     FLODSphere GetLocalLODSphere() const override;
@@ -128,4 +132,7 @@ private:
     Microsoft::WRL::ComPtr<ID3D11Buffer> BoneMatrixBuffer;
     Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> BoneMatrixSRV;
     uint32 BoneMatrixCapacity = 0;
+
+    TUniquePtr<FVertexBuffer> CPUSkinnedVertexBuffer;
+    int32 CPUSkinnedVertexCount = 0;
 };

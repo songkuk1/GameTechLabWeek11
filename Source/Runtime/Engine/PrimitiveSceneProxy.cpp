@@ -7,6 +7,12 @@
 #include "Render/Mesh.h"
 #include "Render/Renderer.h"
 #include "Engine/Scene.h"
+#include "Render/Vertex.h"
+#include "Core/Stats/LightweightStats.h"
+#include <cmath>
+
+DECLARE_CYCLE_STAT("CPU Skinning", STAT_CPUSkinning);
+DECLARE_CYCLE_STAT("GPU Skinning Bone Upload", STAT_GPUSkinningBoneUpload);
 
 FPrimitiveSceneProxy::FPrimitiveSceneProxy(UPrimitiveComponent* InComponent)
     : Component(InComponent)
@@ -190,6 +196,8 @@ void FSkeletalMeshSceneProxy::BindSRVs() const
 
 bool FSkeletalMeshSceneProxy::UpdateBoneMatrixBuffer()
 {
+    SCOPE_CYCLE_COUNTER(STAT_GPUSkinningBoneUpload);
+
     const auto* ActualComponent = Cast<USkeletalMeshComponent>(GetComponent());
     const TArray<FMatrix>& BoneMatrices = ActualComponent->GetBoneMatrices();
     const uint32 Count = BoneMatrices.Num();
@@ -248,19 +256,47 @@ void FSkeletalMeshSceneProxy::UpdateRenderState()
     auto* ActualComponent = Cast<USkeletalMeshComponent>(GetComponent());
     Mesh = ActualComponent->GetSkeletalMesh();
 
-    if (!UpdateBoneMatrixBuffer())
+    if (!Mesh)
     {
-        RenderState.reset();
+        BoneMatrixSRV.Reset();
+        BoneMatrixBuffer.Reset();
+        BoneMatrixCapacity = 0;
+        CPUSkinnedVertexBuffer.reset();
+        CPUSkinnedVertexCount = 0;
         return;
     }
 
-    if (!Mesh)
+    const bool bUseCPUSkinning = USkinnedMeshComponent::GetSkinningMode() == ESkinningMode::CPU;
+
+    if (bUseCPUSkinning)
     {
-        return;
+        BoneMatrixSRV.Reset();
+        BoneMatrixBuffer.Reset();
+        BoneMatrixCapacity = 0;
+
+        const bool bUpdated = UpdateCPUSkinnedVertexBuffer();
+        assert(bUpdated);
+
+        if (!bUpdated)
+        {
+            RenderState.reset();
+            return;
+        }
+    }
+    else
+    {
+        CPUSkinnedVertexBuffer.reset();
+        CPUSkinnedVertexCount = 0;
+
+        if (!UpdateBoneMatrixBuffer())
+        {
+            RenderState.reset();
+            return;
+        }
     }
 
     RenderState->LODCount = 1;
-    RenderState->bUseSkinning = true;
+    RenderState->bUseSkinning = !bUseCPUSkinning;
 
     const FModelMeshData& ModelMeshData = Mesh->GetMeshData();
 
@@ -275,9 +311,20 @@ void FSkeletalMeshSceneProxy::UpdateRenderState()
     }
 
     FCachedMeshLOD& LOD = RenderState->LODs[0];
-    LOD.VertexBuffers[0] = Mesh->GetVertexBuffer();
-    LOD.VertexBuffers[1] = Mesh->GetSkinWeightBuffer();
-    LOD.VertexBufferCount = 2;
+
+    if (bUseCPUSkinning)
+    {
+        LOD.VertexBuffers[0] = CPUSkinnedVertexBuffer.get();
+        LOD.VertexBuffers[1] = nullptr;
+        LOD.VertexBufferCount = 1;
+    }
+    else
+    {
+        LOD.VertexBuffers[0] = Mesh->GetVertexBuffer();
+        LOD.VertexBuffers[1] = Mesh->GetSkinWeightBuffer();
+        LOD.VertexBufferCount = 2;
+    }
+
     LOD.IndexBuffer = Mesh->GetIndexBuffer();
     LOD.FirstSection = 0;
     LOD.NumSections = ModelMeshData.Sections.Num();
@@ -289,12 +336,98 @@ void FSkeletalMeshSceneProxy::OnMeshDestroyed()
     BoneMatrixSRV.Reset();
     BoneMatrixBuffer.Reset();
     BoneMatrixCapacity = 0;
+    CPUSkinnedVertexBuffer.reset();
+    CPUSkinnedVertexCount = 0;
     FPrimitiveSceneProxy::OnMeshDestroyed();
+}
+
+bool FSkeletalMeshSceneProxy::UpdateCPUSkinnedVertexBuffer()
+{
+    SCOPE_CYCLE_COUNTER(STAT_CPUSkinning);
+
+    auto* ActualComponent = Cast<USkeletalMeshComponent>(GetComponent());
+    if (!Mesh || !ActualComponent)
+    {
+        return false;
+    }
+
+    const TArray<FVertexPNCT>& SourceVertices = Mesh->GetMeshData().Vertices;
+    const TArray<FModelVertexInfluences>& Influences = Mesh->GetVertexInfluencesList();
+    const TArray<FMatrix>& BoneMatrices = ActualComponent->GetBoneMatrices();
+
+    const int32 VertexCount = SourceVertices.Num();
+    if (VertexCount <= 0 || Influences.Num() != VertexCount)
+    {
+        return false;
+    }
+
+    if (!CPUSkinnedVertexBuffer || CPUSkinnedVertexCount != VertexCount)
+    {
+        const uint32 BufferSize = static_cast<uint32>(sizeof(FVertexPNCT) * static_cast<size_t>(VertexCount));
+        CPUSkinnedVertexBuffer = RenderCommand::CreateDynamicVertexBuffer(BufferSize, sizeof(FVertexPNCT));
+        CPUSkinnedVertexCount = VertexCount;
+    }
+    FVertexPNCT* DestVertices = static_cast<FVertexPNCT*>(RenderCommand::MapWriteDiscard(CPUSkinnedVertexBuffer.get()));
+    if (!DestVertices)
+    {
+        return false;
+    }
+
+    bool bValid = true;
+
+    for (int32 VertexIndex = 0; VertexIndex < VertexCount; ++VertexIndex)
+    {
+        const FVertexPNCT& SourceVertex = SourceVertices[VertexIndex];
+        const FModelVertexInfluences& Influence = Influences[VertexIndex];
+        DestVertices[VertexIndex] = SourceVertex;
+        if (Influence.InfluenceCount < 0 || Influence.InfluenceCount > MaxBoneInfluenceCount)
+        {
+            bValid = false;
+            continue;
+        }
+
+        if (Influence.InfluenceCount == 0)
+        {
+            continue;
+        }
+
+        FVector SkinnedPosition = FVector::ZeroVector;
+        FVector SkinnedNormal = FVector::ZeroVector;
+        bool bVertexValid = true;
+
+        for (int32 InfluenceIndex = 0; InfluenceIndex < Influence.InfluenceCount; ++InfluenceIndex)
+        {
+            const int32 BoneIndex = Influence.BoneIndices[InfluenceIndex];
+            const float Weight = Influence.Weights[InfluenceIndex];
+
+            if (BoneIndex < 0 || BoneIndex >= BoneMatrices.Num() || !std::isfinite(Weight))
+            {
+                bValid = false;
+                bVertexValid = false;
+                break;
+            }
+
+            const FMatrix& BoneMatrix = BoneMatrices[BoneIndex];
+
+            SkinnedPosition += BoneMatrix.TransformPosition(SourceVertex.Position) * Weight;
+            SkinnedNormal += BoneMatrix.TransformVector(SourceVertex.Normal) * Weight;
+        }
+
+        if (!bVertexValid)
+            continue;
+
+        DestVertices[VertexIndex].Position = SkinnedPosition;
+        DestVertices[VertexIndex].Normal = SkinnedNormal.GetSafeNormal(SMALL_NUMBER, SourceVertex.Normal);
+    }
+
+    RenderCommand::Unmap(CPUSkinnedVertexBuffer.get());
+
+    assert(bValid);
+    return bValid;
 }
 
 FBox FSkeletalMeshSceneProxy::GetLocalBounds() const
 {
-	// ����� �ִϸ��̼��� ���� ���� �ٿ�� �ڽ��� �״�� ����. �ִϸ��̼��� ������ �� ������ ����ؾ� �Ѵ�.
 	if (!Mesh)
 	{
 		return FPrimitiveSceneProxy::GetLocalBounds();

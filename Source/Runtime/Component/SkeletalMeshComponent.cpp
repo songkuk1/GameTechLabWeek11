@@ -228,9 +228,7 @@ void USkeletalMeshComponent::SubmitToRenderQueue(FRenderQueue& RenderQueue)
         FRenderPacket& Packet = RenderQueue.AddDefaulted_GetRef();
 
         Packet.Proxy = Proxy;
-        Packet.Geometry.VertexBuffers[0] = LOD.VertexBuffers[0];
-        Packet.Geometry.VertexBuffers[1] = LOD.VertexBuffers[1];
-        Packet.Geometry.VertexBufferCount = 2;
+        Packet.Geometry.SetVertexBuffers(LOD.VertexBuffers, LOD.VertexBufferCount);
         Packet.Geometry.IndexBuffer = LOD.IndexBuffer;
         Packet.Geometry.StartIndex = Section.StartIndex;
         Packet.Geometry.IndexCount = Section.IndexCount;

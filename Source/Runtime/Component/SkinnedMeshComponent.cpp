@@ -1,5 +1,6 @@
 #include "EnginePCH.h"
 #include "Component/SkinnedMeshComponent.h"
+#include "UObject/UObjectIterator.h"
 
 #include "Animation/Skeleton.h"
 #include "Render/LineBatcher.h"
@@ -256,5 +257,30 @@ void USkinnedMeshComponent::DrawDebugSkeleton(FLineBatcher* LineBatcher, const i
 		}
 
 		DrawJointSphere(LineBatcher, Joint, JointRadius, Color);
+	}
+}
+
+ESkinningMode USkinnedMeshComponent::SkinningMode = ESkinningMode::GPU;
+
+ESkinningMode USkinnedMeshComponent::GetSkinningMode()
+{
+	return SkinningMode;
+}
+
+void USkinnedMeshComponent::SetSkinningMode(ESkinningMode InMode)
+{
+	if (SkinningMode == InMode)
+	{
+		return;
+	}
+
+	SkinningMode = InMode;
+
+	for (TObjectIterator<USkinnedMeshComponent> It; It; ++It)
+	{
+		if (It->GetSkeletalMesh())
+		{
+			It->MarkRenderStateDirty();
+		}
 	}
 }
