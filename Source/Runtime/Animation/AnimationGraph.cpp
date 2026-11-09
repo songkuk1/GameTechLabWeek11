@@ -124,6 +124,53 @@ bool UAnimationGraph::AddAnyStateTransition(const FName& ToState, EAnimTransitio
     return AddTransitionInternal(NAME_None, ToState, Rule, ParameterName, Priority, BlendDuration, FloatThreshold, true);
 }
 
+bool UAnimationGraph::SetEditorNodePosition(const FName& NodeName, float X, float Y)
+{
+    if (!std::isfinite(X) || !std::isfinite(Y) || (!NodeName.IsNone() && FindStateIndex(NodeName) == -1))
+    {
+        return false;
+    }
+
+    for (FAnimGraphEditorNodePosition& Position : EditorNodePositions)
+    {
+        if (Position.NodeName == NodeName)
+        {
+            Position.X = X;
+            Position.Y = Y;
+            return true;
+        }
+    }
+
+    FAnimGraphEditorNodePosition Position;
+    Position.NodeName = NodeName;
+    Position.X = X;
+    Position.Y = Y;
+
+    EditorNodePositions.Add(std::move(Position));
+
+    return true;
+}
+
+bool UAnimationGraph::GetEditorNodePosition(const FName& NodeName, float& OutX, float& OutY) const
+{
+    for (const FAnimGraphEditorNodePosition& Position : EditorNodePositions)
+    {
+        if (Position.NodeName == NodeName && std::isfinite(Position.X) && std::isfinite(Position.Y))
+        {
+            OutX = Position.X;
+            OutY = Position.Y;
+            return true;
+        }
+    }
+
+    return false;
+}
+
+void UAnimationGraph::ClearEditorNodePositions()
+{
+    EditorNodePositions.Empty();
+}
+
 bool UAnimationGraph::IsAnimationGraphDataValid() const
 {
     if (!bSerializationValid || !Skeleton || States.IsEmpty() || FindStateIndex(EntryStateName) == -1)
@@ -318,6 +365,14 @@ bool UAnimationGraph::RenameState(const FName& OldName, const FName& NewName)
 
     States[StateIndex].Name = NewName;
 
+    for (FAnimGraphEditorNodePosition& Position : EditorNodePositions)
+    {
+        if (Position.NodeName == OldName)
+        {
+            Position.NodeName = NewName;
+        }
+    }
+
     if (EntryStateName == OldName)
     {
         EntryStateName = NewName;
@@ -364,6 +419,14 @@ bool UAnimationGraph::RemoveState(const FName& StateName)
     if (EntryStateName == StateName)
     {
         EntryStateName = NAME_None;
+    }
+
+    for (int32 Index = EditorNodePositions.Num() - 1; Index >= 0; --Index)
+    {
+        if (EditorNodePositions[Index].NodeName == StateName)
+        {
+            EditorNodePositions.RemoveAt(static_cast<uint32>(Index));
+        }
     }
 
     States.RemoveAt(static_cast<uint32>(StateIndex));
@@ -479,6 +542,7 @@ void UAnimationGraph::Serialize(FStructuredArchive::FRecord Record)
         Parameters.Empty();
         States.Empty();
         Transitions.Empty();
+        EditorNodePositions.Empty();
     }
 
     UObject* SkeletonObject = Skeleton;
@@ -589,6 +653,27 @@ void UAnimationGraph::Serialize(FStructuredArchive::FRecord Record)
             Transition.Rule = static_cast<EAnimTransitionRule>(RuleValue);
 
             Transitions.Add(std::move(LoadedTransition));
+        }
+    }
+
+    int32 NodePositionCount = EditorNodePositions.Num();
+
+    FStructuredArchive::FArray NodePositionArray = Record.EnterArray("EditorNodePositions", NodePositionCount);
+
+    for (int32 Index = 0; Index < NodePositionCount; ++Index)
+    {
+        FStructuredArchive::FRecord PositionRecord = NodePositionArray.EnterElement().EnterRecord();
+
+        FAnimGraphEditorNodePosition LoadedPosition;
+        FAnimGraphEditorNodePosition& Position = bIsLoading ? LoadedPosition : EditorNodePositions[Index];
+
+        PositionRecord << SA_VALUE("NodeName", Position.NodeName);
+        PositionRecord << SA_VALUE("X", Position.X);
+        PositionRecord << SA_VALUE("Y", Position.Y);
+
+        if (bIsLoading)
+        {
+            EditorNodePositions.Add(std::move(LoadedPosition));
         }
     }
 

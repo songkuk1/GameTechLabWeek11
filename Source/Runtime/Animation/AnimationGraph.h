@@ -52,6 +52,13 @@ struct FAnimGraphTransitionDefinition
     bool bAnyState = false;
 };
 
+struct FAnimGraphEditorNodePosition
+{
+    FName NodeName = NAME_None;
+    float X = 0.0f;
+    float Y = 0.0f;
+};
+
 class UAnimationGraph : public UAnimationAsset
 {
     DECLARE_CLASS(UAnimationGraph, UAnimationAsset)
@@ -69,6 +76,9 @@ public:
     const TArray<FAnimGraphParameterDefinition>& GetParameters() const { return Parameters; }
     const TArray<FAnimGraphStateDefinition>& GetStates() const { return States; }
     const TArray<FAnimGraphTransitionDefinition>& GetTransitions() const { return Transitions; }
+    bool SetEditorNodePosition(const FName& NodeName, float X, float Y);
+    bool GetEditorNodePosition(const FName& NodeName, float& OutX, float& OutY) const;
+    void ClearEditorNodePositions();
     bool IsAnimationGraphDataValid() const;
 
     // Parameter
@@ -100,5 +110,6 @@ private:
     TArray<FAnimGraphParameterDefinition> Parameters;
     TArray<FAnimGraphStateDefinition> States;
     TArray<FAnimGraphTransitionDefinition> Transitions;
+    TArray<FAnimGraphEditorNodePosition> EditorNodePositions;
     bool bSerializationValid = true;
 };

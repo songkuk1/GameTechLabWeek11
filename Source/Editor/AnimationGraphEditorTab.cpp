@@ -1854,8 +1854,6 @@ void FAnimationGraphEditorTab::DrawGraphCanvas()
 
     std::vector<ImVec2> NodePositions(static_cast<size_t>(StateCount));
 
-    int32 MaxRows = 1;
-
     for (int32 Index = 0; Index < StateCount; ++Index)
     {
         const int32 Level = Levels[Index];
@@ -1863,21 +1861,45 @@ void FAnimationGraphEditorTab::DrawGraphCanvas()
 
         NodePositions[Index] = ImVec2(LeftPadding + Level * (NodeWidth + ColumnGap), 100.0f + Row * (NodeHeight + RowGap));
 
-        MaxRows = std::max(MaxRows, Row + 1);
+        float SavedX = 0.0f;
+        float SavedY = 0.0f;
+
+        if (Graph->GetEditorNodePosition(States[Index].Name, SavedX, SavedY))
+        {
+            NodePositions[Index] = ImVec2(SavedX, SavedY);
+        }
     }
 
-    const bool bHasAnyStateTransition = std::any_of(Transitions.begin(), Transitions.end(), [](const FAnimGraphTransitionDefinition& Transition){return Transition.bAnyState;});
 
-    const float CanvasWidth = LeftPadding + (MaxLevel + 1) * (NodeWidth + ColumnGap) + 70.0f;
 
-    const float CanvasHeight = 100.0f + MaxRows * (NodeHeight + RowGap) + 60.0f;
+
+    const bool bHasAnyStateTransition = std::any_of(Transitions.begin(), Transitions.end(), [](const FAnimGraphTransitionDefinition& Transition) { return Transition.bAnyState; });
+
+    ImVec2 AnyStateLocalPosition(20.0f, 25.0f);
+
+    float SavedAnyStateX = 0.0f;
+    float SavedAnyStateY = 0.0f;
+
+    if (Graph->GetEditorNodePosition(NAME_None, SavedAnyStateX, SavedAnyStateY))
+    {
+        AnyStateLocalPosition = ImVec2(SavedAnyStateX, SavedAnyStateY);
+    }
+
+    float MaxRight = bHasAnyStateTransition ? AnyStateLocalPosition.x + 150.0f : 0.0f;
+    float MaxBottom = bHasAnyStateTransition ? AnyStateLocalPosition.y + 36.0f : 0.0f;
+
+    for (int32 Index = 0; Index < StateCount; ++Index)
+    {
+        MaxRight = std::max(MaxRight, NodePositions[Index].x + NodeWidth);
+        MaxBottom = std::max(MaxBottom, NodePositions[Index].y + NodeHeight);
+    }
 
     const ImVec2 CanvasOrigin = ImGui::GetCursorScreenPos();
 
     const ImVec2 Available = ImGui::GetContentRegionAvail();
 
-    const float ContentWidth = std::max(CanvasWidth, Available.x);
-    const float ContentHeight = std::max(CanvasHeight, Available.y);
+    const float ContentWidth = std::max(MaxRight + 70.0f, Available.x);
+    const float ContentHeight = std::max(MaxBottom + 60.0f, Available.y);
 
     ImGui::Dummy(ImVec2(ContentWidth, ContentHeight));
 
@@ -1909,7 +1931,7 @@ void FAnimationGraphEditorTab::DrawGraphCanvas()
 
     const ImVec2 MousePosition = ImGui::GetIO().MousePos;
 
-    const ImVec2 AnyStatePosition(CanvasOrigin.x + 20.0f, CanvasOrigin.y + 25.0f);
+    ImVec2 AnyStatePosition(CanvasOrigin.x + AnyStateLocalPosition.x, CanvasOrigin.y + AnyStateLocalPosition.y);
 
     for (int32 Index = 0; Index < Transitions.Num(); ++Index)
     {
@@ -2055,6 +2077,12 @@ void FAnimationGraphEditorTab::DrawGraphCanvas()
             }
         }
     }
+    int32 HoveredNodeIndex = -1;
+    int32 HoveredInputPinIndex = -1;
+    int32 HoveredOutputPinIndex = -1;
+
+    bool bHoveredAnyStateBody = false;
+    bool bHoveredAnyStateOutputPin = false;
 
     if (bHasAnyStateTransition)
     {
@@ -2065,17 +2093,53 @@ void FAnimationGraphEditorTab::DrawGraphCanvas()
         DrawList->AddRect(AnyStatePosition, AnyMax, IM_COL32(160, 190, 120, 255), 6.0f, 0, 2.0f);
 
         DrawList->AddText(ImVec2(AnyStatePosition.x + 45.0f, AnyStatePosition.y + 10.0f), IM_COL32(235, 240, 225, 255), "Any State");
-    }
 
-    int32 HoveredNodeIndex = -1;
+        DrawList->AddCircleFilled(ImVec2(AnyStatePosition.x + 150.0f, AnyStatePosition.y + 18.0f), 7.0f, bHoveredAnyStateOutputPin ? IM_COL32(120, 190, 255, 255) : IM_COL32(170, 180, 195, 255), 16);
+    }
 
     if (ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem))
     {
+        if (bHasAnyStateTransition)
+        {
+            const float OutputX = AnyStatePosition.x + 150.0f;
+            const float OutputY = AnyStatePosition.y + 18.0f;
+
+            const float DX = MousePosition.x - OutputX;
+            const float DY = MousePosition.y - OutputY;
+
+            bHoveredAnyStateOutputPin = DX * DX + DY * DY <= 144.0f;
+
+            bHoveredAnyStateBody = MousePosition.x >= AnyStatePosition.x && MousePosition.x <= AnyStatePosition.x + 150.0f &&
+                MousePosition.y >= AnyStatePosition.y && MousePosition.y <= AnyStatePosition.y + 36.0f;
+        }
+
         for (int32 Index = 0; Index < StateCount; ++Index)
         {
             const ImVec2 Position(CanvasOrigin.x + NodePositions[Index].x, CanvasOrigin.y + NodePositions[Index].y);
 
-            if (MousePosition.x >= Position.x && MousePosition.x <= Position.x + NodeWidth && MousePosition.y >= Position.y && MousePosition.y <= Position.y + NodeHeight)
+            const ImVec2 InputPin(Position.x, Position.y + NodeHeight * 0.5f);
+            const ImVec2 OutputPin(Position.x + NodeWidth, Position.y + NodeHeight * 0.5f);
+
+            const float InputDX = MousePosition.x - InputPin.x;
+            const float InputDY = MousePosition.y - InputPin.y;
+
+            const float OutputDX = MousePosition.x - OutputPin.x;
+            const float OutputDY = MousePosition.y - OutputPin.y;
+
+            if (InputDX * InputDX + InputDY * InputDY <= 144.0f)
+            {
+                HoveredInputPinIndex = Index;
+                break;
+            }
+
+            if (OutputDX * OutputDX + OutputDY * OutputDY <= 144.0f)
+            {
+                HoveredOutputPinIndex = Index;
+                break;
+            }
+
+            if (MousePosition.x >= Position.x && MousePosition.x <= Position.x + NodeWidth &&
+                MousePosition.y >= Position.y && MousePosition.y <= Position.y + NodeHeight)
             {
                 HoveredNodeIndex = Index;
                 break;
@@ -2083,46 +2147,95 @@ void FAnimationGraphEditorTab::DrawGraphCanvas()
         }
     }
 
-    if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) && HoveredNodeIndex != -1)
+    if (ImGui::IsMouseClicked(ImGuiMouseButton_Left))
     {
-        DraggingFromStateIndex = HoveredNodeIndex;
-        bIsTransitionDragging = false;
-
-        TransitionDragStartX = MousePosition.x;
-        TransitionDragStartY = MousePosition.y;
-
-        SelectedStateIndex = HoveredNodeIndex;
-        SelectedTransitionIndex = -1;
-
-        bFocusStateDetails = true;
-        bFocusTransitionDetails = false;
-    }
-
-    if (States.IsValidIndex(DraggingFromStateIndex) && ImGui::IsMouseDown(ImGuiMouseButton_Left))
-    {
-        const float DX = MousePosition.x - TransitionDragStartX;
-        const float DY = MousePosition.y - TransitionDragStartY;
-
-        if (DX * DX + DY * DY >= 36.0f)
+        if (HoveredOutputPinIndex != -1)
         {
+            DraggingFromStateIndex = HoveredOutputPinIndex;
+            bDraggingAnyStateTransition = false;
             bIsTransitionDragging = true;
+        }
+        else if (bHoveredAnyStateOutputPin)
+        {
+            DraggingFromStateIndex = -1;
+            bDraggingAnyStateTransition = true;
+            bIsTransitionDragging = true;
+        }
+        else if (HoveredNodeIndex != -1)
+        {
+            DraggingNodeIndex = HoveredNodeIndex;
+            bDraggingAnyStateNode = false;
+
+            NodeDragOffsetX = MousePosition.x - (CanvasOrigin.x + NodePositions[HoveredNodeIndex].x);
+            NodeDragOffsetY = MousePosition.y - (CanvasOrigin.y + NodePositions[HoveredNodeIndex].y);
+
+            SelectedStateIndex = HoveredNodeIndex;
+            SelectedTransitionIndex = -1;
+
+            bFocusStateDetails = true;
+            bFocusTransitionDetails = false;
+        }
+        else if (bHoveredAnyStateBody)
+        {
+            DraggingNodeIndex = -1;
+            bDraggingAnyStateNode = true;
+
+            NodeDragOffsetX = MousePosition.x - AnyStatePosition.x;
+            NodeDragOffsetY = MousePosition.y - AnyStatePosition.y;
+
+            SelectedStateIndex = -1;
+            SelectedTransitionIndex = -1;
+
+            bFocusStateDetails = false;
+            bFocusTransitionDetails = false;
         }
     }
 
-    if (States.IsValidIndex(DraggingFromStateIndex) && ImGui::IsMouseReleased(ImGuiMouseButton_Left))
+    if (ImGui::IsMouseDown(ImGuiMouseButton_Left))
     {
-        if (bIsTransitionDragging && States.IsValidIndex(HoveredNodeIndex) && HoveredNodeIndex != DraggingFromStateIndex)
+        if (States.IsValidIndex(DraggingNodeIndex))
         {
-            const FName FromState = States[DraggingFromStateIndex].Name;
-            const FName ToState = States[HoveredNodeIndex].Name;
+            const float NewX = std::max(20.0f, MousePosition.x - CanvasOrigin.x - NodeDragOffsetX);
+            const float NewY = std::max(20.0f, MousePosition.y - CanvasOrigin.y - NodeDragOffsetY);
 
+            if (std::abs(NodePositions[DraggingNodeIndex].x - NewX) > 0.01f || std::abs(NodePositions[DraggingNodeIndex].y - NewY) > 0.01f)
+            {
+                NodePositions[DraggingNodeIndex] = ImVec2(NewX, NewY);
+                Graph->SetEditorNodePosition(States[DraggingNodeIndex].Name, NewX, NewY);
+                bDirty = true;
+            }
+        }
+
+        if (bDraggingAnyStateNode)
+        {
+            const float NewX = std::max(20.0f, MousePosition.x - CanvasOrigin.x - NodeDragOffsetX);
+            const float NewY = std::max(20.0f, MousePosition.y - CanvasOrigin.y - NodeDragOffsetY);
+
+            if (std::abs(AnyStateLocalPosition.x - NewX) > 0.01f || std::abs(AnyStateLocalPosition.y - NewY) > 0.01f)
+            {
+                AnyStateLocalPosition = ImVec2(NewX, NewY);
+                AnyStatePosition = ImVec2(CanvasOrigin.x + NewX, CanvasOrigin.y + NewY);
+
+                Graph->SetEditorNodePosition(NAME_None, NewX, NewY);
+                bDirty = true;
+            }
+        }
+    }
+
+    if (bIsTransitionDragging && ImGui::IsMouseReleased(ImGuiMouseButton_Left) && States.IsValidIndex(HoveredInputPinIndex))
+    {
+        const FName FromState = bDraggingAnyStateTransition ? NAME_None : States.IsValidIndex(DraggingFromStateIndex) ? States[DraggingFromStateIndex].Name : NAME_None;
+        const FName ToState = States[HoveredInputPinIndex].Name;
+
+        if (bDraggingAnyStateTransition || (States.IsValidIndex(DraggingFromStateIndex) && DraggingFromStateIndex != HoveredInputPinIndex))
+        {
             int32 ExistingTransitionIndex = -1;
 
             for (int32 Index = 0; Index < Transitions.Num(); ++Index)
             {
                 const FAnimGraphTransitionDefinition& Existing = Transitions[Index];
 
-                if (!Existing.bAnyState && Existing.FromState == FromState && Existing.ToState == ToState)
+                if (Existing.bAnyState == bDraggingAnyStateTransition && Existing.FromState == FromState && Existing.ToState == ToState)
                 {
                     ExistingTransitionIndex = Index;
                     break;
@@ -2133,48 +2246,81 @@ void FAnimationGraphEditorTab::DrawGraphCanvas()
             {
                 SelectedTransitionIndex = ExistingTransitionIndex;
                 SelectedStateIndex = -1;
-                bFocusTransitionDetails = true;
-                bFocusStateDetails = false;
-                ErrorMessage.clear();
-            }
-            else if (Graph->AddTransition(FromState, ToState, EAnimTransitionRule::StateFinished, NAME_None, 0, 0.2f, 0.0f))
-            {
-                SelectedTransitionIndex = Graph->GetTransitions().Num() - 1;
-                SelectedStateIndex = -1;
 
                 bFocusTransitionDetails = true;
                 bFocusStateDetails = false;
-                bDirty = true;
 
                 ErrorMessage.clear();
-                RefreshPreview();
             }
             else
             {
-                ErrorMessage = "Could not create Transition.";
+                const bool bAdded = bDraggingAnyStateTransition
+                    ? Graph->AddAnyStateTransition(ToState, EAnimTransitionRule::StateFinished, NAME_None, 0, 0.2f, 0.0f)
+                    : Graph->AddTransition(FromState, ToState, EAnimTransitionRule::StateFinished, NAME_None, 0, 0.2f, 0.0f);
+
+                if (bAdded)
+                {
+                    SelectedTransitionIndex = Graph->GetTransitions().Num() - 1;
+                    SelectedStateIndex = -1;
+
+                    bFocusTransitionDetails = true;
+                    bFocusStateDetails = false;
+
+                    bDirty = true;
+                    ErrorMessage.clear();
+
+                    RefreshPreview();
+                }
+                else
+                {
+                    ErrorMessage = "Could not create Transition.";
+                }
             }
         }
+        else
+        {
+            ErrorMessage = "Invalid Transition connection.";
+        }
+    }
 
+    if (ImGui::IsMouseReleased(ImGuiMouseButton_Left))
+    {
+        DraggingNodeIndex = -1;
         DraggingFromStateIndex = -1;
+
+        bDraggingAnyStateNode = false;
+        bDraggingAnyStateTransition = false;
         bIsTransitionDragging = false;
     }
 
-    if (bIsTransitionDragging && States.IsValidIndex(DraggingFromStateIndex) && ImGui::IsMouseDown(ImGuiMouseButton_Left))
+    if (bIsTransitionDragging && ImGui::IsMouseDown(ImGuiMouseButton_Left))
     {
-        const ImVec2 SourcePosition(CanvasOrigin.x + NodePositions[DraggingFromStateIndex].x, CanvasOrigin.y + NodePositions[DraggingFromStateIndex].y);
-        const ImVec2 SourceCenter(SourcePosition.x + NodeWidth * 0.5f, SourcePosition.y + NodeHeight * 0.5f);
-        const ImVec2 Delta(MousePosition.x - SourceCenter.x, MousePosition.y - SourceCenter.y);
+        ImVec2 SourceCenter;
 
+        if (bDraggingAnyStateTransition)
+        {
+            SourceCenter = ImVec2(AnyStatePosition.x + 150.0f, AnyStatePosition.y + 18.0f);
+        }
+        else if (States.IsValidIndex(DraggingFromStateIndex))
+        {
+            SourceCenter = ImVec2(CanvasOrigin.x + NodePositions[DraggingFromStateIndex].x + NodeWidth,
+                CanvasOrigin.y + NodePositions[DraggingFromStateIndex].y + NodeHeight * 0.5f);
+        }
+        else
+        {
+            SourceCenter = MousePosition;
+        }
+
+        const ImVec2 Delta(MousePosition.x - SourceCenter.x, MousePosition.y - SourceCenter.y);
         const float Length = std::sqrt(Delta.x * Delta.x + Delta.y * Delta.y);
 
         if (Length > 0.001f)
         {
-            const float BoundaryScale = std::min((NodeWidth * 0.5f) / std::max(std::abs(Delta.x), 0.001f), (NodeHeight * 0.5f) / std::max(std::abs(Delta.y), 0.001f));
+            const ImVec2 Direction(Delta.x / Length, Delta.y / Length);
 
-            const ImVec2 Start(SourceCenter.x + Delta.x * BoundaryScale, SourceCenter.y + Delta.y * BoundaryScale);
+            const ImVec2 Start(SourceCenter.x + Direction.x * 8.0f, SourceCenter.y + Direction.y * 8.0f);
             const ImVec2 End = MousePosition;
 
-            const ImVec2 Direction(Delta.x / Length, Delta.y / Length);
             const float ControlDistance = std::min(100.0f, Length * 0.35f);
 
             const ImVec2 Control1(Start.x + Direction.x * ControlDistance, Start.y + Direction.y * ControlDistance);
@@ -2193,7 +2339,7 @@ void FAnimationGraphEditorTab::DrawGraphCanvas()
 
         const ImVec2 NodeMax(Position.x + NodeWidth, Position.y + NodeHeight);
 
-        const bool bHovered = HoveredNodeIndex == Index;
+        const bool bHovered = HoveredNodeIndex == Index || HoveredInputPinIndex == Index || HoveredOutputPinIndex == Index;
 
         const bool bSelected = SelectedStateIndex == Index;
 
@@ -2208,6 +2354,15 @@ void FAnimationGraphEditorTab::DrawGraphCanvas()
         DrawList->AddRectFilled(Position, NodeMax, Background, 7.0f);
 
         DrawList->AddRect(Position, NodeMax, Border, 7.0f, 0, bSelected ? 2.5f : 1.0f);
+
+        const ImVec2 InputPin(Position.x, Position.y + NodeHeight * 0.5f);
+        const ImVec2 OutputPin(NodeMax.x, Position.y + NodeHeight * 0.5f);
+
+        const ImU32 InputPinColor = HoveredInputPinIndex == Index ? IM_COL32(120, 220, 160, 255) : IM_COL32(170, 180, 195, 255);
+        const ImU32 OutputPinColor = HoveredOutputPinIndex == Index ? IM_COL32(120, 190, 255, 255) : IM_COL32(170, 180, 195, 255);
+
+        DrawList->AddCircleFilled(InputPin, 7.0f, InputPinColor, 16);
+        DrawList->AddCircleFilled(OutputPin, 7.0f, OutputPinColor, 16);
 
         const FString StateName = State.Name.ToString();
 

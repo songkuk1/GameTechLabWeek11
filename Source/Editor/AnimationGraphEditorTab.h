@@ -52,10 +52,13 @@ private:
     UBlendSpace1D* NewBlendSpace = nullptr;
 
     int32 SelectedStateIndex = -1;
+    int32 DraggingNodeIndex = -1;
     int32 DraggingFromStateIndex = -1;
+    bool bDraggingAnyStateNode = false;
+    bool bDraggingAnyStateTransition = false;
     bool bIsTransitionDragging = false;
-    float TransitionDragStartX = 0.0f;
-    float TransitionDragStartY = 0.0f;
+    float NodeDragOffsetX = 0.0f;
+    float NodeDragOffsetY = 0.0f;
 
     char NewStateNameBuffer[64] = "NewState";
     char RenameStateBuffer[64] = {};
