@@ -1911,44 +1911,79 @@ void FAnimationGraphEditorTab::DrawGraphCanvas()
 
     bool bRefreshPreview = false;
 
-    auto SubmitEdgePin = [](ed::PinId PinId, ed::PinKind PinKindValue, const ImVec2& NodeMin, const ImVec2& NodeMax, int32 Side)
+    struct FSubmittedPinRecord
+    {
+        std::uintptr_t Id;
+        const char* Owner;
+    };
+
+    std::vector<FSubmittedPinRecord> SubmittedPinRecords;
+
+    auto RegisterSubmittedPin = [&](ed::PinId PinId, const char* Owner)
         {
-            constexpr float PinWidth = 28.0f;
-            constexpr float PinHeight = 28.0f;
+            const std::uintptr_t Id = static_cast<std::uintptr_t>(PinId.Get());
 
-            const float Offset = PinKindValue == ed::PinKind::Input ? -18.0f : 18.0f;
+            for (const FSubmittedPinRecord& Record : SubmittedPinRecords)
+            {
+                if (Record.Id == Id)
+                {
+                    std::printf("[AnimationGraph] Duplicate PinId=%llu. Previous=%s, Current=%s\n", static_cast<unsigned long long>(Id), Record.Owner, Owner);
+                    return false;
+                }
+            }
 
+            SubmittedPinRecords.push_back({ Id, Owner });
+            return true;
+        };
+
+    auto SubmitEdgePin = [&](ed::PinId PinId, ed::PinKind PinKindValue, const ImVec2& NodeMin, const ImVec2& NodeMax, int32 Side, bool bSplitByKind, const char* PinOwner)
+        {
+            constexpr float PinDepth = 36.0f;
+
+            const float NodeWidth = NodeMax.x - NodeMin.x;
+            const float NodeHeight = NodeMax.y - NodeMin.y;
             const float CenterX = (NodeMin.x + NodeMax.x) * 0.5f;
             const float CenterY = (NodeMin.y + NodeMax.y) * 0.5f;
+            const bool bInput = PinKindValue == ed::PinKind::Input;
 
             ImVec2 PinPosition;
+            ImVec2 PinSize;
             ImVec2 PivotAlignment;
             ImVec2 PinDirection;
+            ImVec2 Anchor;
 
             switch (Side)
             {
             case GraphPinSideLeft:
-                PinPosition = ImVec2(NodeMin.x, CenterY + Offset - PinHeight * 0.5f);
+                PinSize = ImVec2(PinDepth, bSplitByKind ? NodeHeight * 0.5f : NodeHeight);
+                PinPosition = ImVec2(NodeMin.x, bSplitByKind && !bInput ? CenterY : NodeMin.y);
                 PivotAlignment = ImVec2(0.0f, 0.5f);
                 PinDirection = ImVec2(-1.0f, 0.0f);
+                Anchor = ImVec2(NodeMin.x, PinPosition.y + PinSize.y * 0.5f);
                 break;
 
             case GraphPinSideRight:
-                PinPosition = ImVec2(NodeMax.x - PinWidth, CenterY + Offset - PinHeight * 0.5f);
+                PinSize = ImVec2(PinDepth, bSplitByKind ? NodeHeight * 0.5f : NodeHeight);
+                PinPosition = ImVec2(NodeMax.x - PinDepth, bSplitByKind && !bInput ? CenterY : NodeMin.y);
                 PivotAlignment = ImVec2(1.0f, 0.5f);
                 PinDirection = ImVec2(1.0f, 0.0f);
+                Anchor = ImVec2(NodeMax.x, PinPosition.y + PinSize.y * 0.5f);
                 break;
 
             case GraphPinSideTop:
-                PinPosition = ImVec2(CenterX + Offset - PinWidth * 0.5f, NodeMin.y);
+                PinSize = ImVec2(bSplitByKind ? NodeWidth * 0.5f : NodeWidth, PinDepth);
+                PinPosition = ImVec2(bSplitByKind && !bInput ? CenterX : NodeMin.x, NodeMin.y);
                 PivotAlignment = ImVec2(0.5f, 0.0f);
                 PinDirection = ImVec2(0.0f, -1.0f);
+                Anchor = ImVec2(PinPosition.x + PinSize.x * 0.5f, NodeMin.y);
                 break;
 
             case GraphPinSideBottom:
-                PinPosition = ImVec2(CenterX + Offset - PinWidth * 0.5f, NodeMax.y - PinHeight);
+                PinSize = ImVec2(bSplitByKind ? NodeWidth * 0.5f : NodeWidth, PinDepth);
+                PinPosition = ImVec2(bSplitByKind && !bInput ? CenterX : NodeMin.x, NodeMax.y - PinDepth);
                 PivotAlignment = ImVec2(0.5f, 1.0f);
                 PinDirection = ImVec2(0.0f, 1.0f);
+                Anchor = ImVec2(PinPosition.x + PinSize.x * 0.5f, NodeMax.y);
                 break;
 
             default:
@@ -1959,17 +1994,30 @@ void FAnimationGraphEditorTab::DrawGraphCanvas()
 
             ed::PushStyleVar(ed::StyleVar_SourceDirection, PinDirection);
             ed::PushStyleVar(ed::StyleVar_TargetDirection, PinDirection);
-
+            if (!RegisterSubmittedPin(PinId, PinOwner))
+            {
+                return;
+            }
             ed::BeginPin(PinId, PinKindValue);
             ed::PinPivotAlignment(PivotAlignment);
             ed::PinPivotSize(ImVec2(0.0f, 0.0f));
-            ImGui::Dummy(ImVec2(PinWidth, PinHeight));
+            ImGui::Dummy(PinSize);
+
+            if (ImGui::IsItemHovered())
+            {
+                const ImU32 HoverColor = bInput ? IM_COL32(255, 180, 75, 255) : IM_COL32(65, 190, 255, 255);
+                ImDrawList* HoverDrawList = ImGui::GetWindowDrawList();
+                HoverDrawList->AddCircleFilled(Anchor, 5.0f, HoverColor);
+                HoverDrawList->AddCircle(Anchor, 8.0f, IM_COL32(245, 245, 245, 230), 0, 1.5f);
+                ImGui::SetTooltip(bInput ? "Transition Destination" : "Transition Source");
+            }
+
             ed::EndPin();
 
             ed::PopStyleVar(2);
         };
 
-    auto SubmitTransitionPin = [](ed::PinId PinId, ed::PinKind PinKindValue, const ImVec2& NodeMin, const ImVec2& NodeMax, int32 Side, float TangentOffset)
+    auto SubmitTransitionPin = [&](ed::PinId PinId, ed::PinKind PinKindValue, const ImVec2& NodeMin, const ImVec2& NodeMax, int32 Side, float TangentOffset, const char* PinOwner)
         {
             constexpr float PinSize = 4.0f;
 
@@ -2013,6 +2061,10 @@ void FAnimationGraphEditorTab::DrawGraphCanvas()
             ImGui::SetCursorScreenPos(PinPosition);
             ed::PushStyleVar(ed::StyleVar_SourceDirection, PinDirection);
             ed::PushStyleVar(ed::StyleVar_TargetDirection, PinDirection);
+            if (!RegisterSubmittedPin(PinId, PinOwner))
+            {
+                return;
+            }
             ed::BeginPin(PinId, PinKindValue);
             ed::PinPivotAlignment(PivotAlignment);
             ed::PinPivotSize(ImVec2(0.0f, 0.0f));
@@ -2215,14 +2267,14 @@ void FAnimationGraphEditorTab::DrawGraphCanvas()
 
     for (int32 Side = 0; Side < GraphPinSideCount; ++Side)
     {
-        SubmitEdgePin(MakeAnyStateOutputPinId(Side), ed::PinKind::Output, AnyStateMin, AnyStateMax, Side);
+        SubmitEdgePin(MakeAnyStateOutputPinId(Side), ed::PinKind::Output, AnyStateMin, AnyStateMax, Side, false, "AnyStateOutput");
     }
 
     for (const FTransitionRoute& Route : TransitionRoutes)
     {
         if (Route.SourceNodeId == AnyStateNodeId)
         {
-            SubmitTransitionPin(MakeTransitionSourcePinId(Route.Transition), ed::PinKind::Output, AnyStateMin, AnyStateMax, Route.SourceSide, Route.SourceOffset);
+            SubmitTransitionPin(MakeTransitionSourcePinId(Route.Transition), ed::PinKind::Output, AnyStateMin, AnyStateMax, Route.SourceSide, Route.SourceOffset, "AnyStateTransitionSource");
         }
     }
 
@@ -2257,7 +2309,7 @@ void FAnimationGraphEditorTab::DrawGraphCanvas()
         
         for (int32 Side = 0; Side < GraphPinSideCount; ++Side)
         {
-            SubmitEdgePin(MakeEntryOutputPinId(Side), ed::PinKind::Output, EntryMin, EntryMax, Side);
+            SubmitEdgePin(MakeEntryOutputPinId(Side), ed::PinKind::Output, EntryMin, EntryMax, Side, false, "EntryOutput");
         }
 
         ImGui::SetCursorScreenPos(EntryMin);
@@ -2335,8 +2387,8 @@ void FAnimationGraphEditorTab::DrawGraphCanvas()
 
         for (int32 Side = 0; Side < GraphPinSideCount; ++Side)
         {
-            SubmitEdgePin(MakeStateInputPinId(State.Name, Side), ed::PinKind::Input, NodeMin, NodeMax, Side);
-            SubmitEdgePin(MakeStateOutputPinId(State.Name, Side), ed::PinKind::Output, NodeMin, NodeMax, Side);
+            SubmitEdgePin(MakeAnyStateOutputPinId(Side), ed::PinKind::Output, AnyStateMin, AnyStateMax, Side, false, "AnyStateOutput");
+            SubmitEdgePin(MakeAnyStateOutputPinId(Side), ed::PinKind::Output, AnyStateMin, AnyStateMax, Side, false, "AnyStateOutput");
         }
 
         const ed::NodeId CurrentStateNodeId = MakeStateNodeId(State.Name);
@@ -2345,12 +2397,12 @@ void FAnimationGraphEditorTab::DrawGraphCanvas()
         {
             if (Route.SourceNodeId == CurrentStateNodeId)
             {
-                SubmitTransitionPin(MakeTransitionSourcePinId(Route.Transition), ed::PinKind::Output, NodeMin, NodeMax, Route.SourceSide, Route.SourceOffset);
+                SubmitTransitionPin(MakeTransitionSourcePinId(Route.Transition), ed::PinKind::Output, AnyStateMin, AnyStateMax, Route.SourceSide, Route.SourceOffset, "AnyStateTransitionSource");
             }
 
             if (Route.DestinationNodeId == CurrentStateNodeId)
             {
-                SubmitTransitionPin(MakeTransitionDestinationPinId(Route.Transition), ed::PinKind::Input, NodeMin, NodeMax, Route.DestinationSide, Route.DestinationOffset);
+                SubmitTransitionPin(MakeTransitionDestinationPinId(Route.Transition), ed::PinKind::Input, NodeMin, NodeMax, Route.DestinationSide, Route.DestinationOffset, "StateTransitionDestination");
             }
         }
 
@@ -2599,66 +2651,149 @@ void FAnimationGraphEditorTab::DrawGraphCanvas()
 
     ImDrawList* DrawList = ImGui::GetWindowDrawList();
 
-    for (const FAnimGraphTransitionDefinition& Transition : Graph->GetTransitions())
+    struct FLabelScreenRect
     {
-        const ed::NodeId SourceNodeId = Transition.bAnyState ? AnyStateNodeId : MakeStateNodeId(Transition.FromState);
-        const ed::NodeId DestinationNodeId = MakeStateNodeId(Transition.ToState);
+        ImVec2 Min;
+        ImVec2 Max;
+    };
 
-        const ImVec2 SourcePosition = ed::GetNodePosition(SourceNodeId);
-        const ImVec2 DestinationPosition = ed::GetNodePosition(DestinationNodeId);
+    std::vector<FLabelScreenRect> OccupiedRects;
 
-        if (SourcePosition.x == InvalidPosition || DestinationPosition.x == InvalidPosition)
+    auto IsRectOverlapping = [](const FLabelScreenRect& A, const FLabelScreenRect& B)
         {
-            continue;
-        }
+            return A.Min.x < B.Max.x && A.Max.x > B.Min.x && A.Min.y < B.Max.y && A.Max.y > B.Min.y;
+        };
 
-        const ImVec2 SourceSize = ed::GetNodeSize(SourceNodeId);
-        const ImVec2 DestinationSize = ed::GetNodeSize(DestinationNodeId);
+    auto AddNodeObstacle = [&](ed::NodeId NodeId)
+        {
+            const ImVec2 Position = ed::GetNodePosition(NodeId);
 
-        const ImVec2 SourceCenter(SourcePosition.x + SourceSize.x * 0.5f, SourcePosition.y + SourceSize.y * 0.5f);
-        const ImVec2 DestinationCenter(DestinationPosition.x + DestinationSize.x * 0.5f, DestinationPosition.y + DestinationSize.y * 0.5f);
+            if (Position.x == InvalidPosition || Position.y == InvalidPosition)
+            {
+                return;
+            }
+
+            const ImVec2 Size = GetKnownNodeSize(NodeId);
+            FLabelScreenRect Rect;
+            Rect.Min = ed::CanvasToScreen(Position);
+            Rect.Max = ed::CanvasToScreen(ImVec2(Position.x + Size.x, Position.y + Size.y));
+            OccupiedRects.push_back(Rect);
+        };
+
+    AddNodeObstacle(AnyStateNodeId);
+
+    if (bHasEntryState)
+    {
+        AddNodeObstacle(MakeEntryNodeId());
+    }
+
+    for (const FAnimGraphStateDefinition& State : States)
+    {
+        AddNodeObstacle(MakeStateNodeId(State.Name));
+    }
+
+    for (const FTransitionRoute& Route : TransitionRoutes)
+    {
+        const FAnimGraphTransitionDefinition& Transition = Route.Transition;
+
+        const ImVec2 SourceCenter = GetNodeCenter(Route.SourceNodeId);
+        const ImVec2 DestinationCenter = GetNodeCenter(Route.DestinationNodeId);
 
         const float DeltaX = DestinationCenter.x - SourceCenter.x;
         const float DeltaY = DestinationCenter.y - SourceCenter.y;
         const float Length = std::sqrt(DeltaX * DeltaX + DeltaY * DeltaY);
 
-        const float DirectionSign = SourceNodeId.Get() < DestinationNodeId.Get() ? 1.0f : -1.0f;
+        const float DirectionSign = Route.SourceNodeId.Get() < Route.DestinationNodeId.Get() ? 1.0f : -1.0f;
 
-        const ImVec2 Perpendicular = Length > 0.001f
-            ? ImVec2(-DeltaY / Length * DirectionSign, DeltaX / Length * DirectionSign)
-            : ImVec2(0.0f, 1.0f);
+        const ImVec2 Tangent = Length > 0.001f ? ImVec2(DeltaX / Length, DeltaY / Length) : ImVec2(1.0f, 0.0f);
+        const ImVec2 Perpendicular = Length > 0.001f ? ImVec2(-DeltaY / Length * DirectionSign, DeltaX / Length * DirectionSign) : ImVec2(0.0f, 1.0f);
 
-        float RouteOffset = 0.0f;
+        const float RouteOffset = (Route.SourceOffset + Route.DestinationOffset) * 0.5f;
 
-        for (const FTransitionRoute& Route : TransitionRoutes)
-        {
-            if (MakeTransitionLinkId(Route.Transition) == MakeTransitionLinkId(Transition))
-            {
-                RouteOffset = (Route.SourceOffset + Route.DestinationOffset) * 0.5f;
-                break;
-            }
-        }
-
-        for (const FTransitionRoute& Route : TransitionRoutes)
-        {
-            if (MakeTransitionLinkId(Route.Transition) == MakeTransitionLinkId(Transition))
-            {
-                RouteOffset = (Route.SourceOffset + Route.DestinationOffset) * 0.25f;
-                break;
-            }
-        }
-
-        const ImVec2 CanvasCenter(
+        const ImVec2 Midpoint(
             (SourceCenter.x + DestinationCenter.x) * 0.5f + Perpendicular.x * RouteOffset,
             (SourceCenter.y + DestinationCenter.y) * 0.5f + Perpendicular.y * RouteOffset);
 
-        const ImVec2 LabelCenter = ed::CanvasToScreen(CanvasCenter);
+        const ImVec2 BaseScreenCenter = ed::CanvasToScreen(Midpoint);
 
         const FString RuleLabel = GetTransitionConditionLabel(Transition);
         const ImVec2 LabelSize = ImGui::CalcTextSize(RuleLabel.c_str());
+        const ImVec2 HalfSize(LabelSize.x * 0.5f + 7.0f, LabelSize.y * 0.5f + 5.0f);
 
-        DrawList->AddRectFilled(ImVec2(LabelCenter.x - LabelSize.x * 0.5f - 5.0f, LabelCenter.y - 10.0f), ImVec2(LabelCenter.x + LabelSize.x * 0.5f + 5.0f, LabelCenter.y + 10.0f), IM_COL32(35, 38, 44, 245), 4.0f);
-        DrawList->AddText(ImVec2(LabelCenter.x - LabelSize.x * 0.5f, LabelCenter.y - LabelSize.y * 0.5f), IM_COL32(220, 225, 235, 255), RuleLabel.c_str());
+        const float PerpendicularStep = std::max(26.0f, LabelSize.y + 12.0f);
+        const float TangentStep = LabelSize.x + 16.0f;
+
+        ImVec2 BestCenter = BaseScreenCenter;
+        FLabelScreenRect BestRect;
+        int32 BestCollisionCount = std::numeric_limits<int32>::max();
+
+        for (int32 Attempt = 0; Attempt < 33; ++Attempt)
+        {
+            float PerpendicularOffset = 0.0f;
+            float TangentOffset = 0.0f;
+
+            if (Attempt >= 1 && Attempt <= 12)
+            {
+                const int32 Ring = (Attempt + 1) / 2;
+                const float Sign = Attempt % 2 == 1 ? 1.0f : -1.0f;
+                PerpendicularOffset = Sign * PerpendicularStep * static_cast<float>(Ring);
+            }
+            else if (Attempt >= 13 && Attempt <= 20)
+            {
+                const int32 Variant = Attempt - 13;
+                const int32 Ring = Variant / 2 + 1;
+                const float Sign = Variant % 2 == 0 ? 1.0f : -1.0f;
+                TangentOffset = Sign * TangentStep * static_cast<float>(Ring);
+            }
+            else if (Attempt >= 21)
+            {
+                const int32 Variant = Attempt - 21;
+                const int32 Ring = Variant / 4 + 1;
+                const float PerpendicularSign = Variant % 4 < 2 ? 1.0f : -1.0f;
+                const float TangentSign = Variant % 2 == 0 ? 1.0f : -1.0f;
+
+                PerpendicularOffset = PerpendicularSign * PerpendicularStep * static_cast<float>(Ring);
+                TangentOffset = TangentSign * TangentStep * static_cast<float>(Ring);
+            }
+
+            const ImVec2 CandidateCenter(
+                BaseScreenCenter.x + Perpendicular.x * PerpendicularOffset + Tangent.x * TangentOffset,
+                BaseScreenCenter.y + Perpendicular.y * PerpendicularOffset + Tangent.y * TangentOffset);
+
+            const FLabelScreenRect CandidateRect
+            {
+                ImVec2(CandidateCenter.x - HalfSize.x, CandidateCenter.y - HalfSize.y),
+                ImVec2(CandidateCenter.x + HalfSize.x, CandidateCenter.y + HalfSize.y)
+            };
+
+            int32 CollisionCount = 0;
+
+            for (const FLabelScreenRect& OccupiedRect : OccupiedRects)
+            {
+                if (IsRectOverlapping(CandidateRect, OccupiedRect))
+                {
+                    ++CollisionCount;
+                }
+            }
+
+            if (CollisionCount < BestCollisionCount)
+            {
+                BestCollisionCount = CollisionCount;
+                BestCenter = CandidateCenter;
+                BestRect = CandidateRect;
+            }
+
+            if (CollisionCount == 0)
+            {
+                break;
+            }
+        }
+
+        OccupiedRects.push_back(BestRect);
+
+        DrawList->AddRectFilled(BestRect.Min, BestRect.Max, IM_COL32(35, 38, 44, 245), 4.0f);
+        DrawList->AddRect(BestRect.Min, BestRect.Max, IM_COL32(85, 95, 110, 220), 4.0f);
+        DrawList->AddText(ImVec2(BestCenter.x - LabelSize.x * 0.5f, BestCenter.y - LabelSize.y * 0.5f), IM_COL32(220, 225, 235, 255), RuleLabel.c_str());
     }
 
     if (ed::HasSelectionChanged())
