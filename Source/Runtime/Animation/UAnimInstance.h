@@ -20,7 +20,13 @@ public:
 	void SetRoot(AnimNode* Node);
 	void SetSpeed(float InSpeed) { Speed = InSpeed; }
 	void RequestAttack() { IsAttacking = true; }
-	void RequestJumping() { IsJumping = true; }
+	void RequestJumping() { IsJumpStart = true; }
+	void SetJumpConditions(bool bStart, bool bAir, bool bEnd)
+	{
+		IsJumpStart = bStart;
+		IsJumpAir = bAir;
+		IsJumpEnd = bEnd;
+	}
 	void RequestHit() { IsHit = true; }
 
 protected:
@@ -32,5 +38,7 @@ protected:
 	bool bRunning = false;
 	bool IsAttacking = false;
 	bool IsHit = false;
-	bool IsJumping = false;
+	bool IsJumpStart = false;
+	bool IsJumpAir = false;
+	bool IsJumpEnd = false;
 };

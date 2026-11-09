@@ -1,5 +1,6 @@
 #include "EnginePCH.h"
 #include "CharacterMovementComponent.h"
+#include "Component/SkeletalMeshComponent.h"
 #include "GameFramework/Actor.h"
 
 #include "Engine/World.h"
@@ -34,6 +35,7 @@ UCharacterMovementComponent::UCharacterMovementComponent()
 void UCharacterMovementComponent::BeginPlay()
 {
 	Super::BeginPlay();
+	bWasInAir = Velocity.Z > 0.0f || !IsGrounded();
 }
 
 void UCharacterMovementComponent::TickComponent(float DeltaTime)
@@ -89,6 +91,25 @@ void UCharacterMovementComponent::TickComponent(float DeltaTime)
 	}
 
 	MoveWithSlide(MoveDelta, NewRotation);
+
+	// 상승 중에는 발 아래의 짧은 바닥 감지에 닿아도 공중 상태로 취급한다.
+	const bool bInAir = Velocity.Z > 0.0f || !IsGrounded();
+	const bool bJustLanded = bWasInAir && !bInAir;
+	bWasInAir = bInAir;
+	if (AActor* Owner = GetOwner())
+	{
+		if (USkeletalMeshComponent* Mesh = Cast<USkeletalMeshComponent>(
+			Owner->FindComponentByClass(USkeletalMeshComponent::StaticClass())))
+		{
+			if (UAnimationInstance* AnimInstance = Mesh->GetAnimationInstance())
+			{
+				AnimInstance->SetJumpConditions(
+					bInAir && Velocity.Z > 0.0f,
+					bInAir && Velocity.Z <= 0.0f,
+					bJustLanded);
+			}
+		}
+	}
 
 	const float CurrentKnockbackSpeed = KnockbackVelocity.Size();
 	const float NewKnockbackSpeed = std::max(0.0f, CurrentKnockbackSpeed - KnockbackDeceleration * DeltaTime);

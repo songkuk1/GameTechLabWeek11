@@ -1,20 +1,34 @@
 #pragma once
 
 #include "AnimNode.h"
+#include <functional>
+#include <utility>
 
 enum class EAnimState : uint8
 {
 	Locomotion,   // 안에 BlendSpace1D (Idle / Walk / Run )
 	Attack,
 	Hit,
-	Jump
+	JumpStart,
+	JumpAir,
+	JumpEnd
+};
+
+struct Transition
+{
+	EAnimState StartState;
+	EAnimState EndState;
+	std::function<bool(const AnimationContext&)> Condition;
+	float BlendValue;
+	std::function<void(AnimationContext&)> OnTransition;
 };
 
 class StateMachineNode : public AnimNode
 {
 	EAnimState State = EAnimState::Locomotion;
-	AnimNode* StateNodes[4] = {};        // 상태마다 포즈를 내는 노드
-	bool bIsCilpFinshed = false;
+	EAnimState NextState = EAnimState::Locomotion;
+	AnimNode* StateNodes[6] = {};        // 상태마다 포즈를 내는 노드
+	TArray<Transition> TransitionArray[6];
 
 public:
 	StateMachineNode() = default;
@@ -25,7 +39,6 @@ public:
 	{
 		ProcessState(AnimContext);
 		StateNodes[(int)State]->Update(AnimContext);   // 현재 상태 노드에 전파
-		if (State == EAnimState::Hit || State == EAnimState::Attack) { bIsCilpFinshed = StateNodes[(int)State]->IsClipFinished(); }
 	}
 
 	void EvaluatePose(PoseContext& Context) override
@@ -33,24 +46,28 @@ public:
 		StateNodes[(int)State]->EvaluatePose(Context);  // 현재 상태 노드의 포즈를 그대로 쓴다
 	}
 
+	void AddTransition(EAnimState StartState, EAnimState EndState,
+		std::function<bool(const AnimationContext&)> Condition, float BlendAlpha,
+		std::function<void(AnimationContext&)> OnTransition = {})
+	{
+		Transition Trans{ StartState, EndState, std::move(Condition), BlendAlpha, std::move(OnTransition) };
+		TransitionArray[(int)StartState].Add(std::move(Trans));
+	}
+
 private:
 	void ProcessState(AnimationContext& AnimContext)
 	{
-		if (AnimContext.bIsHit)                          // Any State: 어디서든 Hit 이 끊고 들어온다
+		const auto& Transitions = TransitionArray[(int)State];
+
+		for (const Transition& Trans : Transitions)
 		{
-			State = EAnimState::Hit;
-			AnimContext.bIsHit = false;
-			StateNodes[(int)State]->ResetAnimation();
-		}
-		else if (State == EAnimState::Locomotion && AnimContext.bIsAttacking)
-		{
-			State = EAnimState::Attack;
-			AnimContext.bIsAttacking = false;
-			StateNodes[(int)State]->ResetAnimation();
-		}
-		else if (State != EAnimState::Locomotion && bIsCilpFinshed)   // UE: Automatic Rule / Time Remaining
-		{
-			State = EAnimState::Locomotion;
+			if (Trans.Condition(AnimContext))
+			{
+				State = Trans.EndState;
+				if (Trans.OnTransition)
+					Trans.OnTransition(AnimContext);
+				break;
+			}
 		}
 	}
 };

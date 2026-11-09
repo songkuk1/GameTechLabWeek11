@@ -43,6 +43,7 @@ private:
 	float Acceleration = 10.0f;
 	float Deceleration = 40.0f;
 	bool bSprinting = false;
+	bool bWasInAir = false;
 
 	// Hit normal의 Z가 이 값 이상이면 걸을 수 있는 바닥 (약 45도 경사까지)
 	float WalkableFloorZ = 0.7f;

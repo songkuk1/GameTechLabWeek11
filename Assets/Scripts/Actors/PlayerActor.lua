@@ -101,7 +101,7 @@ function Tick(deltaTime)
     owner:Move(moveInput)
 
     if Input.IsKeyPressed(KeyCode.Space) then
-        owner:Jump(7.0)
+        owner:Jump(15.0)
     end
 
     if Input.IsMousePressed(MouseButton.Left) and state.attackCooldown <= 0 then
