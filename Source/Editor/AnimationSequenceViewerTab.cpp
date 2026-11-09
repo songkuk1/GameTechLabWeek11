@@ -585,7 +585,8 @@ void FAnimationSequenceViewerTab::DrawCurveEditor(USkeletalMeshComponent* Compon
 	}
 
 
-	FString SelectedLabel = SelectedCurve.Name.ToString() + " [" + SelectedCurve.LayerName.ToString() + "]";
+	const FAnimationCurve& CurrentSelectedCurve = Curves[SelectedCurveIndex];
+	FString SelectedLabel = CurrentSelectedCurve.Name.ToString() + " [" + CurrentSelectedCurve.LayerName.ToString() + "]";
 
 	ImGui::SetNextItemWidth(-1.0f);
 
@@ -639,11 +640,14 @@ void FAnimationSequenceViewerTab::DrawCurveEditor(USkeletalMeshComponent* Compon
 
 	for (const FAnimationCurveKey& Key : SelectedCurve.Keys)
 	{
-		if (bHasRuntimeValue)
-		{
-			MinValue = std::min(MinValue, RuntimeValue);
-			MaxValue = std::max(MaxValue, RuntimeValue);
-		}
+		MinValue = std::min(MinValue, Key.Value);
+		MaxValue = std::max(MaxValue, Key.Value);
+	}
+
+	if (bHasRuntimeValue)
+	{
+		MinValue = std::min(MinValue, RuntimeValue);
+		MaxValue = std::max(MaxValue, RuntimeValue);
 	}
 
 	if (std::abs(MaxValue - MinValue) < 1.0e-4f)
