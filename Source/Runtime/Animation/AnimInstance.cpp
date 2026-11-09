@@ -327,11 +327,10 @@ void UAnimInstance::ClearAnimationParameters()
 
 bool UAnimInstance::SetRootNode(FAnimNode_Base* InRootNode)
 {
-	if (!InRootNode)
-	{
-		RootNode = nullptr;
-		return true;
-	}
+    if (InRootNode && InRootNode != &SequencePlayer && InRootNode != &TwoWayBlendPlayer && InRootNode != &BlendSpacePlayer && OwnedAnimationNodes.Find(InRootNode) == -1)
+    {
+        return false;
+    }
 
     if (RootNode != InRootNode)
     {
@@ -339,19 +338,8 @@ bool UAnimInstance::SetRootNode(FAnimNode_Base* InRootNode)
         PendingAnimNotifyUpdates.Reset();
     }
 
-	if (InRootNode == &SequencePlayer || InRootNode == &TwoWayBlendPlayer || InRootNode == &BlendSpacePlayer)
-	{
-		RootNode = InRootNode;
-		return true;
-	}
-
-	if (OwnedAnimationNodes.Find(InRootNode) == -1)
-	{
-		return false;
-	}
-
-	RootNode = InRootNode;
-	return true;
+    RootNode = InRootNode;
+    return true;
 }
 
 void UAnimInstance::ClearAnimationNodes()
@@ -415,7 +403,7 @@ void UAnimInstance::TriggerAnimNotifies(float DeltaSeconds)
         FName NotifyName;
         EAnimNotifyEventType EventType = EAnimNotifyEventType::Trigger;
     };
-
+    TArray<FNotifyDispatch> AllDispatches;
     TArray<FActiveAnimNotifyState> NextActiveStates;
     TArray<FActiveAnimNotifyState> ProcessedActiveStates;
 
@@ -441,15 +429,13 @@ void UAnimInstance::TriggerAnimNotifies(float DeltaSeconds)
         const double MinPath = std::min(PathStart, PathEnd);
         const double MaxPath = std::max(PathStart, PathEnd);
 
-        TArray<FNotifyDispatch> Dispatches;
-
         auto AddDispatch = [&](double EventTime, const FName& NotifyName, EAnimNotifyEventType EventType)
             {
                 FNotifyDispatch Dispatch;
                 Dispatch.Progress = std::abs(Update.Advance) > TimeTolerance ? std::clamp((EventTime - PathStart) / Update.Advance, 0.0, 1.0) : 0.0;
                 Dispatch.NotifyName = NotifyName;
                 Dispatch.EventType = EventType;
-                Dispatches.Add(std::move(Dispatch));
+                AllDispatches.Add(std::move(Dispatch));
             };
 
         for (int32 NotifyIndex = 0; NotifyIndex < Notifies.Num(); ++NotifyIndex)
@@ -596,18 +582,18 @@ void UAnimInstance::TriggerAnimNotifies(float DeltaSeconds)
                 NextActiveStates.Add(std::move(ActiveState));
             }
         }
+    }
 
-        std::stable_sort(Dispatches.begin(), Dispatches.end(), [](const FNotifyDispatch& A, const FNotifyDispatch& B)
-            {
-                return A.Progress < B.Progress;
-            });
-
-        if (OwningComponent)
+    std::stable_sort(AllDispatches.begin(), AllDispatches.end(), [](const FNotifyDispatch& A, const FNotifyDispatch& B)
         {
-            for (const FNotifyDispatch& Dispatch : Dispatches)
-            {
-                OwningComponent->HandleAnimNotify(Dispatch.NotifyName, Dispatch.EventType, NotifyDeltaSeconds);
-            }
+            return A.Progress < B.Progress;
+        });
+
+    if (OwningComponent)
+    {
+        for (const FNotifyDispatch& Dispatch : AllDispatches)
+        {
+            OwningComponent->HandleAnimNotify(Dispatch.NotifyName, Dispatch.EventType, NotifyDeltaSeconds);
         }
     }
 

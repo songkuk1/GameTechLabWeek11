@@ -22,6 +22,10 @@ private:
 
 	static void SerializeModelAnimationTrack(FStructuredArchive::FRecord& Record, FModelAnimationTrack& Track);
 
+	static void SerializeModelAnimationCurveKey(FStructuredArchive::FRecord& Record, FAnimationCurveKey& Key);
+
+	static void SerializeModelAnimationCurve(FStructuredArchive::FRecord& Record, FAnimationCurve& Curve);
+
 	static void SerializeModelAnimation(FStructuredArchive::FRecord& Record, FModelAnimation& Animation);
 
 	static void SerializeModelVertexInfluences(FStructuredArchive::FRecord& Record, FModelVertexInfluences& Influences);

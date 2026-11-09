@@ -628,6 +628,7 @@ void UAssetManager::LoadFbxModel(const FString& Path)
 			AnimDataModel->FrameRate.Denominator = ModelAnimation.FrameRateDenominator;
 			AnimDataModel->NumberOfFrames = ModelAnimation.NumberOfFrames;
 			AnimDataModel->NumberOfKeys = ModelAnimation.NumberOfKeys;
+			AnimDataModel->CurveData.Curves = ModelAnimation.CurveData.Curves;
 
 			for (const FModelAnimationTrack& ModelTrack : ModelAnimation.Tracks)
 			{

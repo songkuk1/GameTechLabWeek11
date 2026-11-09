@@ -11,7 +11,7 @@
 
 namespace
 {
-constexpr uint32 ModelBakeVersion = 3;
+constexpr uint32 ModelBakeVersion = 4;
 
 struct FModelBakeHeader
 {
@@ -157,6 +157,37 @@ void FModelBake::SerializeModelAnimationTrack(FStructuredArchive::FRecord& Recor
 	SerializeArray<FVector>(Record, "ScaleKeys", Track.ScaleKeys, [](FStructuredArchive::FRecord& ElementRecord, FVector& Value) {ElementRecord << SA_VALUE("Value", Value);});
 }
 
+void FModelBake::SerializeModelAnimationCurveKey(FStructuredArchive::FRecord& Record, FAnimationCurveKey& Key)
+{
+	uint8 Interpolation = static_cast<uint8>(Key.Interpolation);
+
+	Record << SA_VALUE("Time", Key.Time);
+	Record << SA_VALUE("Value", Key.Value);
+	Record << SA_VALUE("ArriveTangent", Key.ArriveTangent);
+	Record << SA_VALUE("LeaveTangent", Key.LeaveTangent);
+	Record << SA_VALUE("Interpolation", Interpolation);
+
+	if (Record.GetUnderlyingArchive().IsLoading())
+	{
+		if (Interpolation > static_cast<uint8>(EAnimationCurveInterpolation::Cubic))
+		{
+			Key.Interpolation = EAnimationCurveInterpolation::Linear;
+		}
+		else
+		{
+			Key.Interpolation = static_cast<EAnimationCurveInterpolation>(Interpolation);
+		}
+	}
+}
+
+void FModelBake::SerializeModelAnimationCurve(FStructuredArchive::FRecord& Record, FAnimationCurve& Curve)
+{
+	Record << SA_VALUE("Name", Curve.Name);
+	Record << SA_VALUE("LayerName", Curve.LayerName);
+	Record << SA_VALUE("NodeIndex", Curve.NodeIndex);
+	SerializeArray<FAnimationCurveKey>(Record, "Keys", Curve.Keys, SerializeModelAnimationCurveKey);
+}
+
 void FModelBake::SerializeModelAnimation(FStructuredArchive::FRecord& Record, FModelAnimation& Animation)
 {
 	Record << SA_VALUE("Name", Animation.Name);
@@ -166,6 +197,7 @@ void FModelBake::SerializeModelAnimation(FStructuredArchive::FRecord& Record, FM
 	Record << SA_VALUE("NumberOfFrames", Animation.NumberOfFrames);
 	Record << SA_VALUE("NumberOfKeys", Animation.NumberOfKeys);
 	SerializeArray<FModelAnimationTrack>(Record, "Tracks", Animation.Tracks, SerializeModelAnimationTrack);
+	SerializeArray<FAnimationCurve>(Record, "Curves", Animation.CurveData.Curves, SerializeModelAnimationCurve);
 }
 
 void FModelBake::SerializeModelVertexInfluences(FStructuredArchive::FRecord& Record, FModelVertexInfluences& Influences)

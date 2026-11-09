@@ -68,6 +68,99 @@ namespace
 		}
 	}
 
+	template <typename TProperty>
+	void ExtractVectorPropertyCurves(fbxsdk::FbxNode* CurrentNode, TProperty& Property, const char* PropertyName, fbxsdk::FbxAnimLayer* AnimLayer, int32 NodeIndex, double StartSeconds, double PlayLength, FModelAnimation& OutAnimation)
+	{
+		const char* ComponentChannels[] = { FBXSDK_CURVENODE_COMPONENT_X, FBXSDK_CURVENODE_COMPONENT_Y, FBXSDK_CURVENODE_COMPONENT_Z };
+		const char* ComponentNames[] = { "X", "Y", "Z" };
+
+		for (int32 ComponentIndex = 0; ComponentIndex < 3; ++ComponentIndex)
+		{
+			fbxsdk::FbxAnimCurve* FbxCurve = Property.GetCurve(AnimLayer, ComponentChannels[ComponentIndex]);
+
+			if (!FbxCurve || FbxCurve->KeyGetCount() <= 0)
+			{
+				continue;
+			}
+
+			FAnimationCurve Curve;
+			const FString CurveName = std::format("{}_{}_{}", CurrentNode->GetName(), PropertyName, ComponentNames[ComponentIndex]);
+			Curve.Name = FName(CurveName.c_str());
+			Curve.LayerName = FName(AnimLayer->GetName());
+			Curve.NodeIndex = NodeIndex;
+
+			for (int32 KeyIndex = 0; KeyIndex < FbxCurve->KeyGetCount(); ++KeyIndex)
+			{
+				const double RelativeTime = FbxCurve->KeyGetTime(KeyIndex).GetSecondDouble() - StartSeconds;
+
+				if (RelativeTime < -1.0e-6 || RelativeTime > PlayLength + 1.0e-6)
+				{
+					continue;
+				}
+
+				FAnimationCurveKey Key;
+				Key.Time = static_cast<float>(std::clamp(RelativeTime, 0.0, PlayLength));
+				Key.Value = FbxCurve->KeyGetValue(KeyIndex);
+
+				switch (FbxCurve->KeyGetInterpolation(KeyIndex))
+				{
+				case fbxsdk::FbxAnimCurveDef::eInterpolationConstant:
+					Key.Interpolation = EAnimationCurveInterpolation::Constant;
+					break;
+
+				case fbxsdk::FbxAnimCurveDef::eInterpolationLinear:
+					Key.Interpolation = EAnimationCurveInterpolation::Linear;
+					break;
+
+				case fbxsdk::FbxAnimCurveDef::eInterpolationCubic:
+					Key.Interpolation = EAnimationCurveInterpolation::Cubic;
+					Key.ArriveTangent = FbxCurve->KeyGetLeftDerivative(KeyIndex);
+					Key.LeaveTangent = FbxCurve->KeyGetRightDerivative(KeyIndex);
+					break;
+
+				default:
+					Key.Interpolation = EAnimationCurveInterpolation::Linear;
+					break;
+				}
+
+				if (!std::isfinite(Key.Value) || !std::isfinite(Key.ArriveTangent) || !std::isfinite(Key.LeaveTangent))
+				{
+					continue;
+				}
+
+				Curve.Keys.Add(std::move(Key));
+			}
+
+			if (!Curve.Keys.IsEmpty())
+			{
+				OutAnimation.NumberOfKeys += Curve.Keys.Num();
+				OutAnimation.CurveData.Curves.Add(std::move(Curve));
+			}
+		}
+	}
+
+	void ExtractAnimationCurvesRecursive(fbxsdk::FbxNode* CurrentNode, const TMap<uint64, int32>& NodeToIndexMap, fbxsdk::FbxAnimLayer* AnimLayer, double StartSeconds, double PlayLength, FModelAnimation& OutAnimation)
+	{
+		if (!CurrentNode || !AnimLayer)
+		{
+			return;
+		}
+
+		const int32* FoundNodeIndex = NodeToIndexMap.Find(CurrentNode->GetUniqueID());
+
+		if (FoundNodeIndex)
+		{
+			ExtractVectorPropertyCurves(CurrentNode, CurrentNode->LclTranslation, "LclTranslation", AnimLayer, *FoundNodeIndex, StartSeconds, PlayLength, OutAnimation);
+			ExtractVectorPropertyCurves(CurrentNode, CurrentNode->LclRotation, "LclRotation", AnimLayer, *FoundNodeIndex, StartSeconds, PlayLength, OutAnimation);
+			ExtractVectorPropertyCurves(CurrentNode, CurrentNode->LclScaling, "LclScaling", AnimLayer, *FoundNodeIndex, StartSeconds, PlayLength, OutAnimation);
+		}
+
+		for (int32 ChildIndex = 0; ChildIndex < CurrentNode->GetChildCount(); ++ChildIndex)
+		{
+			ExtractAnimationCurvesRecursive(CurrentNode->GetChild(ChildIndex), NodeToIndexMap, AnimLayer, StartSeconds, PlayLength, OutAnimation);
+		}
+	}
+
 	void ExtractAnimations(fbxsdk::FbxScene* Scene, const TMap<uint64, int32>& NodeToIndexMap, TArray<FModelAnimation>& OutAnimations)
 	{
 		if (!Scene)
@@ -110,8 +203,18 @@ namespace
 			Animation.NumberOfFrames = FrameCount;
 			Animation.NumberOfKeys = 0;
 			ExtractAnimationTracksRecursive(Scene->GetRootNode(), NodeToIndexMap, StartSeconds, PlayLength, SampleRate, FrameCount, Animation);
+			for (int32 LayerIndex = 0; LayerIndex < LayerCount; ++LayerIndex)
+			{
+				fbxsdk::FbxAnimLayer* AnimLayer = AnimStack->GetMember<fbxsdk::FbxAnimLayer>(LayerIndex);
 
-			HTR_LOG(Info, "[Animation] Imported: {} | Length: {:.3f}s | Frames: {} | Tracks: {}", Animation.Name.ToString(), Animation.PlayLength, Animation.NumberOfFrames, Animation.Tracks.Num());
+				if (!AnimLayer)
+				{
+					continue;
+				}
+
+				ExtractAnimationCurvesRecursive(Scene->GetRootNode(), NodeToIndexMap, AnimLayer, StartSeconds, PlayLength, Animation);
+			}
+			HTR_LOG(Info, "[Animation] Imported: {} | Length: {:.3f}s | Frames: {} | Tracks: {} | Curves: {}", Animation.Name.ToString(), Animation.PlayLength, Animation.NumberOfFrames, Animation.Tracks.Num(), Animation.CurveData.Curves.Num());
 		}
 	}
 }
@@ -199,6 +302,37 @@ namespace
 			{
 				OutError = std::format("BoneWeight sum is not 1.0 at vertex {}.", VertexIndex);
 				return false;
+			}
+		}
+
+		for (const FModelAnimation& Animation : ModelData.Animations)
+		{
+			if (!std::isfinite(Animation.PlayLength) || Animation.PlayLength < 0.0f)
+			{
+				OutError = "Animation has an invalid PlayLength.";
+				return false;
+			}
+
+			for (const FAnimationCurve& Curve : Animation.CurveData.Curves)
+			{
+				if (Curve.Name.IsNone() || !ModelData.Nodes.IsValidIndex(Curve.NodeIndex) || Curve.Keys.IsEmpty())
+				{
+					OutError = "Animation has an invalid curve.";
+					return false;
+				}
+
+				float PreviousTime = -1.0f;
+
+				for (const FAnimationCurveKey& Key : Curve.Keys)
+				{
+					if (!std::isfinite(Key.Time) || !std::isfinite(Key.Value) || !std::isfinite(Key.ArriveTangent) || !std::isfinite(Key.LeaveTangent) || Key.Time < 0.0f || Key.Time > Animation.PlayLength + 0.001f || Key.Time < PreviousTime)
+					{
+						OutError = "Animation curve has invalid or unsorted keys.";
+						return false;
+					}
+
+					PreviousTime = Key.Time;
+				}
 			}
 		}
 

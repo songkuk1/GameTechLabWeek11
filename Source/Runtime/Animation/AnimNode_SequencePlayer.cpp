@@ -29,11 +29,14 @@ void FAnimNode_SequencePlayer::SetSequence(UAnimSequence* InSequence)
 void FAnimNode_SequencePlayer::SetPlaybackPosition(float InTime)
 {
     const float PlayLength = GetPlayLength();
+
     if (PlayLength <= 0.0f || !std::isfinite(InTime))
     {
         CurrentTime = 0.0f;
+        bHasUpdated = false;
         return;
     }
+
     CurrentTime = std::clamp(InTime, 0.0f, PlayLength);
     bHasUpdated = false;
 }

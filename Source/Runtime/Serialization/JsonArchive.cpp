@@ -622,6 +622,11 @@ FString FJsonArchive::GetAnimationNotifyPath(const FString& AnimationAssetPath)
 {
 	FString NotifyPath = AnimationAssetPath;
 
+	if (NotifyPath.rfind("Assets/", 0) != 0)
+	{
+		NotifyPath = "Assets/" + NotifyPath;
+	}
+
 	size_t Position = 0;
 
 	while ((Position = NotifyPath.find("::", Position)) != FString::npos)

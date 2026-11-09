@@ -5,6 +5,7 @@
 #include "Containers/Array.h"
 #include "Math/Vector.h"
 #include "Math/Quat.h"
+#include "Animation/AnimationCurve.h"
 
 // 애니메이션 키 데이터
 struct FRawAnimSequenceTrack
@@ -31,12 +32,6 @@ struct FFrameRate
 	float AsDecimal() const { return IsValid() ? static_cast<float>(Numerator) / Denominator : 0.0f; }
 };
 
-// 애니메이션 커브 데이터
-struct FAnimationCurveData
-{ 
-
-};
-
 //애니메이션 데이터 접근 인터페이스
 class IAnimationDataModel
 {
@@ -57,4 +52,5 @@ public:
 	int32 NumberOfKeys = 0;
 	FAnimationCurveData CurveData;
 	virtual const TArray<FBoneAnimationTrack>& GetBoneAnimationTracks() const override { return BoneAnimationTracks; }
+	const FAnimationCurveData& GetCurveData() const { return CurveData; }
 };

@@ -8,6 +8,7 @@
 #include "Core/NameTypes.h"
 #include "Math/Vector.h"
 #include "Math/Quat.h"
+#include "Animation/AnimationCurve.h"
 
 constexpr int32 MaxBoneInfluenceCount = 4;
 
@@ -57,6 +58,7 @@ struct FModelAnimation
 	int32 NumberOfFrames = 0;
 	int32 NumberOfKeys = 0;
 	TArray<FModelAnimationTrack> Tracks;
+	FAnimationCurveData CurveData;
 };
 
 struct FModelData

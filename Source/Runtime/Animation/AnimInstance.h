@@ -111,5 +111,4 @@ private:
 	TMap<FName, float, FNameHash> FloatParameters;
 
 	bool bInitialized = false;
-	bool bIsFirstUpdate = false;
 };
