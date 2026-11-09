@@ -584,19 +584,6 @@ void UAnimInstance::TriggerAnimNotifies(float DeltaSeconds)
         }
     }
 
-    std::stable_sort(AllDispatches.begin(), AllDispatches.end(), [](const FNotifyDispatch& A, const FNotifyDispatch& B)
-        {
-            return A.Progress < B.Progress;
-        });
-
-    if (OwningComponent)
-    {
-        for (const FNotifyDispatch& Dispatch : AllDispatches)
-        {
-            OwningComponent->HandleAnimNotify(Dispatch.NotifyName, Dispatch.EventType, NotifyDeltaSeconds);
-        }
-    }
-
     for (const FActiveAnimNotifyState& PreviousState : ActiveAnimNotifyStates)
     {
         bool bWasProcessed = false;
@@ -610,9 +597,35 @@ void UAnimInstance::TriggerAnimNotifies(float DeltaSeconds)
             }
         }
 
-        if (!bWasProcessed && OwningComponent)
+        if (!bWasProcessed)
         {
-            OwningComponent->HandleAnimNotify(PreviousState.NotifyName, EAnimNotifyEventType::End, NotifyDeltaSeconds);
+            FNotifyDispatch Dispatch;
+            Dispatch.Progress = 0.0;
+            Dispatch.NotifyName = PreviousState.NotifyName;
+            Dispatch.EventType = EAnimNotifyEventType::End;
+            AllDispatches.Add(std::move(Dispatch));
+        }
+    }
+
+    std::stable_sort(AllDispatches.begin(), AllDispatches.end(), [](const FNotifyDispatch& A, const FNotifyDispatch& B)
+        {
+            if (std::abs(A.Progress - B.Progress) > 1.0e-6)
+            {
+                return A.Progress < B.Progress;
+            }
+
+            if (A.EventType == EAnimNotifyEventType::End && B.EventType != EAnimNotifyEventType::End)
+            {
+                return true;
+            }
+            return false;
+        });
+
+    if (OwningComponent)
+    {
+        for (const FNotifyDispatch& Dispatch : AllDispatches)
+        {
+            OwningComponent->HandleAnimNotify(Dispatch.NotifyName, Dispatch.EventType, NotifyDeltaSeconds);
         }
     }
 

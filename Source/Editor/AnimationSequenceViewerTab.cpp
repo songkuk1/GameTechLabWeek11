@@ -452,6 +452,154 @@ void FAnimationSequenceViewerTab::DrawNotifyDetails(float Duration)
 	}
 }
 
+void FAnimationSequenceViewerTab::DrawCurveEditor(float Duration, float CurrentTime)
+{
+	if (!Animation || !Animation->GetDataModel())
+	{
+		return;
+	}
+
+	const TArray<FAnimationCurve>& Curves = Animation->GetDataModel()->GetCurveData().Curves;
+
+	ImGui::Separator();
+
+	if (!ImGui::CollapsingHeader("Animation Curves", ImGuiTreeNodeFlags_DefaultOpen))
+	{
+		return;
+	}
+
+	if (Curves.IsEmpty())
+	{
+		ImGui::TextDisabled("No animation curves imported.");
+		return;
+	}
+
+	if (!Curves.IsValidIndex(SelectedCurveIndex))
+	{
+		SelectedCurveIndex = 0;
+	}
+
+	const FAnimationCurve& SelectedCurve = Curves[SelectedCurveIndex];
+
+	FString SelectedLabel = SelectedCurve.Name.ToString() + " [" + SelectedCurve.LayerName.ToString() + "]";
+
+	ImGui::SetNextItemWidth(-1.0f);
+
+	if (ImGui::BeginCombo("Curve", SelectedLabel.c_str()))
+	{
+		for (int32 Index = 0; Index < Curves.Num(); ++Index)
+		{
+			const FAnimationCurve& Curve = Curves[Index];
+			const FString Label = Curve.Name.ToString() + " [" + Curve.LayerName.ToString() + "]";
+			const bool bSelected = SelectedCurveIndex == Index;
+
+			if (ImGui::Selectable(Label.c_str(), bSelected))
+			{
+				SelectedCurveIndex = Index;
+			}
+
+			if (bSelected)
+			{
+				ImGui::SetItemDefaultFocus();
+			}
+		}
+
+		ImGui::EndCombo();
+	}
+
+	ImGui::Text("Node Index: %d | Keys: %d | Current Value: %.4f", SelectedCurve.NodeIndex, SelectedCurve.Keys.Num(), SelectedCurve.Evaluate(CurrentTime));
+
+	if (Duration <= 0.0f || SelectedCurve.Keys.IsEmpty())
+	{
+		ImGui::TextDisabled("Curve has no valid display range.");
+		return;
+	}
+
+	float MinValue = SelectedCurve.Keys[0].Value;
+	float MaxValue = SelectedCurve.Keys[0].Value;
+
+	for (const FAnimationCurveKey& Key : SelectedCurve.Keys)
+	{
+		MinValue = std::min(MinValue, Key.Value);
+		MaxValue = std::max(MaxValue, Key.Value);
+	}
+
+	if (std::abs(MaxValue - MinValue) < 1.0e-4f)
+	{
+		MinValue -= 1.0f;
+		MaxValue += 1.0f;
+	}
+	else
+	{
+		const float Padding = (MaxValue - MinValue) * 0.1f;
+		MinValue -= Padding;
+		MaxValue += Padding;
+	}
+
+	const float PlotHeight = 150.0f;
+	const float PlotWidth = std::max(1.0f, ImGui::GetContentRegionAvail().x);
+
+	ImGui::InvisibleButton("##AnimationCurveGraph", ImVec2(PlotWidth, PlotHeight));
+
+	const ImVec2 Min = ImGui::GetItemRectMin();
+	const ImVec2 Max = ImGui::GetItemRectMax();
+
+	const float Left = Min.x + 8.0f;
+	const float Right = Max.x - 8.0f;
+	const float Top = Min.y + 8.0f;
+	const float Bottom = Max.y - 8.0f;
+
+	const float Width = Right - Left;
+	const float Height = Bottom - Top;
+
+	ImDrawList* DrawList = ImGui::GetWindowDrawList();
+
+	DrawList->AddRectFilled(Min, Max, IM_COL32(35, 38, 44, 255), 3.0f);
+
+	for (int32 GridIndex = 0; GridIndex <= 4; ++GridIndex)
+	{
+		const float Alpha = static_cast<float>(GridIndex) / 4.0f;
+		const float X = Left + Width * Alpha;
+		const float Y = Top + Height * Alpha;
+
+		DrawList->AddLine(ImVec2(X, Top), ImVec2(X, Bottom), IM_COL32(65, 68, 75, 255));
+		DrawList->AddLine(ImVec2(Left, Y), ImVec2(Right, Y), IM_COL32(65, 68, 75, 255));
+	}
+
+	auto GetCurvePosition = [&](float Time, float Value)
+		{
+			const float X = Left + Width * std::clamp(Time / Duration, 0.0f, 1.0f);
+			const float ValueAlpha = std::clamp((Value - MinValue) / (MaxValue - MinValue), 0.0f, 1.0f);
+			const float Y = Bottom - Height * ValueAlpha;
+			return ImVec2(X, Y);
+		};
+
+	constexpr int32 SampleCount = 128;
+	ImVec2 PreviousPoint = GetCurvePosition(0.0f, SelectedCurve.Evaluate(0.0f));
+
+	for (int32 Index = 1; Index <= SampleCount; ++Index)
+	{
+		const float Alpha = static_cast<float>(Index) / SampleCount;
+		const float Time = Duration * Alpha;
+		const float Value = SelectedCurve.Evaluate(Time);
+		const ImVec2 CurrentPoint = GetCurvePosition(Time, Value);
+
+		DrawList->AddLine(PreviousPoint, CurrentPoint, IM_COL32(80, 190, 255, 255), 2.0f);
+		PreviousPoint = CurrentPoint;
+	}
+
+	for (const FAnimationCurveKey& Key : SelectedCurve.Keys)
+	{
+		DrawList->AddCircleFilled(GetCurvePosition(Key.Time, Key.Value), 4.0f, IM_COL32(255, 190, 70, 255));
+	}
+
+	const float ClampedCurrentTime = std::clamp(CurrentTime, 0.0f, Duration);
+	const ImVec2 CurrentPoint = GetCurvePosition(ClampedCurrentTime, SelectedCurve.Evaluate(ClampedCurrentTime));
+
+	DrawList->AddLine(ImVec2(CurrentPoint.x, Top), ImVec2(CurrentPoint.x, Bottom), IM_COL32(255, 100, 100, 200), 1.5f);
+	DrawList->AddCircleFilled(CurrentPoint, 5.0f, IM_COL32(255, 100, 100, 255));
+}
+
 void FAnimationSequenceViewerTab::SelectNotify(int32 Index)
 {
 	const TArray<FAnimNotifyEvent>& Notifies = Animation->GetNotifies();

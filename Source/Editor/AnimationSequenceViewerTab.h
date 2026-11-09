@@ -29,8 +29,10 @@ private:
 	void FrameMesh();
 	void DrawNotifyTrack(float Duration);
 	void DrawNotifyDetails(float Duration);
+	void DrawCurveEditor(float Duration, float CurrentTime);
 	void SelectNotify(int32 Index);
 	void DrawBlendSpaceControls(USkeletalMeshComponent* Component);
+	
 private:
 	TArray<UAnimSequence*> AvailableAnimations;
 	TArray<UAnimSequence*> BlendSpaceAnimations;
@@ -53,4 +55,6 @@ private:
 	bool bFramed = false;
 	float BlendInput = 0.0f;
 	bool bUseBlendSpace = false;
+
+	int32 SelectedCurveIndex = -1;
 };
