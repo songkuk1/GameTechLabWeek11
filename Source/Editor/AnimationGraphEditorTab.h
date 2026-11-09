@@ -53,6 +53,9 @@ private:
 
     int32 SelectedStateIndex = -1;
     int32 DraggingFromStateIndex = -1;
+    bool bIsTransitionDragging = false;
+    float TransitionDragStartX = 0.0f;
+    float TransitionDragStartY = 0.0f;
 
     char NewStateNameBuffer[64] = "NewState";
     char RenameStateBuffer[64] = {};

@@ -1908,7 +1908,6 @@ void FAnimationGraphEditorTab::DrawGraphCanvas()
     const bool bHasDebugInfo = AnimInstance && AnimInstance->GetStateMachineDebugInfo(DebugInfo);
 
     const ImVec2 MousePosition = ImGui::GetIO().MousePos;
-    std::vector<ImVec2> ConnectionPins;
 
     const ImVec2 AnyStatePosition(CanvasOrigin.x + 20.0f, CanvasOrigin.y + 25.0f);
 
@@ -2010,9 +2009,6 @@ void FAnimationGraphEditorTab::DrawGraphCanvas()
             }
         }
 
-        ConnectionPins.push_back(SourcePin);
-        ConnectionPins.push_back(DestinationPin);
-
         const bool bSelected = SelectedTransitionIndex == Index;
 
         const bool bLastTransition = bHasDebugInfo && DebugInfo.bHasLastTransition && DebugInfo.LastTransitionToState == Transition.ToState &&
@@ -2071,19 +2067,121 @@ void FAnimationGraphEditorTab::DrawGraphCanvas()
         DrawList->AddText(ImVec2(AnyStatePosition.x + 45.0f, AnyStatePosition.y + 10.0f), IM_COL32(235, 240, 225, 255), "Any State");
     }
 
+    int32 HoveredNodeIndex = -1;
+
+    if (ImGui::IsWindowHovered())
+    {
+        for (int32 Index = 0; Index < StateCount; ++Index)
+        {
+            const ImVec2 Position(CanvasOrigin.x + NodePositions[Index].x, CanvasOrigin.y + NodePositions[Index].y);
+
+            if (MousePosition.x >= Position.x && MousePosition.x <= Position.x + NodeWidth && MousePosition.y >= Position.y && MousePosition.y <= Position.y + NodeHeight)
+            {
+                HoveredNodeIndex = Index;
+                break;
+            }
+        }
+    }
+
+    if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) && HoveredNodeIndex != -1)
+    {
+        DraggingFromStateIndex = HoveredNodeIndex;
+        bIsTransitionDragging = false;
+
+        TransitionDragStartX = MousePosition.x;
+        TransitionDragStartY = MousePosition.y;
+
+        SelectedStateIndex = HoveredNodeIndex;
+        SelectedTransitionIndex = -1;
+
+        bFocusStateDetails = true;
+        bFocusTransitionDetails = false;
+    }
+
     if (States.IsValidIndex(DraggingFromStateIndex) && ImGui::IsMouseDown(ImGuiMouseButton_Left))
     {
+        const float DX = MousePosition.x - TransitionDragStartX;
+        const float DY = MousePosition.y - TransitionDragStartY;
+
+        if (DX * DX + DY * DY >= 36.0f)
+        {
+            bIsTransitionDragging = true;
+        }
+    }
+
+    if (States.IsValidIndex(DraggingFromStateIndex) && ImGui::IsMouseReleased(ImGuiMouseButton_Left))
+    {
+        if (bIsTransitionDragging && States.IsValidIndex(HoveredNodeIndex) && HoveredNodeIndex != DraggingFromStateIndex)
+        {
+            const FName FromState = States[DraggingFromStateIndex].Name;
+            const FName ToState = States[HoveredNodeIndex].Name;
+
+            int32 ExistingTransitionIndex = -1;
+
+            for (int32 Index = 0; Index < Transitions.Num(); ++Index)
+            {
+                const FAnimGraphTransitionDefinition& Existing = Transitions[Index];
+
+                if (!Existing.bAnyState && Existing.FromState == FromState && Existing.ToState == ToState && Existing.Rule == EAnimTransitionRule::StateFinished)
+                {
+                    ExistingTransitionIndex = Index;
+                    break;
+                }
+            }
+
+            if (ExistingTransitionIndex != -1)
+            {
+                SelectedTransitionIndex = ExistingTransitionIndex;
+                SelectedStateIndex = -1;
+                bFocusTransitionDetails = true;
+                bFocusStateDetails = false;
+                ErrorMessage.clear();
+            }
+            else if (Graph->AddTransition(FromState, ToState, EAnimTransitionRule::StateFinished, NAME_None, 0, 0.2f, 0.0f))
+            {
+                SelectedTransitionIndex = Graph->GetTransitions().Num() - 1;
+                SelectedStateIndex = -1;
+
+                bFocusTransitionDetails = true;
+                bFocusStateDetails = false;
+                bDirty = true;
+
+                ErrorMessage.clear();
+                RefreshPreview();
+            }
+            else
+            {
+                ErrorMessage = "Could not create Transition.";
+            }
+        }
+
+        DraggingFromStateIndex = -1;
+        bIsTransitionDragging = false;
+    }
+
+    if (bIsTransitionDragging && States.IsValidIndex(DraggingFromStateIndex) && ImGui::IsMouseDown(ImGuiMouseButton_Left))
+    {
         const ImVec2 SourcePosition(CanvasOrigin.x + NodePositions[DraggingFromStateIndex].x, CanvasOrigin.y + NodePositions[DraggingFromStateIndex].y);
-        const ImVec2 Start(SourcePosition.x + NodeWidth + 6.0f, SourcePosition.y + NodeHeight * 0.5f);
-        const ImVec2 End = MousePosition;
+        const ImVec2 SourceCenter(SourcePosition.x + NodeWidth * 0.5f, SourcePosition.y + NodeHeight * 0.5f);
+        const ImVec2 Delta(MousePosition.x - SourceCenter.x, MousePosition.y - SourceCenter.y);
 
-        const float Direction = End.x >= Start.x ? 1.0f : -1.0f;
-        const float ControlDistance = std::min(80.0f, std::abs(End.x - Start.x) * 0.5f);
+        const float Length = std::sqrt(Delta.x * Delta.x + Delta.y * Delta.y);
 
-        const ImVec2 Control1(Start.x + Direction * ControlDistance, Start.y);
-        const ImVec2 Control2(End.x - Direction * ControlDistance, End.y);
+        if (Length > 0.001f)
+        {
+            const float BoundaryScale = std::min((NodeWidth * 0.5f) / std::max(std::abs(Delta.x), 0.001f), (NodeHeight * 0.5f) / std::max(std::abs(Delta.y), 0.001f));
 
-        DrawTransitionCurve(DrawList, Start, Control1, Control2, End, IM_COL32(110, 190, 255, 230), 2.5f);
+            const ImVec2 Start(SourceCenter.x + Delta.x * BoundaryScale, SourceCenter.y + Delta.y * BoundaryScale);
+            const ImVec2 End = MousePosition;
+
+            const ImVec2 Direction(Delta.x / Length, Delta.y / Length);
+            const float ControlDistance = std::min(100.0f, Length * 0.35f);
+
+            const ImVec2 Control1(Start.x + Direction.x * ControlDistance, Start.y + Direction.y * ControlDistance);
+            const ImVec2 Control2(End.x - Direction.x * ControlDistance, End.y - Direction.y * ControlDistance);
+
+            DrawTransitionCurve(DrawList, Start, Control1, Control2, End, IM_COL32(110, 190, 255, 230), 2.5f);
+        }
     }
 
     // State 노드 그리기
@@ -2102,88 +2200,6 @@ void FAnimationGraphEditorTab::DrawGraphCanvas()
         const bool bClicked = ImGui::InvisibleButton("##StateNode", ImVec2(NodeWidth, NodeHeight));
 
         const bool bHovered = ImGui::IsItemHovered();
-
-        const ImVec2 InputPin(Position.x, Position.y + NodeHeight * 0.5f);
-        const ImVec2 OutputPin(Position.x + NodeWidth, Position.y + NodeHeight * 0.5f);
-
-        const bool bShowConnectionPins = bHovered || DraggingFromStateIndex != -1;
-
-        if (bShowConnectionPins)
-        {
-            DrawList->AddCircleFilled(InputPin, 6.0f, IM_COL32(35, 40, 48, 255));
-            DrawList->AddCircle(InputPin, 6.0f, IM_COL32(160, 190, 220, 255), 0, 1.5f);
-            DrawList->AddCircleFilled(OutputPin, 6.0f, IM_COL32(35, 40, 48, 255));
-            DrawList->AddCircle(OutputPin, 6.0f, IM_COL32(160, 190, 220, 255), 0, 1.5f);
-        }
-
-        if (ImGui::IsWindowHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
-        {
-            const float DX = MousePosition.x - OutputPin.x;
-            const float DY = MousePosition.y - OutputPin.y;
-
-            if (DX * DX + DY * DY <= 100.0f)
-            {
-                DraggingFromStateIndex = Index;
-                SelectedStateIndex = Index;
-                SelectedTransitionIndex = -1;
-            }
-        }
-
-        if (DraggingFromStateIndex != -1 && ImGui::IsMouseReleased(ImGuiMouseButton_Left))
-        {
-            const float DX = MousePosition.x - InputPin.x;
-            const float DY = MousePosition.y - InputPin.y;
-
-            if (DX * DX + DY * DY <= 100.0f)
-            {
-                if (DraggingFromStateIndex == Index)
-                {
-                    ErrorMessage = "Cannot create a Transition to the same State.";
-                }
-                else
-                {
-                    const FName FromState = States[DraggingFromStateIndex].Name;
-                    const FName ToState = State.Name;
-
-                    int32 ExistingTransitionIndex = -1;
-
-                    for (int32 TransitionIndex = 0; TransitionIndex < Transitions.Num(); ++TransitionIndex)
-                    {
-                        const FAnimGraphTransitionDefinition& Existing = Transitions[TransitionIndex];
-
-                        if (!Existing.bAnyState && Existing.FromState == FromState && Existing.ToState == ToState && Existing.Rule == EAnimTransitionRule::StateFinished)
-                        {
-                            ExistingTransitionIndex = TransitionIndex;
-                            break;
-                        }
-                    }
-
-                    if (ExistingTransitionIndex != -1)
-                    {
-                        SelectedTransitionIndex = ExistingTransitionIndex;
-                        SelectedStateIndex = -1;
-                        bFocusTransitionDetails = true;
-                        ErrorMessage = "Transition already exists.";
-                    }
-                    else if (Graph->AddTransition(FromState, ToState, EAnimTransitionRule::StateFinished, NAME_None, 0, 0.2f, 0.0f))
-                    {
-                        SelectedTransitionIndex = Graph->GetTransitions().Num() - 1;
-                        SelectedStateIndex = -1;
-                        bFocusTransitionDetails = true;
-                        bFocusStateDetails = false;
-                        bDirty = true;
-                        ErrorMessage.clear();
-                        RefreshPreview();
-                    }
-                    else
-                    {
-                        ErrorMessage = "Could not create Transition.";
-                    }
-                }
-            }
-
-            DraggingFromStateIndex = -1;
-        }
 
         ImGui::PopID();
 
@@ -2232,12 +2248,6 @@ void FAnimationGraphEditorTab::DrawGraphCanvas()
     if (DraggingFromStateIndex != -1 && ImGui::IsMouseReleased(ImGuiMouseButton_Left))
     {
         DraggingFromStateIndex = -1;
-    }
-
-    for (const ImVec2& Pin : ConnectionPins)
-    {
-        DrawList->AddCircleFilled(Pin, 5.0f, IM_COL32(27, 30, 36, 255));
-        DrawList->AddCircle(Pin, 5.0f, IM_COL32(190, 205, 220, 255), 0, 1.5f);
     }
 
     ImGui::EndChild();
