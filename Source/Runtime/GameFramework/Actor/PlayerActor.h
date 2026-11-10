@@ -41,6 +41,8 @@ public:
     void StartDeathFall();
     void UpdateDeathFall(float RealDeltaTime);
 
+    void HandleAnimNotify(const FString& NotifyName) override;
+
 private:
 	USpringArmComponent* SpringArmComponent = nullptr;
 	UCameraComponent* CameraComponent = nullptr;

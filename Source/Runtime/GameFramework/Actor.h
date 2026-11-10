@@ -31,6 +31,7 @@ public:
 	bool HasActorBegunPlay() const { return bActorHasBegunPlay; }
 	// FActorTickFunction이 호출하는 진입점
 	void TickActor(float DeltaTime) { Tick(DeltaTime); }
+	virtual void HandleAnimNotify(const FString& NotifyName) {}
 
 	UWorld* GetWorld() const override { return World; }
 	ULevel* GetLevel() const { return Level; }

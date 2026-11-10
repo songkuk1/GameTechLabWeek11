@@ -77,6 +77,7 @@ FPrimitiveSceneProxy* USkeletalMeshComponent::CreateSceneProxy()
 void USkeletalMeshComponent::TickComponent(float DeltaTime)
 {
 	Super::TickComponent(DeltaTime);
+
 	if (!SkeletalMesh || !AnimInstance || ReferencePose.IsEmpty())
 		return;
 
@@ -94,6 +95,14 @@ void USkeletalMeshComponent::TickComponent(float DeltaTime)
 
 	AnimInstance->Tick(DeltaTime, Context);
 	ApplyLocalPose(Context.LocalPoseTrans);
+
+	if (AnimInstance->PendingNotifyNames.Num()!=0)
+	{
+		for (int i = 0;i < AnimInstance->PendingNotifyNames.Num();i++)
+		{
+			GetOwner()->HandleAnimNotify(AnimInstance->PendingNotifyNames[i]);
+		}
+	}
 }
 
 void USkeletalMeshComponent::ApplyLocalPose(const TArray<PoseTransform>& InPose)

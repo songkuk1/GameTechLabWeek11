@@ -1601,6 +1601,56 @@ namespace ImGui
         return getPerFrameWidth(sequencerData[currentSequencer]);
     }
 
+    bool NeoDrawKeyframeLabel(FrameIndexType frame, const char* label)
+    {
+        IM_ASSERT(inSequencer && "Not in active sequencer!");
+        auto& context = sequencerData[currentSequencer];
+        IM_ASSERT(!context.TimelineStack.empty() && "Not in timeline!");
+        const float left = context.StartValuesCursor.x + GetStyle().FramePadding.x + context.ValuesWidth;
+        const float right = context.TopBarStartCursor.x + context.Size.x;
+        const float keyX = left + getKeyframePositionX(frame, context);
+        if (keyX < left || keyX > right)
+            return false;
+        const ImVec2 textSize = CalcTextSize(label, nullptr, false);
+        float textX = keyX + currentTimelineHeight * 0.5f + 3.0f;
+        if (textX + textSize.x > right)
+            textX = ImMax(left, keyX - currentTimelineHeight * 0.5f - 3.0f - textSize.x);
+        ImDrawList* drawList = GetWindowDrawList();
+        drawList->PushClipRect(ImVec2(left, context.ValuesCursor.y),
+            ImVec2(right, context.ValuesCursor.y + currentTimelineHeight), true);
+        const ImVec2 textPos(textX, context.ValuesCursor.y + (currentTimelineHeight - textSize.y) * 0.5f);
+        drawList->AddText(textPos, GetColorU32(ImGuiCol_Text), label);
+        drawList->PopClipRect();
+        ImRect bounds(textPos, textPos + textSize);
+        bounds.ClipWith(ImRect(ImVec2(left, context.ValuesCursor.y),
+            ImVec2(right, context.ValuesCursor.y + currentTimelineHeight)));
+        bounds.ClipWith(GetCurrentWindow()->ClipRect);
+        return IsWindowHovered() && bounds.Contains(GetMousePos());
+    }
+
+    bool NeoGetMouseFrame(FrameIndexType* frame)
+    {
+        IM_ASSERT(inSequencer && "Not in active sequencer!");
+        if (!frame || !IsWindowHovered())
+            return false;
+
+        auto& context = sequencerData[currentSequencer];
+        const float originX = context.StartValuesCursor.x + GetStyle().FramePadding.x + context.ValuesWidth;
+        ImRect bounds(ImVec2(originX, context.StartValuesCursor.y),
+                      ImVec2(context.TopBarStartCursor.x + context.Size.x, GetWindowPos().y + GetWindowSize().y));
+        bounds.ClipWith(GetCurrentWindow()->ClipRect);
+        const float width = getPerFrameWidth(context);
+        if (!bounds.Contains(GetMousePos()) || !std::isfinite(width) || width <= 0.0f)
+            return false;
+
+        // Inverse of getKeyframePositionX(), including the current zoom and scroll offset.
+        const double value = std::round(static_cast<double>(context.StartFrame) + context.OffsetFrame
+            + (static_cast<double>(GetMousePos().x) - originX) / width);
+        *frame = static_cast<FrameIndexType>(ImClamp(value,
+            static_cast<double>(context.StartFrame), static_cast<double>(context.EndFrame)));
+        return true;
+    }
+
     NeoFrameRange NeoGetViewRange()
     {
         IM_ASSERT(inSequencer && "Not in active sequencer!");

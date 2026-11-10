@@ -262,3 +262,14 @@ void APlayerActor::UpdateDeathFall(float RealDeltaTime)
     }
 }
 
+void APlayerActor::HandleAnimNotify(const FString& NotifyName)
+{
+    if (NotifyName == "JumpStart")
+    {
+        HTR_LOG(Warning, "JumpStart!");
+    }
+    else if (NotifyName == "JumpEnd")
+    {
+        HTR_LOG(Warning, "JumpEnd!");
+    }
+}

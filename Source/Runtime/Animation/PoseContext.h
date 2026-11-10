@@ -20,6 +20,7 @@ struct PoseContext
 
 struct AnimationContext
 {
+	TArray<FString>& TriggeredNotifyNames;
 	float deltaTime = 0.0f;
 	float Speed = 0.0f;
 	bool& bIsAttacking;

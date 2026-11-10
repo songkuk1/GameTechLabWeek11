@@ -52,4 +52,37 @@ uint32 UAnimSequence::AddNotify(NotifyData Notify)
 	uint32 NotifyIndex = NotifyArray.Num();
 	NotifyArray.Add(Notify);
 	return NotifyIndex;
+		
+}
+
+bool UAnimSequence::SetNotifyTriggerTime(uint32 Index, float NewTime)
+{
+	if (Index >= static_cast<uint32>(NotifyArray.Num()))
+		return false;
+
+	NotifyData Updated = NotifyArray[Index];
+	Updated.TriggerTime = NewTime;
+	return UpdateNotify(Index, Updated);
+}
+
+bool UAnimSequence::UpdateNotify(uint32 Index, const NotifyData& Notify)
+{
+	if (Index >= static_cast<uint32>(NotifyArray.Num()) || !std::isfinite(Notify.TriggerTime)
+		|| !std::isfinite(Notify.Duration) || !std::isfinite(AnimData.PlayLength)
+		|| AnimData.PlayLength < 0.0f || Notify.TriggerTime < 0.0f
+		|| Notify.TriggerTime > AnimData.PlayLength || Notify.Duration < 0.0f
+		|| Notify.Duration > AnimData.PlayLength - Notify.TriggerTime)
+		return false;
+
+	NotifyArray[Index] = Notify;
+	return true;
+}
+
+bool UAnimSequence::RemoveNotify(uint32 Index)
+{
+	if (Index >= static_cast<uint32>(NotifyArray.Num()))
+		return false;
+
+	NotifyArray.RemoveAt(Index);
+	return true;
 }

@@ -34,6 +34,8 @@ public:
 	void Tick(float DeltaTime) override;
 	float GetCurrentTime() const { return CurrentTime; }
 	float GetPlayLength() const;
+	const UAnimSequence* GetSequence() const { return AnimSequence; }
+	UAnimSequence* GetSequence() { return AnimSequence; }
 	bool IsPlaying() const { return bPlaying; }
 	void Play();
 	void Pause() { bPlaying = false; }

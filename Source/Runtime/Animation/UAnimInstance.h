@@ -29,8 +29,11 @@ public:
 	}
 	void RequestHit() { IsHit = true; }
 
+	TArray<FString> PendingNotifyNames;
+
 protected:
 	TArray<TUniquePtr<AnimNode>> Nodes;
+	
 	AnimNode* Root = nullptr;
 	float JumpTime = 0.0f;
 	float Speed = 0.0f;

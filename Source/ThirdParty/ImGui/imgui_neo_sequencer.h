@@ -165,6 +165,10 @@ namespace ImGui {
     struct NeoFrameRange { FrameIndexType from; FrameIndexType to; };
     IMGUI_API NeoFrameRange NeoGetViewRange();
     IMGUI_API float NeoGetFrameWidth();
+    // Returns the frame under the mouse in the timeline body, excluding labels and header/zoom controls.
+    IMGUI_API bool NeoGetMouseFrame(FrameIndexType* frame);
+    // Draws a label beside a keyframe and returns whether its visible text is hovered.
+    IMGUI_API bool NeoDrawKeyframeLabel(FrameIndexType frame, const char* label);
     IMGUI_API bool NeoBeginTrackDropTarget();
     IMGUI_API bool NeoBeginTimelineDropTarget();
     IMGUI_API bool NeoSection(const char* id, FrameIndexType* from, FrameIndexType* to, const char* label, bool selected, FrameIndexType minFrame, FrameIndexType maxFrame);

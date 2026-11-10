@@ -103,7 +103,8 @@ void UAnimationInstance::Tick(float deltaTime, PoseContext& Context)
 {
 	if (!Root) return;
 
-	AnimationContext AnimContext{ deltaTime, Speed, IsAttacking, IsHit, IsJumpStart, IsJumpAir, IsJumpEnd };
+	PendingNotifyNames.Reset();
+	AnimationContext AnimContext{ PendingNotifyNames, deltaTime, Speed, IsAttacking, IsHit, IsJumpStart, IsJumpAir, IsJumpEnd };
 	CurrentTime += deltaTime;
 	Root->Update(AnimContext);
 	Root->EvaluatePose(Context);

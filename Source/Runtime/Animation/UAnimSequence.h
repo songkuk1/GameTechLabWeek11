@@ -18,12 +18,16 @@ class UAnimSequence : public UAnimationAsset
 public:
 	FAnimSeqData GetAnimData() const { return AnimData; }
 	float GetPlayLength() const { return AnimData.PlayLength; }
+	float GetFrameRate() const { return AnimData.FrameRate; }
 	TArray<FBoneAnimTrack> GetTracks() const { return AnimData.BoneAnimationTracks; }
 	FBoneAnimTrack GetTrackByIndex(uint32 Index) { return AnimData.BoneAnimationTracks[Index]; }
-	const TArray<NotifyData>& GetNotifyData() { return  NotifyArray; }
+	const TArray<NotifyData>& GetNotifyData() const { return NotifyArray; }
 
 	void SetAnimData(FAnimSeqData InAnimData) { AnimData = InAnimData; }
 	uint32 AddNotify(NotifyData Notify);
+	bool SetNotifyTriggerTime(uint32 Index, float NewTime);
+	bool UpdateNotify(uint32 Index, const NotifyData& Notify);
+	bool RemoveNotify(uint32 Index);
 
 	void CalculateCurrentPose(float CurrentTime, bool bLoop, TArray<PoseTransform>& OutPoseTrans);
 
