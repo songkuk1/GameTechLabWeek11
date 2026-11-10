@@ -3,6 +3,7 @@
 #include "Editor/FEditorTab.h"
 #include "PreviewScene.h"
 #include "Animation/AnimationGraph.h"
+#include <functional>
 
 class UAnimSequence;
 class UBlendSpace1D;
@@ -30,6 +31,8 @@ public:
     void CollectViews(TArray<FEditorTabView>& OutViews) override;
     UWorld* GetWorld() const override;
     const UObject* GetEditingAsset() const override { return Graph; }
+    void SetOpenAnimationSequenceViewerCallback(std::function<void(USkeletalMesh*, UAnimSequence*)> InCallback) { OpenAnimationSequenceViewerCallback = std::move(InCallback); }
+    void SetOpenBlendSpaceEditorCallback(std::function<void(UBlendSpace1D*)> InCallback) { OpenBlendSpaceEditorCallback = std::move(InCallback); }
 protected:
     void BuildDefaultLayout(ImGuiID DockSpaceRoot) override;
 private:
@@ -97,4 +100,7 @@ private:
 
     // BlendSpace Parameter Binding
     FName NewBlendSpaceParameterName = NAME_None;
+
+    std::function<void(USkeletalMesh*, UAnimSequence*)> OpenAnimationSequenceViewerCallback;
+    std::function<void(UBlendSpace1D*)> OpenBlendSpaceEditorCallback;
 };

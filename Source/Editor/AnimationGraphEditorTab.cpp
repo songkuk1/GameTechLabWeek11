@@ -2680,6 +2680,33 @@ void FAnimationGraphEditorTab::DrawGraphCanvas()
 
     ed::End();
 
+    const ed::NodeId DoubleClickedNode = ed::GetDoubleClickedNode();
+
+    for (const FAnimGraphStateDefinition& State : States)
+    {
+        if (!(DoubleClickedNode == MakeStateNodeId(State.Name)))
+        {
+            continue;
+        }
+
+        if (State.NodeType == EAnimGraphStateNodeType::SequencePlayer)
+        {
+            if (State.Sequence && SkeletalMesh && OpenAnimationSequenceViewerCallback)
+            {
+                OpenAnimationSequenceViewerCallback(SkeletalMesh, State.Sequence);
+            }
+        }
+        else if (State.NodeType == EAnimGraphStateNodeType::BlendSpacePlayer)
+        {
+            if (State.BlendSpace && OpenBlendSpaceEditorCallback)
+            {
+                OpenBlendSpaceEditorCallback(State.BlendSpace);
+            }
+        }
+
+        break;
+    }
+
     if (bAutoArrangeRequested || bFrameAllRequested)
     {
         ed::NavigateToContent(0.25f);

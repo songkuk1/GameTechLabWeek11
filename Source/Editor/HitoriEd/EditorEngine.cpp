@@ -882,6 +882,17 @@ void UEditorEngine::OpenAnimationGraphEditor(UAnimationGraph* Graph)
 	}
 	FAnimationGraphEditorTab* NewTab = EditorUI->AddTab<FAnimationGraphEditorTab>(Graph);
 
+	NewTab->SetOpenAnimationSequenceViewerCallback([this](USkeletalMesh* Mesh, UAnimSequence* Animation)
+		{
+			PendingAnimationViewerMesh = Mesh;
+			PendingAnimationViewerAnimation = Animation;
+		});
+
+	NewTab->SetOpenBlendSpaceEditorCallback([this](UBlendSpace1D* BlendSpace)
+		{
+			PendingBlendSpaceEditorAsset = BlendSpace;
+		});
+
 	NewTab->RequestFocus();
 }
 
