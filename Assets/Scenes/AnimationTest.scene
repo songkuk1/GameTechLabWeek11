@@ -505,7 +505,7 @@
                                 "ShowBeginOverlapLog": false,
                                 "ShowEndOverlapLog": false,
                                 "ShowHitLog": false,
-                                "SkeletalMesh": "Models/UAL1_Standard.fbx",
+                                "SkeletalMesh": "Models/UAL1_Standard/UAL1_Standard.fbx",
                                 "Transform": {
                                     "Location": {
                                         "X": 0.0,

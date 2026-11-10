@@ -184,7 +184,7 @@ namespace
 		return fs::relative(Path, "Assets").generic_string();
 	}
 
-	UAnimSequence* CreateAnimationSequence(const FModelAnimation& ModelAnimation, USkeleton* Skeleton)
+	UAnimSequence* CreateAnimationSequence(const FModelAnimation& ModelAnimation, const TArray<FModelAnimationNotify>& ModelNotifies, USkeleton* Skeleton)
 	{
 		if (!Skeleton)
 		{
@@ -218,6 +218,11 @@ namespace
 			BoneTrack.InternalTrack.RotKeys = ModelTrack.RotKeys;
 			BoneTrack.InternalTrack.ScaleKeys = ModelTrack.ScaleKeys;
 			DataModel->BoneAnimationTracks.Add(std::move(BoneTrack));
+		}
+
+		for (const FModelAnimationNotify& Notify : ModelNotifies)
+		{
+			Animation->AddNotify(Notify.TriggerTime, Notify.Duration, Notify.NotifyName);
 		}
 
 		return Animation;
@@ -762,9 +767,29 @@ void UAssetManager::LoadFbxModel(const FString& Path, bool bAllowSourceImport, b
 				const FString AnimationPathString = PathUtils::ToUtf8(AnimationPath);
 				const bool bAnimationFileExists = fs::exists(AnimationPath);
 
+				TArray<FModelAnimationNotify> AnimationNotifies;
+				const FString AnimationKey = MeshKey + "::" + ModelAnimation.Name.ToString();
+
+				if (bAnimationFileExists)
+				{
+					LoadAnimSequence(AnimationPathString);
+
+					if (UAnimSequence* ExistingSequence = GetAssetByPath<UAnimSequence>(AnimationKey))
+					{
+						for (const FAnimNotifyEvent& Notify : ExistingSequence->GetNotifies())
+						{
+							FModelAnimationNotify ModelNotify;
+							ModelNotify.TriggerTime = Notify.TriggerTime;
+							ModelNotify.Duration = Notify.Duration;
+							ModelNotify.NotifyName = Notify.NotifyName;
+							AnimationNotifies.Add(std::move(ModelNotify));
+						}
+					}
+				}
+
 				if (bForceSourceImport || !bAnimationFileExists)
 				{
-					if (!FModelBake::WriteAnimationAsset(AnimationPathString, MeshKey, ModelAnimation))
+					if (!FModelBake::WriteAnimationAsset(AnimationPathString, MeshKey, ModelAnimation, AnimationNotifies))
 					{
 						HTR_LOG(Error, "[ANIMATION] Failed to save animation asset: {}", AnimationPathString);
 						continue;
@@ -772,7 +797,7 @@ void UAssetManager::LoadFbxModel(const FString& Path, bool bAllowSourceImport, b
 				}
 				else if (!LoadAnimSequence(AnimationPathString))
 				{
-					if (!FModelBake::WriteAnimationAsset(AnimationPathString, MeshKey, ModelAnimation))
+					if (!FModelBake::WriteAnimationAsset(AnimationPathString, MeshKey, ModelAnimation, AnimationNotifies))
 					{
 						HTR_LOG(Error, "[ANIMATION] Failed to rebuild animation asset: {}", AnimationPathString);
 						continue;
@@ -861,8 +886,10 @@ UAnimSequence* UAssetManager::LoadAnimSequence(const FString& Path, USkeletalMes
 
 	FString SourceMeshKey;
 	FModelAnimation ModelAnimation;
+	TArray<FModelAnimationNotify> ModelNotifies;
+	bool bHasEmbeddedNotifies = false;
 
-	if (!FModelBake::ReadAnimationAsset(Path, SourceMeshKey, ModelAnimation))
+	if (!FModelBake::ReadAnimationAsset(Path, SourceMeshKey, ModelAnimation, ModelNotifies, bHasEmbeddedNotifies))
 	{
 		HTR_LOG(Error, "[ANIMATION] Failed to load animation asset: {}", Path);
 		return nullptr;
@@ -893,7 +920,7 @@ UAnimSequence* UAssetManager::LoadAnimSequence(const FString& Path, USkeletalMes
 		}
 	}
 
-	UAnimSequence* Animation = CreateAnimationSequence(ModelAnimation, SkeletalMesh->GetSkeleton());
+	UAnimSequence* Animation = CreateAnimationSequence(ModelAnimation, ModelNotifies, SkeletalMesh->GetSkeleton());
 	if (!Animation)
 	{
 		return nullptr;
@@ -901,10 +928,53 @@ UAnimSequence* UAssetManager::LoadAnimSequence(const FString& Path, USkeletalMes
 
 	Get().RegisterAsset(AnimationKey, Animation);
 
-	const FString NotifyPath = FJsonArchive::GetAnimationNotifyPath(AnimationKey);
-	if (fs::exists(PathUtils::FromUtf8(NotifyPath)))
+	if (!bHasEmbeddedNotifies)
 	{
-		FJsonArchive::LoadAnimNotifies(Animation, NotifyPath);
+		const FString LegacyNotifyPath = FJsonArchive::GetAnimationNotifyPath(AnimationKey);
+		const std::filesystem::path LegacyNotifyFilePath = PathUtils::FromUtf8(LegacyNotifyPath);
+		const bool bHasLegacyFile = fs::exists(LegacyNotifyFilePath);
+		bool bLegacyLoaded = !bHasLegacyFile;
+
+		if (bHasLegacyFile)
+		{
+			bLegacyLoaded = FJsonArchive::LoadAnimNotifies(Animation, LegacyNotifyPath);
+		}
+
+		if (bLegacyLoaded)
+		{
+			TArray<FModelAnimationNotify> MigratedNotifies;
+
+			for (const FAnimNotifyEvent& Notify : Animation->GetNotifies())
+			{
+				FModelAnimationNotify ModelNotify;
+				ModelNotify.TriggerTime = Notify.TriggerTime;
+				ModelNotify.Duration = Notify.Duration;
+				ModelNotify.NotifyName = Notify.NotifyName;
+				MigratedNotifies.Add(std::move(ModelNotify));
+			}
+
+			if (FModelBake::UpdateAnimationNotifies(Path, MigratedNotifies))
+			{
+				if (bHasLegacyFile)
+				{
+					std::error_code Error;
+					fs::remove(LegacyNotifyFilePath, Error);
+
+					if (Error)
+					{
+						HTR_LOG(Warning, "[ANIMATION] Failed to remove legacy notify file: {}", LegacyNotifyPath);
+					}
+				}
+			}
+			else
+			{
+				HTR_LOG(Error, "[ANIMATION] Failed to migrate animation notifies: {}", Path);
+			}
+		}
+		else
+		{
+			HTR_LOG(Error, "[ANIMATION] Failed to load legacy animation notifies: {}", LegacyNotifyPath);
+		}
 	}
 
 	return Animation;

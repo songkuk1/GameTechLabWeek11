@@ -502,57 +502,6 @@ bool FJsonArchive::LoadAnimationGraphFromBytes(UAnimationGraph* Graph, const TAr
 	return !Reader.IsError() && Graph->IsAnimationGraphDataValid();
 }
 
-bool FJsonArchive::SaveAnimNotifies(UAnimSequenceBase* Sequence, const FString& Path)
-{
-	if (!Sequence || Path.empty())
-	{
-		return false;
-	}
-
-	TArray<uint8> Bytes;
-	FMemoryWriter Writer(Bytes);
-
-	{
-		FJsonArchiveOutputFormatter Formatter(Writer);
-		FStructuredArchive Ar(Formatter);
-
-		FStructuredArchive::FRecord Root = Ar.Open().EnterRecord();
-
-		int32 Version = AnimNotifyVersion;
-		Root << SA_VALUE("Version", Version);
-
-		Sequence->SerializeNotifies(Root.EnterRecord("AnimationNotifies"));
-
-		Ar.Close();
-	}
-
-	if (Writer.IsError())
-	{
-		return false;
-	}
-
-	const std::filesystem::path FilePath = PathUtils::FromUtf8(Path);
-
-	std::error_code Error;
-	std::filesystem::create_directories(FilePath.parent_path(), Error);
-
-	if (Error)
-	{
-		return false;
-	}
-
-	std::ofstream File(FilePath, std::ios::binary);
-
-	if (!File.is_open())
-	{
-		return false;
-	}
-
-	File.write(reinterpret_cast<const char*>(Bytes.GetData()), Bytes.Num());
-
-	return !File.fail();
-}
-
 bool FJsonArchive::LoadAnimNotifies(UAnimSequenceBase* Sequence, const FString& Path)
 {
 	if (!Sequence || Path.empty())

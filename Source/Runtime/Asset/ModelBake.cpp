@@ -21,7 +21,7 @@ struct FModelBakeHeader
 	uint32 Version = ModelBakeVersion;
 };
 
-constexpr uint32 AnimationAssetVersion = 1;
+constexpr uint32 AnimationAssetVersion = 2;
 
 struct FAnimationAssetHeader
 {
@@ -129,7 +129,7 @@ bool FModelBake::WriteBaked(const FString& Path, FModelData& ModelData)
 	return true;
 }
 
-bool FModelBake::WriteAnimationAsset(const FString& Path, const FString& SourceMeshKey, FModelAnimation& Animation)
+bool FModelBake::WriteAnimationAsset(const FString& Path, const FString& SourceMeshKey, FModelAnimation& Animation, const TArray<FModelAnimationNotify>& Notifies)
 {
 	TArray<uint8> Bytes;
 	FMemoryWriter Writer(Bytes);
@@ -144,6 +144,10 @@ bool FModelBake::WriteAnimationAsset(const FString& Path, const FString& SourceM
 	FString StoredSourceMeshKey = SourceMeshKey;
 	Root << SA_VALUE("SourceMeshKey", StoredSourceMeshKey);
 	SerializeModelAnimation(Root, Animation);
+
+	TArray<FModelAnimationNotify> StoredNotifies = Notifies;
+	SerializeArray<FModelAnimationNotify>(Root, "Notifies", StoredNotifies, SerializeAnimationNotify);
+
 	Archive.Close();
 
 	if (Writer.IsError())
@@ -163,7 +167,22 @@ bool FModelBake::WriteAnimationAsset(const FString& Path, const FString& SourceM
 	return !Out.fail();
 }
 
-bool FModelBake::ReadAnimationAsset(const FString& Path, FString& OutSourceMeshKey, FModelAnimation& OutAnimation)
+bool FModelBake::UpdateAnimationNotifies(const FString& Path, const TArray<FModelAnimationNotify>& Notifies)
+{
+	FString SourceMeshKey;
+	FModelAnimation Animation;
+	TArray<FModelAnimationNotify> ExistingNotifies;
+	bool bHasEmbeddedNotifies = false;
+
+	if (!ReadAnimationAsset(Path, SourceMeshKey, Animation, ExistingNotifies, bHasEmbeddedNotifies))
+	{
+		return false;
+	}
+
+	return WriteAnimationAsset(Path, SourceMeshKey, Animation, Notifies);
+}
+
+bool FModelBake::ReadAnimationAsset(const FString& Path, FString& OutSourceMeshKey, FModelAnimation& OutAnimation, TArray<FModelAnimationNotify>& OutNotifies, bool& bOutHasEmbeddedNotifies)
 {
 	const std::filesystem::path FilePath = PathUtils::FromUtf8(Path);
 
@@ -199,13 +218,15 @@ bool FModelBake::ReadAnimationAsset(const FString& Path, FString& OutSourceMeshK
 	Reader.Serialize(&Header, sizeof(Header));
 
 	const FAnimationAssetHeader Expected;
-	if (Reader.IsError() || std::memcmp(Header.Magic, Expected.Magic, sizeof(Header.Magic)) != 0 || Header.Version != Expected.Version)
+	if (Reader.IsError() || std::memcmp(Header.Magic, Expected.Magic, sizeof(Header.Magic)) != 0 || Header.Version < 1 || Header.Version > AnimationAssetVersion)
 	{
 		HTR_LOG(Warning, "[ANIMATION] {}: invalid header or version.", Path);
 		return false;
 	}
 
 	OutSourceMeshKey.clear();
+	OutNotifies.Reset();
+	bOutHasEmbeddedNotifies = Header.Version >= 2;
 	OutAnimation = FModelAnimation{};
 
 	FBinaryArchiveFormatter Formatter(Reader);
@@ -214,6 +235,12 @@ bool FModelBake::ReadAnimationAsset(const FString& Path, FString& OutSourceMeshK
 	auto Root = Archive.Open().EnterRecord();
 	Root << SA_VALUE("SourceMeshKey", OutSourceMeshKey);
 	SerializeModelAnimation(Root, OutAnimation);
+
+	if (bOutHasEmbeddedNotifies)
+	{
+		SerializeArray<FModelAnimationNotify>(Root, "Notifies", OutNotifies, SerializeAnimationNotify);
+	}
+
 	Archive.Close();
 
 	if (Reader.IsError() || OutSourceMeshKey.empty() || !std::isfinite(OutAnimation.PlayLength) || OutAnimation.PlayLength < 0.0f || OutAnimation.FrameRateNumerator <= 0 || OutAnimation.FrameRateDenominator <= 0 || OutAnimation.NumberOfFrames <= 0)
@@ -222,7 +249,45 @@ bool FModelBake::ReadAnimationAsset(const FString& Path, FString& OutSourceMeshK
 		return false;
 	}
 
+	for (int32 Index = OutNotifies.Num() - 1; Index >= 0; --Index)
+	{
+		const FModelAnimationNotify& Notify = OutNotifies[Index];
+
+		if (!std::isfinite(Notify.TriggerTime) || !std::isfinite(Notify.Duration) || Notify.TriggerTime < 0.0f || Notify.Duration < 0.0f || Notify.NotifyName.IsNone() || OutAnimation.PlayLength <= 0.0f || Notify.TriggerTime > OutAnimation.PlayLength || Notify.TriggerTime + Notify.Duration > OutAnimation.PlayLength)
+		{
+			HTR_LOG(Warning, "[ANIMATION] {}: invalid notify at index {}", Path, Index);
+			OutNotifies.RemoveAt(static_cast<uint32>(Index));
+		}
+	}
+
 	return true;
+}
+
+FString FModelBake::GetAnimationAssetPath(const FString& AnimationKey)
+{
+	const size_t Separator = AnimationKey.rfind("::");
+	if (Separator == FString::npos || Separator + 2 >= AnimationKey.size())
+	{
+		return {};
+	}
+
+	const FString SourceMeshKey = AnimationKey.substr(0, Separator);
+	FString AnimationFileName = AnimationKey.substr(Separator + 2);
+	const FString InvalidCharacters = "\\/:*?\"<>|";
+
+	for (char& Character : AnimationFileName)
+	{
+		if (InvalidCharacters.find(Character) != FString::npos)
+		{
+			Character = '_';
+		}
+	}
+
+	std::filesystem::path AnimationPath = PathUtils::FromUtf8("Assets/" + SourceMeshKey);
+	AnimationPath.replace_extension();
+	AnimationPath += "_" + AnimationFileName + ".anim";
+
+	return PathUtils::ToUtf8(AnimationPath);
 }
 
 void FModelBake::SerializeModelNode(FStructuredArchive::FRecord& Record, FModelNode& Node)
@@ -304,6 +369,13 @@ void FModelBake::SerializeModelAnimation(FStructuredArchive::FRecord& Record, FM
 	Record << SA_VALUE("NumberOfKeys", Animation.NumberOfKeys);
 	SerializeArray<FModelAnimationTrack>(Record, "Tracks", Animation.Tracks, SerializeModelAnimationTrack);
 	SerializeArray<FAnimationCurve>(Record, "Curves", Animation.CurveData.Curves, SerializeModelAnimationCurve);
+}
+
+void FModelBake::SerializeAnimationNotify(FStructuredArchive::FRecord& Record, FModelAnimationNotify& Notify)
+{
+	Record << SA_VALUE("TriggerTime", Notify.TriggerTime);
+	Record << SA_VALUE("Duration", Notify.Duration);
+	Record << SA_VALUE("NotifyName", Notify.NotifyName);
 }
 
 void FModelBake::SerializeModelVertexInfluences(FStructuredArchive::FRecord& Record, FModelVertexInfluences& Influences)

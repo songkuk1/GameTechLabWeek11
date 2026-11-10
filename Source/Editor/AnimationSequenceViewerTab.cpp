@@ -16,7 +16,7 @@
 
 #include "Camera/CameraTypes.h"
 
-#include "Serialization/JsonArchive.h"
+#include "Asset/ModelBake.h"
 
 #include <algorithm>
 #include <cmath>
@@ -422,15 +422,26 @@ void FAnimationSequenceViewerTab::DrawToolbar()
 
 			if (ImGui::Button("Save Notifies"))
 			{
-				const FString NotifyPath = FJsonArchive::GetAnimationNotifyPath(Animation->GetPath());
+				TArray<FModelAnimationNotify> SavedNotifies;
 
-				if (FJsonArchive::SaveAnimNotifies(Animation, NotifyPath))
+				for (const FAnimNotifyEvent& Notify : Animation->GetNotifies())
 				{
-					HTR_LOG(Info, "Saved animation notifies: {}", NotifyPath);
+					FModelAnimationNotify ModelNotify;
+					ModelNotify.TriggerTime = Notify.TriggerTime;
+					ModelNotify.Duration = Notify.Duration;
+					ModelNotify.NotifyName = Notify.NotifyName;
+					SavedNotifies.Add(std::move(ModelNotify));
+				}
+
+				const FString AnimationPath = FModelBake::GetAnimationAssetPath(Animation->GetPath());
+
+				if (!AnimationPath.empty() && FModelBake::UpdateAnimationNotifies(AnimationPath, SavedNotifies))
+				{
+					HTR_LOG(Info, "Saved animation asset: {}", AnimationPath);
 				}
 				else
 				{
-					HTR_LOG(Error, "Failed to save animation notifies: {}", NotifyPath);
+					HTR_LOG(Error, "Failed to save animation asset: {}", AnimationPath);
 				}
 			}
 
