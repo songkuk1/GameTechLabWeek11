@@ -5,6 +5,12 @@
 #include "PoseContext.h"
 #include "UObject/Class.h"
 
+class SequencePlayerNode;
+class TwoWayBlendNode;
+class BlendSpace1DNode;
+class StateMachineNode;
+class UAnimSequence;
+
 class UAnimationInstance : public UObject
 {
 	DECLARE_CLASS(UAnimationInstance, UObject)
@@ -15,12 +21,29 @@ public:
 
 	void Tick(float deltaTime, PoseContext& Context);
 
+	// 그래프 초기화 및 프리셋 빌드
+	void ClearGraph();
+	void BuildDefaultLocomotionGraph();
+
+	// 타입별 노드 생성 빌더 API
+	AnimNode* AddNode(NodeType Node);
+	SequencePlayerNode* AddSequenceNode(const FString& Path, bool bLoop = true, bool bReverse = false);
+	SequencePlayerNode* AddSequenceNode(UAnimSequence* InSequence, bool bLoop = true, bool bReverse = false);
+	TwoWayBlendNode* AddTwoWayBlendNode(AnimNode* NodeA = nullptr, AnimNode* NodeB = nullptr, float Alpha = 0.0f);
+	BlendSpace1DNode* AddBlendSpace1DNode();
+	StateMachineNode* AddStateMachineNode();
+
+	// 단일 클립 재생용 헬퍼 (기존 그래프를 비우고 단일 시퀀스 플레이어를 루트로 설정)
+	SequencePlayerNode* PlaySingleAnimation(const FString& Path, bool bLoop = true, bool bReverse = false);
+	SequencePlayerNode* PlaySingleAnimation(UAnimSequence* InSequence, bool bLoop = true, bool bReverse = false);
+
+	void RemoveNode(AnimNode* Node);
+	void SetRoot(AnimNode* Node);
+	AnimNode* GetRoot() const { return Root; }
+
 	FTransform GetRootTransform() const { return RootTransform; }
 	int32 GetRootMotionNodeIndex() const { return RootMotionNodeIndex; }
 
-	AnimNode* AddNode(NodeType Node);
-	void RemoveNode(AnimNode* Node);
-	void SetRoot(AnimNode* Node);
 	void SetSpeed(float InSpeed) { Speed = InSpeed; }
 	void RequestAttack() { IsAttacking = true; }
 	void RequestJumping() { IsJumpStart = true; }

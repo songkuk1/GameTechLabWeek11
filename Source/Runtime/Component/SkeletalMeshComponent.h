@@ -14,6 +14,8 @@ public:
 	~USkeletalMeshComponent() override;
 	void SetAnimationInstance(UAnimationInstance* InInstance);
 	UAnimationInstance* GetAnimationInstance() const { return AnimInstance; }
+	void PlayAnimation(UAnimSequence* NewAnimToPlay, bool bLooping = true, bool bReverse = false);
+	void PlayAnimation(const FString& Path, bool bLooping = true, bool bReverse = false);
 	// Actor 적용 전의 월드 기준 변화 행렬.
 	const FMatrix& GetWorldRootMotionMatrix() const { return WorldRootMotionMatrix; }
 

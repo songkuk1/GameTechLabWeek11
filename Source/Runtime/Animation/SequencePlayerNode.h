@@ -69,17 +69,25 @@ public:
 	void SetSequence(UAnimSequence* AnimSeq) { Sequence = AnimSeq; }
 	void SetLoop(bool InLoop) { bLooping = InLoop; }
 
-	void InitializeNode(bool bLoop, bool InReverse, const FString& Path)
+	void InitializeNode(bool bLoop, bool InReverse, UAnimSequence* InSequence)
 	{
 		SetLoop(bLoop);
-		SetSequence(UAssetManager::GetAssetByPath<UAnimSequence>(Path));
+		SetSequence(InSequence);
 		bReverse = InReverse;
-		if (bReverse) SetCurrentPlayTime(Sequence->GetPlayLength());
-		else SetCurrentPlayTime(0);
+		if (bReverse && Sequence) SetCurrentPlayTime(Sequence->GetPlayLength());
+		else SetCurrentPlayTime(0.0f);
+	}
+
+	void InitializeNode(bool bLoop, bool InReverse, const FString& Path)
+	{
+		InitializeNode(bLoop, InReverse, UAssetManager::GetAssetByPath<UAnimSequence>(Path));
 	}
 
 	void EvaluatePose(PoseContext& Context) override
 	{
+		if (!Sequence)
+			return;
+
 		Sequence->CalculateCurrentPose(CurrentPlayTime, bLooping, Context.LocalPoseTrans);
 		if (Sequence->bEnableRootMotion)
 		{
@@ -95,10 +103,18 @@ public:
 		}
 	}
 
-	bool IsClipFinished() override { if (bReverse) return CurrentPlayTime <= 0;
-		else return CurrentPlayTime >= Sequence->GetAnimData().PlayLength; }
+	bool IsClipFinished() override
+	{
+		if (!Sequence) return true;
+		if (bReverse) return CurrentPlayTime <= 0.0f;
+		return CurrentPlayTime >= Sequence->GetAnimData().PlayLength;
+	}
 
-	void ResetAnimation() override {if (bReverse) SetCurrentPlayTime(Sequence->GetPlayLength()); else SetCurrentPlayTime(0); }
+	void ResetAnimation() override
+	{
+		if (bReverse && Sequence) SetCurrentPlayTime(Sequence->GetPlayLength());
+		else SetCurrentPlayTime(0.0f);
+	}
 
 	bool IsNotifyActivated(uint32 Index)
 	{

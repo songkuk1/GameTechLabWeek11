@@ -21,9 +21,31 @@ USkeletalMeshComponent::~USkeletalMeshComponent()
 
 void USkeletalMeshComponent::SetAnimationInstance(UAnimationInstance* InInstance)
 {
-	if (InInstance) AnimInstance = InInstance;
+	if (InInstance && AnimInstance != InInstance)
+	{
+		delete AnimInstance;
+		AnimInstance = InInstance;
+	}
 	ResetPose();
 	UpdateBoneMatrices();
+}
+
+void USkeletalMeshComponent::PlayAnimation(UAnimSequence* NewAnimToPlay, bool bLooping, bool bReverse)
+{
+	if (!AnimInstance)
+	{
+		AnimInstance = NewObject<UAnimationInstance>(this);
+	}
+	AnimInstance->PlaySingleAnimation(NewAnimToPlay, bLooping, bReverse);
+}
+
+void USkeletalMeshComponent::PlayAnimation(const FString& Path, bool bLooping, bool bReverse)
+{
+	if (!AnimInstance)
+	{
+		AnimInstance = NewObject<UAnimationInstance>(this);
+	}
+	AnimInstance->PlaySingleAnimation(Path, bLooping, bReverse);
 }
 
 const FModelMeshData* USkeletalMeshComponent::GetMeshData() const

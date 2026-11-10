@@ -8,38 +8,47 @@
 
 UAnimationInstance::UAnimationInstance()
 {
-	AnimNode* Sequence1 = AddNode(SequencePlayer);
-	SequencePlayerNode* SeqPlayer1 = static_cast<SequencePlayerNode*>(Sequence1);
-	SeqPlayer1->InitializeNode(true, false, "Models/statemachinefbx/Mixamo_StateMachine_WithSkin.fbx_Anim_2");
-	AnimNode* Sequence2 = AddNode(SequencePlayer);
-	SequencePlayerNode* SeqPlayer2 = static_cast<SequencePlayerNode*>(Sequence2);
-	SeqPlayer2->InitializeNode(true, false, "Models/statemachinefbx/Mixamo_StateMachine_WithSkin.fbx_Anim_7");
-	AnimNode* Sequence3 = AddNode(SequencePlayer);
-	SequencePlayerNode* SeqPlayer3 = static_cast<SequencePlayerNode*>(Sequence3);
-	SeqPlayer3->InitializeNode(true, false, "Models/statemachinefbx/Mixamo_StateMachine_WithSkin.fbx_Anim_6");
+	BuildDefaultLocomotionGraph();
+}
 
-	AnimNode* Blends = AddNode(BlendSpace1D);
-	BlendSpace1DNode* Blend1Node = static_cast<BlendSpace1DNode*>(Blends);
-	Blend1Node->AddSample(Sequence1, 0.0f);
-	Blend1Node->AddSample(Sequence2, 2.0f);
-	Blend1Node->AddSample(Sequence3, 10.0f);
+UAnimationInstance::~UAnimationInstance()
+{
+	Root = nullptr;
+}
+
+void UAnimationInstance::ClearGraph()
+{
+	Root = nullptr;
+	Nodes.Empty();
+	PendingNotifyNames.Reset();
+	RootTransform = FTransform::Identity;
+	RootMotionNodeIndex = -1;
+	CurrentTime = 0.0f;
+}
+
+void UAnimationInstance::BuildDefaultLocomotionGraph()
+{
+	ClearGraph();
+
+	SequencePlayerNode* SeqPlayer1 = AddSequenceNode("Models/statemachinefbx/Mixamo_StateMachine_WithSkin.fbx_Anim_2", true, false);
+	SequencePlayerNode* SeqPlayer2 = AddSequenceNode("Models/statemachinefbx/Mixamo_StateMachine_WithSkin.fbx_Anim_7", true, false);
+	SequencePlayerNode* SeqPlayer3 = AddSequenceNode("Models/statemachinefbx/Mixamo_StateMachine_WithSkin.fbx_Anim_6", true, false);
+
+	BlendSpace1DNode* Blend1Node = AddBlendSpace1DNode();
+	Blend1Node->AddSample(SeqPlayer1, 0.0f);
+	Blend1Node->AddSample(SeqPlayer2, 2.0f);
+	Blend1Node->AddSample(SeqPlayer3, 10.0f);
+
 	// 공격/피격 클립은 준비 전까지 기존 클립을 임시로 사용한다.
-	AnimNode* AttackNode = AddNode(SequencePlayer);
-	static_cast<SequencePlayerNode*>(AttackNode)->InitializeNode(false, false, "Models/statemachinefbx/Mixamo_StateMachine_WithSkin.fbx_Anim_8");
-	AnimNode* HitNode = AddNode(SequencePlayer);
-	static_cast<SequencePlayerNode*>(HitNode)->InitializeNode(false, false, "Models/statemachinefbx/Mixamo_StateMachine_WithSkin.fbx_Anim_1");
-	AnimNode* JumpStartNode = AddNode(SequencePlayer);
-	static_cast<SequencePlayerNode*>(JumpStartNode)->InitializeNode(false, false, "Models/statemachinefbx/Mixamo_StateMachine_WithSkin.fbx_Anim_5");
-	AnimNode* JumpAirNode = AddNode(SequencePlayer);
-	static_cast<SequencePlayerNode*>(JumpAirNode)->InitializeNode(true, false, "Models/statemachinefbx/Mixamo_StateMachine_WithSkin.fbx_Anim_4");
-	AnimNode* JumpEndNode = AddNode(SequencePlayer);
-	static_cast<SequencePlayerNode*>(JumpEndNode)->InitializeNode(false, false, "Models/statemachinefbx/Mixamo_StateMachine_WithSkin.fbx_Anim_3");
+	SequencePlayerNode* AttackNode = AddSequenceNode("Models/statemachinefbx/Mixamo_StateMachine_WithSkin.fbx_Anim_8", false, false);
+	SequencePlayerNode* HitNode = AddSequenceNode("Models/statemachinefbx/Mixamo_StateMachine_WithSkin.fbx_Anim_1", false, false);
+	SequencePlayerNode* JumpStartNode = AddSequenceNode("Models/statemachinefbx/Mixamo_StateMachine_WithSkin.fbx_Anim_5", false, false);
+	SequencePlayerNode* JumpAirNode = AddSequenceNode("Models/statemachinefbx/Mixamo_StateMachine_WithSkin.fbx_Anim_4", true, false);
+	SequencePlayerNode* JumpEndNode = AddSequenceNode("Models/statemachinefbx/Mixamo_StateMachine_WithSkin.fbx_Anim_3", false, false);
 
-
-
-	StateMachineNode* Machine = static_cast<StateMachineNode*>(AddNode(NodeType::StateMachine));
+	StateMachineNode* Machine = AddStateMachineNode();
 	Machine->AddTransition(EAnimState::Locomotion, EAnimState::Attack,
-	[](const AnimationContext& Context) { return Context.bIsAttacking; }, 0.5f,
+		[](const AnimationContext& Context) { return Context.bIsAttacking; }, 0.5f,
 		[AttackNode](AnimationContext& Context)
 		{
 			Context.bIsAttacking = false;
@@ -77,10 +86,8 @@ UAnimationInstance::UAnimationInstance()
 	Machine->AddTransition(EAnimState::JumpEnd, EAnimState::Locomotion,
 		[JumpEndNode](const AnimationContext& Context)
 		{
-			auto* Player = static_cast<SequencePlayerNode*>(JumpEndNode);
-
-			return Player->IsClipFinished()
-				|| (Player->GetCurrentPlayTime() >= 0.25f
+			return JumpEndNode->IsClipFinished()
+				|| (JumpEndNode->GetCurrentPlayTime() >= 0.25f
 					&& Context.Speed > 0.1f);
 		}, 0.15f);
 
@@ -92,11 +99,6 @@ UAnimationInstance::UAnimationInstance()
 	Machine->SetStateNode(EAnimState::JumpEnd, JumpEndNode);
 
 	SetRoot(Machine);
-}
-
-UAnimationInstance::~UAnimationInstance()
-{
-	Root = nullptr;
 }
 
 void UAnimationInstance::Tick(float deltaTime, PoseContext& Context)
@@ -116,37 +118,98 @@ AnimNode* UAnimationInstance::AddNode(NodeType Node)
 {
 	if (Node == NodeType::SequencePlayer)
 	{
-		auto Node = std::make_unique<SequencePlayerNode>();
-		AnimNode* RawNode = Node.get();
-		Nodes.Add(std::move(Node));
+		auto NewNode = std::make_unique<SequencePlayerNode>();
+		AnimNode* RawNode = NewNode.get();
+		Nodes.Add(std::move(NewNode));
 		return RawNode;
 	}
 	else if (Node == NodeType::TwoWayBlend)
 	{
-		auto Node = std::make_unique<TwoWayBlendNode>();
-		AnimNode* RawNode = Node.get();
-		Nodes.Add(std::move(Node));
+		auto NewNode = std::make_unique<TwoWayBlendNode>();
+		AnimNode* RawNode = NewNode.get();
+		Nodes.Add(std::move(NewNode));
 		return RawNode;
 	}
 	else if (Node == NodeType::BlendSpace1D)
 	{
-		auto Node = std::make_unique<BlendSpace1DNode>();
-		AnimNode* RawNode = Node.get();
-		Nodes.Add(std::move(Node));
+		auto NewNode = std::make_unique<BlendSpace1DNode>();
+		AnimNode* RawNode = NewNode.get();
+		Nodes.Add(std::move(NewNode));
 		return RawNode;
 	}
 	else if (Node == NodeType::StateMachine)
 	{
-		auto Node = std::make_unique<StateMachineNode>();
-		AnimNode* RawNode = Node.get();
-		Nodes.Add(std::move(Node));
+		auto NewNode = std::make_unique<StateMachineNode>();
+		AnimNode* RawNode = NewNode.get();
+		Nodes.Add(std::move(NewNode));
 		return RawNode;
 	}
+	return nullptr;
+}
+
+SequencePlayerNode* UAnimationInstance::AddSequenceNode(const FString& Path, bool bLoop, bool bReverse)
+{
+	auto* Node = static_cast<SequencePlayerNode*>(AddNode(NodeType::SequencePlayer));
+	Node->InitializeNode(bLoop, bReverse, Path);
+	return Node;
+}
+
+SequencePlayerNode* UAnimationInstance::AddSequenceNode(UAnimSequence* InSequence, bool bLoop, bool bReverse)
+{
+	auto* Node = static_cast<SequencePlayerNode*>(AddNode(NodeType::SequencePlayer));
+	Node->InitializeNode(bLoop, bReverse, InSequence);
+	return Node;
+}
+
+TwoWayBlendNode* UAnimationInstance::AddTwoWayBlendNode(AnimNode* NodeA, AnimNode* NodeB, float Alpha)
+{
+	auto* Node = static_cast<TwoWayBlendNode*>(AddNode(NodeType::TwoWayBlend));
+	Node->InitializeNode(NodeA, NodeB, Alpha);
+	return Node;
+}
+
+BlendSpace1DNode* UAnimationInstance::AddBlendSpace1DNode()
+{
+	return static_cast<BlendSpace1DNode*>(AddNode(NodeType::BlendSpace1D));
+}
+
+StateMachineNode* UAnimationInstance::AddStateMachineNode()
+{
+	return static_cast<StateMachineNode*>(AddNode(NodeType::StateMachine));
+}
+
+SequencePlayerNode* UAnimationInstance::PlaySingleAnimation(const FString& Path, bool bLoop, bool bReverse)
+{
+	ClearGraph();
+	SequencePlayerNode* Node = AddSequenceNode(Path, bLoop, bReverse);
+	SetRoot(Node);
+	return Node;
+}
+
+SequencePlayerNode* UAnimationInstance::PlaySingleAnimation(UAnimSequence* InSequence, bool bLoop, bool bReverse)
+{
+	ClearGraph();
+	SequencePlayerNode* Node = AddSequenceNode(InSequence, bLoop, bReverse);
+	SetRoot(Node);
+	return Node;
 }
 
 void UAnimationInstance::RemoveNode(AnimNode* Node)
 {
+	if (!Node)
+		return;
 
+	if (Root == Node)
+		Root = nullptr;
+
+	for (int32 i = 0; i < Nodes.Num(); ++i)
+	{
+		if (Nodes[i].get() == Node)
+		{
+			Nodes.RemoveAt(i);
+			break;
+		}
+	}
 }
 
 void UAnimationInstance::SetRoot(AnimNode* Node)
