@@ -126,7 +126,9 @@ bool UAnimationGraph::AddAnyStateTransition(const FName& ToState, EAnimTransitio
 
 bool UAnimationGraph::SetEditorNodePosition(const FName& NodeName, float X, float Y)
 {
-    if (!std::isfinite(X) || !std::isfinite(Y) || (!NodeName.IsNone() && FindStateIndex(NodeName) == -1))
+    const bool bIsEditorEntryPoint = NodeName == FName("__EditorEntryPoint__");
+
+    if (!std::isfinite(X) || !std::isfinite(Y) || (!NodeName.IsNone() && !bIsEditorEntryPoint && FindStateIndex(NodeName) == -1))
     {
         return false;
     }

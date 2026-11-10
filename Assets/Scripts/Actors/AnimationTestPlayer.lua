@@ -29,10 +29,10 @@ local function UpdateAnimationState()
     AnimationComponent:SetAnimationBool("bIsLanded", CurrentState == "JumpLand")
 
     if not state.PendingAnimationState then
-        if CurrentState == "JumpStart" and AnimationComponent:IsCurrentAnimationStateFinished() then
-            QueueAnimationState("JumpLoop")
-        elseif CurrentState == "JumpLoop" and owner:IsGrounded() then
+        if (CurrentState == "JumpStart" or CurrentState == "JumpLoop") and owner:IsGrounded() then
             QueueAnimationState("JumpLand")
+        elseif CurrentState == "JumpStart" and AnimationComponent:IsCurrentAnimationStateFinished() then
+            QueueAnimationState("JumpLoop")
         elseif (CurrentState == "JumpLand" or CurrentState == "Attack" or CurrentState == "Hit") and AnimationComponent:IsCurrentAnimationStateFinished() then
             QueueAnimationState("Locomotion")
         end

@@ -3,38 +3,43 @@
         "EditorNodePositions": [
             {
                 "NodeName": "Locomotion",
-                "X": 300.0,
-                "Y": 90.0
+                "X": 520.0,
+                "Y": 197.0
             },
             {
                 "NodeName": "JumpStart",
-                "X": 660.0,
-                "Y": 90.0
+                "X": 1136.0,
+                "Y": 80.0
             },
             {
                 "NodeName": "JumpLoop",
-                "X": 1020.0,
-                "Y": 90.0
+                "X": 1576.0,
+                "Y": 185.0
             },
             {
                 "NodeName": "JumpLand",
-                "X": 300.0,
-                "Y": 320.0
+                "X": 1152.0,
+                "Y": 496.0
             },
             {
                 "NodeName": "Attack",
-                "X": 660.0,
-                "Y": 320.0
+                "X": 524.0,
+                "Y": 618.0
             },
             {
                 "NodeName": "Hit",
-                "X": 1020.0,
-                "Y": 320.0
+                "X": 224.0,
+                "Y": 618.0
             },
             {
                 "NodeName": "None",
-                "X": 30.0,
-                "Y": 60.0
+                "X": -16.0,
+                "Y": 672.0
+            },
+            {
+                "NodeName": "__EditorEntryPoint__",
+                "X": 344.0,
+                "Y": 222.0
             }
         ],
         "EntryState": "Locomotion",
@@ -208,6 +213,16 @@
                 "Priority": 0,
                 "Rule": 3,
                 "ToState": "Locomotion"
+            },
+            {
+                "AnyState": false,
+                "BlendDuration": 0.11999999731779099,
+                "FloatThreshold": 0.0,
+                "FromState": "JumpStart",
+                "ParameterName": "None",
+                "Priority": 0,
+                "Rule": 3,
+                "ToState": "JumpLand"
             }
         ]
     },
