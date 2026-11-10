@@ -81,7 +81,7 @@
             }
         ],
         "Properties": {},
-        "Skeleton": "Models/UAL1_Standard_Skeleton",
+        "Skeleton": "Models/UAL1_Standard/UAL1_Standard_Skeleton",
         "States": [
             {
                 "BlendParameterName": "Speed",
@@ -99,7 +99,7 @@
                 "Name": "JumpStart",
                 "NodeType": 0,
                 "PlayRate": 1.0,
-                "Sequence": "Models/UAL1_Standard.fbx::Armature|Jump_Start"
+                "Sequence": "Models/UAL1_Standard/UAL1_Standard.fbx::Armature|Jump_Start"
             },
             {
                 "BlendParameterName": "None",
@@ -108,7 +108,7 @@
                 "Name": "JumpLoop",
                 "NodeType": 0,
                 "PlayRate": 1.0,
-                "Sequence": "Models/UAL1_Standard.fbx::Armature|Jump_Loop"
+                "Sequence": "Models/UAL1_Standard/UAL1_Standard.fbx::Armature|Jump_Loop"
             },
             {
                 "BlendParameterName": "None",
@@ -117,7 +117,7 @@
                 "Name": "JumpLand",
                 "NodeType": 0,
                 "PlayRate": 1.0,
-                "Sequence": "Models/UAL1_Standard.fbx::Armature|Jump_Land"
+                "Sequence": "Models/UAL1_Standard/UAL1_Standard.fbx::Armature|Jump_Land"
             },
             {
                 "BlendParameterName": "None",
@@ -126,7 +126,7 @@
                 "Name": "Jab",
                 "NodeType": 0,
                 "PlayRate": 1.0,
-                "Sequence": "Models/UAL1_Standard.fbx::Armature|Punch_Jab"
+                "Sequence": "Models/UAL1_Standard/UAL1_Standard.fbx::Armature|Punch_Jab"
             },
             {
                 "BlendParameterName": "None",
@@ -135,7 +135,7 @@
                 "Name": "Hit",
                 "NodeType": 0,
                 "PlayRate": 1.0,
-                "Sequence": "Models/UAL1_Standard.fbx::Armature|Hit_Chest"
+                "Sequence": "Models/UAL1_Standard/UAL1_Standard.fbx::Armature|Hit_Chest"
             },
             {
                 "BlendParameterName": "None",
@@ -144,7 +144,7 @@
                 "Name": "Straight",
                 "NodeType": 0,
                 "PlayRate": 1.0,
-                "Sequence": "Models/UAL1_Standard.fbx::Armature|Punch_Cross"
+                "Sequence": "Models/UAL1_Standard/UAL1_Standard.fbx::Armature|Punch_Cross"
             }
         ],
         "Transitions": [

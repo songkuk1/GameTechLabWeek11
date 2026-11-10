@@ -12,6 +12,7 @@
 #include "Editor/Viewports/ViewportCameraMath.h"
 #include "SkeletonTreePanel.h"
 #include "UObject/UObjectIterator.h"
+#include "Render/SkeletalMesh.h"
 #include "Component/SkeletalMeshComponent.h"
 #include "Collision/Ray.h"
 
@@ -214,83 +215,56 @@ void FSkeletalMeshPreviewTab::PickBone(const FVector2& MousePosition)
 	const int32 ScreenWidth = static_cast<int32>(OutputSize.X);
 	const int32 ScreenHeight = static_cast<int32>(OutputSize.Y);
 
-	// 각 노드가 어떤 Bone에 해당하는지 기록한다.
-	TArray<int32> NodeToBone;
-	NodeToBone.SetNum(Nodes.Num());
-	for (int32 NodeIndex = 0; NodeIndex < Nodes.Num(); ++NodeIndex)
-		NodeToBone[NodeIndex] = -1;
+	// DrawDebugSkeleton에서 사용하는 관절 반지름과 동일한 값을 사용한다.
+	const FBox Bounds = SkeletalMesh->GetMeshData().AABB;
+	const FVector Extent = Bounds.Max - Bounds.Min;
+	const float MeshSize = std::max({ Extent.X, Extent.Y, Extent.Z });
+	const float JointRadius = MeshSize * 0.006f;
+
+	int32 PickedBoneIndex = -1;
+	float BestDistanceSquared = FLT_MAX;
 
 	for (int32 BoneIndex = 0; BoneIndex < Bones.Num(); ++BoneIndex)
 	{
 		const int32 NodeIndex = Bones[BoneIndex].NodeIndex;
-		if (NodeIndex >= 0 && NodeIndex < Nodes.Num())
-			NodeToBone[NodeIndex] = BoneIndex;
-	}
-
-	// 각 Bone의 관절 위치를 화면 좌표로 변환한다.
-	TArray<FVector2> ScreenJoints;
-	TArray<uint8> bVisibleJoints;
-	ScreenJoints.SetNum(Bones.Num());
-	bVisibleJoints.SetNum(Bones.Num());
-
-	for (int32 BoneIndex = 0; BoneIndex < Bones.Num(); ++BoneIndex)
-	{
-		bVisibleJoints[BoneIndex] = 0;
+		if (NodeIndex < 0 || NodeIndex >= Nodes.Num())
+			continue;
 
 		const FMatrix JointWorld = MeshComponent->GetBoneComponentMatrix(BoneIndex) * ComponentWorld;
 		const FVector JointPosition(JointWorld.M[3][0], JointWorld.M[3][1], JointWorld.M[3][2]);
-		const FVector2 ScreenPosition = WorldToScreen(JointPosition, ViewProjection, ScreenWidth, ScreenHeight);
 
+		const FVector2 ScreenPosition = WorldToScreen(JointPosition, ViewProjection, ScreenWidth, ScreenHeight);
 		if (!std::isfinite(ScreenPosition.X) || !std::isfinite(ScreenPosition.Y) || ScreenPosition.X < -1.0e20f || ScreenPosition.Y < -1.0e20f)
 			continue;
 
-		ScreenJoints[BoneIndex] = ScreenPosition;
-		bVisibleJoints[BoneIndex] = 1;
-	}
+		// 카메라 오른쪽 방향으로 관절 반지름만큼 이동한 점을 화면에 투영한다.
+		// 두 점 사이의 픽셀 거리가 화면상 관절 원의 반지름이다.
+		const FMatrix Billboard = Viewport->BuildBillboardMatrix(JointPosition, JointRadius * 2.0f, JointRadius * 2.0f);
+		const FVector CameraRight(Billboard.M[1][0], Billboard.M[1][1], Billboard.M[1][2]);
+		const FVector EdgeWorldPosition = JointPosition + CameraRight.GetSafeNormal() * JointRadius;
+		const FVector2 EdgeScreenPosition = WorldToScreen(EdgeWorldPosition, ViewProjection, ScreenWidth, ScreenHeight);
 
-	int32 PickedBoneIndex = -1;
-	float BestDistance = 10.0f;
-
-	// 관절과 본을 잇는 선 중 마우스에 가장 가까운 본을 찾는다.
-	for (int32 BoneIndex = 0; BoneIndex < Bones.Num(); ++BoneIndex)
-	{
-		if (!bVisibleJoints[BoneIndex])
+		if (!std::isfinite(EdgeScreenPosition.X) || !std::isfinite(EdgeScreenPosition.Y))
 			continue;
 
-		const FVector2& Joint = ScreenJoints[BoneIndex];
-		const float DeltaX = MousePosition.X - Joint.X;
-		const float DeltaY = MousePosition.Y - Joint.Y;
-		const float JointDistance = std::sqrt(DeltaX * DeltaX + DeltaY * DeltaY);
+		const float RadiusX = EdgeScreenPosition.X - ScreenPosition.X;
+		const float RadiusY = EdgeScreenPosition.Y - ScreenPosition.Y;
+		const float PickRadiusSquared = RadiusX * RadiusX + RadiusY * RadiusY;
 
-		// 관절 중심을 클릭한 경우
-		if (JointDistance < BestDistance)
+		const float DeltaX = MousePosition.X - ScreenPosition.X;
+		const float DeltaY = MousePosition.Y - ScreenPosition.Y;
+		const float DistanceSquared = DeltaX * DeltaX + DeltaY * DeltaY;
+
+		// 관절 원의 화면상 범위 안에 있을 때만 선택 후보로 인정한다.
+		if (DistanceSquared <= PickRadiusSquared && DistanceSquared < BestDistanceSquared)
 		{
-			BestDistance = JointDistance;
-			PickedBoneIndex = BoneIndex;
-		}
-
-		// 부모 관절부터 현재 관절까지 이어지는 본 선을 검사한다.
-		const int32 NodeIndex = Bones[BoneIndex].NodeIndex;
-		const int32 ParentNodeIndex = Nodes[NodeIndex].ParentNodeIndex;
-
-		if (ParentNodeIndex < 0 || ParentNodeIndex >= Nodes.Num())
-			continue;
-
-		const int32 ParentBoneIndex = NodeToBone[ParentNodeIndex];
-		if (ParentBoneIndex < 0 || !bVisibleJoints[ParentBoneIndex])
-			continue;
-
-		const float SegmentDistance = DistanceToSegment(MousePosition, ScreenJoints[ParentBoneIndex], Joint);
-
-		if (SegmentDistance <= 8.0f && SegmentDistance < BestDistance)
-		{
-			BestDistance = SegmentDistance;
+			BestDistanceSquared = DistanceSquared;
 			PickedBoneIndex = BoneIndex;
 		}
 	}
 
-	if (PickedBoneIndex >= 0)
-		SkeletonTreePanel->SetSelectedBone(PickedBoneIndex);
+	// 원을 클릭하지 않았으면 -1을 전달해 기존 선택을 해제한다.
+	SkeletonTreePanel->SetSelectedBone(PickedBoneIndex);
 }
 
 void FSkeletalMeshPreviewTab::Tick(float DeltaTime)
