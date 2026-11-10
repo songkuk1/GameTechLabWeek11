@@ -34,6 +34,22 @@ namespace
 		Settings.bIsolatePanels = true;
 		return Settings;
 	}
+
+	int32 FindRootBoneIndex(const USkeleton* Skeleton)
+	{
+		if (!Skeleton)
+			return -1;
+
+		const TArray<FModelBone>& Bones = Skeleton->GetBones();
+		for (int32 BoneIndex = 0; BoneIndex < Bones.Num(); ++BoneIndex)
+		{
+			const int32 ParentIndex = Bones[BoneIndex].ParentBoneIndex;
+			if (ParentIndex < 0 || ParentIndex >= Bones.Num())
+				return BoneIndex;
+		}
+
+		return -1;
+	}
 }
 
 
@@ -128,18 +144,26 @@ void FSkeletalMeshPreviewTab::DrawToolbar()
 	ImGui::EndDisabled();
 
 	USkeletalMeshComponent* PreviewComponent = MeshActor->GetSkeletalMeshComponent();
+	const USkeleton* Skeleton = SkeletalMesh ? SkeletalMesh->GetSkeleton() : nullptr;
+	const int32 DefaultHeatmapBoneIndex = FindRootBoneIndex(Skeleton);
+	const int32 HeatmapBoneIndex = SelectedBone >= 0 ? SelectedBone : DefaultHeatmapBoneIndex;
+	const bool bHasBones = DefaultHeatmapBoneIndex >= 0;
 	bool bShowBoneWeightHeatmap = PreviewComponent->IsBoneWeightHeatmapEnabled();
 
 	ImGui::SameLine();
-	ImGui::BeginDisabled(SelectedBone < 0);
+	ImGui::BeginDisabled(!bHasBones && !bShowBoneWeightHeatmap);
 
 	if (ImGui::Checkbox("Bone Weight Heatmap", &bShowBoneWeightHeatmap))
 	{
-		PreviewComponent->SetBoneWeightHeatmapBoneIndex(SelectedBone);
+		if (bShowBoneWeightHeatmap)
+			PreviewComponent->SetBoneWeightHeatmapBoneIndex(HeatmapBoneIndex);
+
 		PreviewComponent->SetBoneWeightHeatmapEnabled(bShowBoneWeightHeatmap);
 	}
 
 	ImGui::EndDisabled();
+
+	ImGui::SetItemTooltip("No bone selected: displays the first root bone's weights.");
 
 	ImGui::BeginDisabled(PoseSavePath.empty() || BoneGizmo.IsUsing());
 	const FString FileEntry = PathUtils::ToUtf8(PoseSavePath.filename()) + " ...###PoseFile";
@@ -150,7 +174,6 @@ void FSkeletalMeshPreviewTab::DrawToolbar()
 	ImGui::SetItemTooltip("%s", PathUtils::ToUtf8(PoseSavePath).c_str());
 	ImGui::EndDisabled();
 
-	const USkeleton* Skeleton = SkeletalMesh->GetSkeleton();
 	const bool bNeedsSave = bPoseDirty || (Skeleton && PoseSavePath != Skeleton->GetPosePath());
 	ImGui::SameLine();
 	ImGui::BeginDisabled(!bNeedsSave || PoseSavePath.empty() || BoneGizmo.IsUsing());
@@ -356,7 +379,15 @@ void FSkeletalMeshPreviewTab::OnBoneSelected(int32 BoneIndex)
 
 	if (SelectedBone < 0)
 	{
-		PreviewComponent->SetBoneWeightHeatmapEnabled(false);
+		if (PreviewComponent->IsBoneWeightHeatmapEnabled())
+		{
+			const int32 RootBoneIndex = FindRootBoneIndex(SkeletalMesh->GetSkeleton());
+			if (RootBoneIndex >= 0)
+				PreviewComponent->SetBoneWeightHeatmapBoneIndex(RootBoneIndex);
+			else
+				PreviewComponent->SetBoneWeightHeatmapEnabled(false);
+		}
+
 		BoneGizmo.SetTarget(nullptr);
 		return;
 	}
