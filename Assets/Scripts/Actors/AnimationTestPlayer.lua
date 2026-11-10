@@ -3,6 +3,7 @@ local HitCooldown = 0.8
 local WalkMoveSpeed = 5.0
 local RunMoveSpeed = 10.0
 local AnimationSpeedScale = 60.0
+local AnimationSpeedInterp = 6.0
 local AnimationGraphPath = "AnimationTest.animgraph"
 local AnimationComponent = nil
 
@@ -88,6 +89,7 @@ function Init()
     state.bComboWindow = false
     state.bComboRequested = false
     state.bRecoveryBlend = false
+    state.AnimationSpeed = 0.0
 end
 
 function BeginPlay()
@@ -114,7 +116,10 @@ function Tick(deltaTime)
     state.HitCooldown = math.max(0.0, state.HitCooldown - deltaTime)
 
     if state.AnimationReady then
-        AnimationComponent:SetAnimationFloat("Speed", owner:GetMovementSpeed2D() * AnimationSpeedScale)
+        local TargetAnimationSpeed = owner:GetMovementSpeed2D() * AnimationSpeedScale
+    local SpeedAlpha = math.min(deltaTime * AnimationSpeedInterp, 1.0)
+    state.AnimationSpeed = state.AnimationSpeed + (TargetAnimationSpeed - state.AnimationSpeed) * SpeedAlpha
+    AnimationComponent:SetAnimationFloat("Speed", state.AnimationSpeed)
         UpdateAnimationState()
     end
 

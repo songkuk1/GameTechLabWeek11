@@ -184,15 +184,15 @@
                             "Parent": "DefaultSceneRoot",
                             "Properties": {
                                 "CameraLagMaxDistance": 0.0,
-                                "CameraLagSpeed": 10.0,
-                                "CameraRotationLagSpeed": 10.0,
+                                "CameraLagSpeed": 5.0,
+                                "CameraRotationLagSpeed": 1.0,
                                 "ProbeSize": 0.15000000596046448,
                                 "SocketOffset": {
                                     "X": 0.0,
-                                    "Y": 0.0,
-                                    "Z": 0.0
+                                    "Y": 0.30000001192092896,
+                                    "Z": 0.30000001192092896
                                 },
-                                "TargetArmLength": 6.0,
+                                "TargetArmLength": 2.0,
                                 "TargetOffset": {
                                     "X": 0.0,
                                     "Y": 0.0,
@@ -200,9 +200,9 @@
                                 },
                                 "Transform": {
                                     "Location": {
-                                        "X": -1.2000000476837158,
+                                        "X": 0.0,
                                         "Y": 0.0,
-                                        "Z": 1.2000000476837158
+                                        "Z": 1.399999976158142
                                     },
                                     "Rotation": {
                                         "Pitch": 0.0,
@@ -216,8 +216,8 @@
                                     }
                                 },
                                 "bDoCollisionTest": true,
-                                "bEnableCameraLag": false,
-                                "bEnableCameraRotationLag": false,
+                                "bEnableCameraLag": true,
+                                "bEnableCameraRotationLag": true,
                                 "bUsePawnControlRotation": false
                             }
                         },
@@ -239,7 +239,7 @@
                                     },
                                     "Rotation": {
                                         "Pitch": 0.0,
-                                        "Roll": 0.0,
+                                        "Roll": -30.0,
                                         "Yaw": 0.0
                                     },
                                     "Scale": {
@@ -265,7 +265,7 @@
                             "Name": "UCharacterMovementComponent",
                             "Parent": "",
                             "Properties": {
-                                "RotationRate": 540.0,
+                                "RotationRate": 360.0,
                                 "bOrientRotationToMovement": true
                             }
                         },
