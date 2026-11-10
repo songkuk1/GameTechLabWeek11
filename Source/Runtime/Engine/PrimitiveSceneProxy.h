@@ -17,7 +17,8 @@ enum EObjectMaskBit
 {
     OM_CastShadow = 0x1,
     OM_ReceiveShadow = 0x2,
-    OM_ReceiveDecals = 0x4
+    OM_ReceiveDecals = 0x4,
+    OM_VisualizeBoneWeight = 0x8
 };
 
 class FPrimitiveSceneProxy
@@ -47,7 +48,7 @@ public:
     bool IsReceiveShadow() const { return bReceiveShadow; }
     bool ReceivesDecals() const{ return bReceivesDecals; }
     bool IsHiddenInGame() const { return bHiddenInGame; }
-    uint32 GetObjectMask() const { return ObjectMask; }
+    virtual uint32 GetObjectMask() const { return ObjectMask; }
 
     uint8 GetLODCount() const { return RenderState ? RenderState->LODCount : 1; }
     const FMeshRenderState* GetRenderState() const { return RenderState.get(); }
@@ -120,6 +121,7 @@ public:
     }
 
     bool IsSkeletalMesh() const override { return Mesh != nullptr; }
+    uint32 GetObjectMask() const override;
     bool UpdateCPUSkinnedVertexBuffer();
 
 protected:

@@ -414,6 +414,29 @@ void USkeletalMeshComponent::EvaluateAnimationPose()
 
     AnimInstance->EvaluateAnimation(Output);
 
+    if (bRootMotionEnabled)
+    {
+        const TArray<FModelBone>& Bones = Skeleton->GetBones();
+
+        for (const FModelBone& Bone : Bones)
+        {
+            if (Bone.ParentBoneIndex != -1)
+            {
+                continue;
+            }
+
+            int32 RootNodeIndex = Bone.NodeIndex;
+
+            while (RootNodeIndex != -1 && Nodes.IsValidIndex(RootNodeIndex))
+            {
+                Output.Pose[RootNodeIndex] = Nodes[RootNodeIndex].LocalTransform;
+                RootNodeIndex = Nodes[RootNodeIndex].ParentNodeIndex;
+            }
+
+            break;
+        }
+    }
+
     LocalPose = Output.Pose;
 
     UpdateBoneMatrices();

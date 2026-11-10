@@ -13,6 +13,7 @@
 #include "Editor/Viewports/ViewportCameraMath.h"
 #include "SkeletonTreePanel.h"
 #include "UObject/UObjectIterator.h"
+#include "Component/SkeletalMeshComponent.h"
 
 #include <algorithm>
 #include <cmath>
@@ -124,6 +125,20 @@ void FSkeletalMeshPreviewTab::DrawToolbar()
 	{
 		OpenAnimationSequenceViewer(SkeletalMesh, SelectedAnimation);
 	}
+	ImGui::EndDisabled();
+
+	USkeletalMeshComponent* PreviewComponent = MeshActor->GetSkeletalMeshComponent();
+	bool bShowBoneWeightHeatmap = PreviewComponent->IsBoneWeightHeatmapEnabled();
+
+	ImGui::SameLine();
+	ImGui::BeginDisabled(SelectedBone < 0);
+
+	if (ImGui::Checkbox("Bone Weight Heatmap", &bShowBoneWeightHeatmap))
+	{
+		PreviewComponent->SetBoneWeightHeatmapBoneIndex(SelectedBone);
+		PreviewComponent->SetBoneWeightHeatmapEnabled(bShowBoneWeightHeatmap);
+	}
+
 	ImGui::EndDisabled();
 
 	ImGui::BeginDisabled(PoseSavePath.empty() || BoneGizmo.IsUsing());
@@ -337,12 +352,20 @@ void FSkeletalMeshPreviewTab::CollectViews(TArray<FEditorTabView>& OutViews)
 void FSkeletalMeshPreviewTab::OnBoneSelected(int32 BoneIndex)
 {
 	SelectedBone = BoneIndex;
+	USkeletalMeshComponent* PreviewComponent = MeshActor->GetSkeletalMeshComponent();
+
 	if (SelectedBone < 0)
 	{
+		PreviewComponent->SetBoneWeightHeatmapEnabled(false);
 		BoneGizmo.SetTarget(nullptr);
 		return;
 	}
+
+	if (PreviewComponent->IsBoneWeightHeatmapEnabled())
+	{
+		PreviewComponent->SetBoneWeightHeatmapBoneIndex(SelectedBone);
+	}
+
 	UpdateBoneGizmoTarget();
 	BoneGizmo.SetTarget(BoneGizmoActor->GetRootComponent());
 }
-

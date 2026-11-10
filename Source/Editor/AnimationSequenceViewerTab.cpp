@@ -40,7 +40,7 @@ namespace
 
 static const float SpeedValues[] =
 {
-	0.25f, 0.5f, 1.0f, 1.5f, 2.0f
+	-1.0f, 0.25f, 0.5f, 1.0f, 1.5f, 2.0f
 };
 
 FAnimationSequenceViewerTab::FAnimationSequenceViewerTab(USkeletalMesh* InSkeletalMesh, UAnimSequence* InAnimation) : FEditorTab(MakeAnimationSequenceViewerSettings(InAnimation)), SkeletalMesh(InSkeletalMesh), Animation(InAnimation)
@@ -244,7 +244,7 @@ void FAnimationSequenceViewerTab::DrawToolbar()
 
 	ImGui::SameLine();
 
-	static const char* SpeedLabels[] = { "0.25x", "0.5x", "1.0x", "1.5x", "2.0x" };
+	static const char* SpeedLabels[] = { "Reverse 1.0x", "0.25x", "0.5x", "1.0x", "1.5x", "2.0x" };
 
 	ImGui::SetNextItemWidth(90.0f);
 	if (ImGui::BeginCombo("Speed", SpeedLabels[PlaybackSpeedIndex]))

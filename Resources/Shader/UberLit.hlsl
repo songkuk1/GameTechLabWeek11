@@ -121,6 +121,7 @@ struct FPSInput
     float3 Normal : NORMAL;
     float2 UV : TEXCOORD0;
     float3 WorldPosition : TEXCOORD1;
+    float BoneWeight : TEXCOORD4;
 #if USE_NORMAL_MAP
     float3 Tangent : TANGENT;
     int BitangentSign : BITANGENT_SIGN;
@@ -982,6 +983,26 @@ FPSInput mainVS(FVSInput Input)
     Output.WorldPosition = WorldPosition.xyz;
     Output.Normal = mul(Local.Normal, (float3x3) NormalMatrix);
     Output.UV = Input.UV;
+    float HeatmapWeight = Input.Color.r;
+
+#if USE_SKINNING
+if ((ObjectMask & 0x8u) != 0u)
+{
+    HeatmapWeight = 0.0f;
+
+    const uint SelectedBoneIndex = (ObjectMask >> 16u) & 0xFFFFu;
+
+    for (int i = 0; i < Input.BoneInfluenceCount; ++i)
+    {
+        if (Input.BoneIndices[i] == (int)SelectedBoneIndex)
+        {
+            HeatmapWeight += Input.BoneWeights[i];
+        }
+    }
+}
+#endif
+
+    Output.BoneWeight = saturate(HeatmapWeight);
 #if USE_NORMAL_MAP
     Output.Tangent = mul(Local.Tangent, (float3x3) World);
     Output.BitangentSign = Input.Tangent.w;
@@ -1034,6 +1055,20 @@ FPSOutput mainPS(FPSInput Input)
     // 픽셀 조명과 노멀 시각화를 위한 데칼 요철 합성
     WorldNormal = ApplyDecalNormal(Normal, WorldNormal, int2(Input.Position.xy));
 #endif
+    if ((ObjectMask & 0x8u) != 0u)
+    {
+        const float Weight = saturate(Input.BoneWeight);
+
+        float3 HeatColor = Weight < 0.5f
+        ? lerp(float3(0.0f, 0.0f, 1.0f), float3(0.0f, 1.0f, 0.0f), Weight * 2.0f)
+        : lerp(float3(0.0f, 1.0f, 0.0f), float3(1.0f, 0.0f, 0.0f), (Weight - 0.5f) * 2.0f);
+
+        Output.Color = float4(HeatColor, 1.0f);
+        Output.Normal = float4(normalize(WorldNormal), 0.0f);
+        Output.ObjectMask = ObjectMask & 0x7u;
+
+        return Output;
+    }
 #if VIEWMODE == VIEWMODE_UNLIT
     FinalColor = float4(Albedo, Alpha);
 #elif VIEWMODE == VIEWMODE_WORLDNORMAL

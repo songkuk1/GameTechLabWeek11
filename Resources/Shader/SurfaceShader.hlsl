@@ -84,7 +84,7 @@ FPSOutput mainPS(FPSInput Input)
 {
     FPSOutput Output;
     
-    Output.ObjectMask = ObjectMask;
+    Output.ObjectMask = ObjectMask & 0x7u;
     Output.Normal = float4(normalize(Input.Normal), 0.0f);
 
     return Output;

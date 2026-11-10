@@ -3,48 +3,48 @@
         "EditorNodePositions": [
             {
                 "NodeName": "Locomotion",
-                "X": 520.0,
-                "Y": 197.0
+                "X": -312.0,
+                "Y": 106.0
             },
             {
                 "NodeName": "JumpStart",
-                "X": 1136.0,
-                "Y": 80.0
+                "X": 592.0,
+                "Y": -171.0
             },
             {
                 "NodeName": "JumpLoop",
-                "X": 1576.0,
-                "Y": 185.0
+                "X": 1240.0,
+                "Y": -16.0
             },
             {
                 "NodeName": "JumpLand",
-                "X": 1152.0,
-                "Y": 496.0
+                "X": 584.0,
+                "Y": 90.0
             },
             {
                 "NodeName": "Jab",
-                "X": 524.0,
-                "Y": 618.0
+                "X": 256.0,
+                "Y": 261.0
             },
             {
                 "NodeName": "Hit",
-                "X": 224.0,
-                "Y": 618.0
+                "X": -288.0,
+                "Y": 389.0
             },
             {
                 "NodeName": "None",
-                "X": -16.0,
+                "X": -240.0,
                 "Y": 672.0
             },
             {
                 "NodeName": "__EditorEntryPoint__",
-                "X": 344.0,
-                "Y": 222.0
+                "X": -260.0,
+                "Y": -4.0
             },
             {
                 "NodeName": "Straight",
-                "X": 920.0,
-                "Y": 778.0
+                "X": 248.0,
+                "Y": 592.0
             }
         ],
         "EntryState": "Locomotion",

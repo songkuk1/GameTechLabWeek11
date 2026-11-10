@@ -341,6 +341,27 @@ void FSkeletalMeshSceneProxy::OnMeshDestroyed()
     FPrimitiveSceneProxy::OnMeshDestroyed();
 }
 
+uint32 FSkeletalMeshSceneProxy::GetObjectMask() const
+{
+    uint32 Mask = FPrimitiveSceneProxy::GetObjectMask();
+    const USkeletalMeshComponent* ActualComponent = Cast<USkeletalMeshComponent>(GetComponent());
+    if (!ActualComponent || !ActualComponent->IsBoneWeightHeatmapEnabled())
+    {
+        return Mask;
+    }
+
+    const int32 BoneIndex = ActualComponent->GetBoneWeightHeatmapBoneIndex();
+    if (BoneIndex < 0 || BoneIndex > 0xFFFF)
+    {
+        return Mask;
+    }
+
+    Mask |= OM_VisualizeBoneWeight;
+    Mask |= static_cast<uint32>(BoneIndex) << 16;
+
+    return Mask;
+}
+
 bool FSkeletalMeshSceneProxy::UpdateCPUSkinnedVertexBuffer()
 {
     SCOPE_CYCLE_COUNTER(STAT_CPUSkinning);
@@ -384,6 +405,22 @@ bool FSkeletalMeshSceneProxy::UpdateCPUSkinnedVertexBuffer()
         {
             bValid = false;
             continue;
+        }
+
+        if (ActualComponent->IsBoneWeightHeatmapEnabled())
+        {
+            float HeatmapWeight = 0.0f;
+            const int32 SelectedBoneIndex = ActualComponent->GetBoneWeightHeatmapBoneIndex();
+
+            for (int32 InfluenceIndex = 0; InfluenceIndex < Influence.InfluenceCount; ++InfluenceIndex)
+            {
+                if (Influence.BoneIndices[InfluenceIndex] == SelectedBoneIndex)
+                {
+                    HeatmapWeight += Influence.Weights[InfluenceIndex];
+                }
+            }
+
+            DestVertices[VertexIndex].Color = FVector4(std::clamp(HeatmapWeight, 0.0f, 1.0f), 0.0f, 0.0f, 1.0f);
         }
 
         if (Influence.InfluenceCount == 0)

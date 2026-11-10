@@ -50,6 +50,11 @@ public:
 	// 현재 포즈의 본을 선으로 그린다. 부모 관절에서 자식 관절로 잇고, 관절마다 짧은 XYZ 축을 표시한다
 	void DrawDebugSkeleton(FLineBatcher* LineBatcher, int32 SelectedBone = -1) const;
 
+	void SetBoneWeightHeatmapEnabled(bool bEnabled);
+	bool IsBoneWeightHeatmapEnabled() const { return bBoneWeightHeatmapEnabled; }
+	void SetBoneWeightHeatmapBoneIndex(int32 BoneIndex);
+	int32 GetBoneWeightHeatmapBoneIndex() const { return BoneWeightHeatmapBoneIndex; }
+
 	static ESkinningMode GetSkinningMode();
 	static void SetSkinningMode(ESkinningMode InMode);
 
@@ -60,7 +65,8 @@ protected:
 	TArray<FMatrix> LocalPose;
 	TArray<FMatrix> BoneMatrices;
 	TArray<FMatrix> NodeGlobalTransforms;
-
+	bool bBoneWeightHeatmapEnabled = false;
+	int32 BoneWeightHeatmapBoneIndex = -1;
 private:
 	static ESkinningMode SkinningMode;
 };

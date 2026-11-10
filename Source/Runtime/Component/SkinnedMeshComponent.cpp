@@ -260,6 +260,52 @@ void USkinnedMeshComponent::DrawDebugSkeleton(FLineBatcher* LineBatcher, const i
 	}
 }
 
+void USkinnedMeshComponent::SetBoneWeightHeatmapEnabled(bool bEnabled)
+{
+	if (bEnabled && BoneWeightHeatmapBoneIndex < 0)
+	{
+		return;
+	}
+
+	if (bBoneWeightHeatmapEnabled == bEnabled)
+	{
+		return;
+	}
+
+	bBoneWeightHeatmapEnabled = bEnabled;
+	MarkRenderStateDirty();
+}
+
+void USkinnedMeshComponent::SetBoneWeightHeatmapBoneIndex(int32 BoneIndex)
+{
+	if (BoneIndex < -1)
+	{
+		return;
+	}
+
+	if (BoneIndex >= 0)
+	{
+		USkeleton* Skeleton = SkeletalMesh ? SkeletalMesh->GetSkeleton() : nullptr;
+
+		if (!Skeleton || BoneIndex >= Skeleton->GetBones().Num())
+		{
+			return;
+		}
+	}
+
+	if (BoneWeightHeatmapBoneIndex == BoneIndex)
+	{
+		return;
+	}
+
+	BoneWeightHeatmapBoneIndex = BoneIndex;
+
+	if (bBoneWeightHeatmapEnabled)
+	{
+		MarkRenderStateDirty();
+	}
+}
+
 ESkinningMode USkinnedMeshComponent::SkinningMode = ESkinningMode::GPU;
 
 ESkinningMode USkinnedMeshComponent::GetSkinningMode()
