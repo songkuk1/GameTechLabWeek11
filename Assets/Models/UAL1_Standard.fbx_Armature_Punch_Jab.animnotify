@@ -1,0 +1,12 @@
+{
+    "AnimationNotifies": {
+        "Notifies": [
+            {
+                "Duration": 0.1836666464805603,
+                "NotifyName": "ComboWindow",
+                "TriggerTime": 0.6830000281333923
+            }
+        ]
+    },
+    "Version": 1
+}

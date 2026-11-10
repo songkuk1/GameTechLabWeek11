@@ -4,6 +4,7 @@
 #include "Script/LuaScriptInstance.h"
 
 class UPrimitiveComponent;
+enum class EAnimNotifyEventType : uint8;
 
 class UScriptComponent : public UActorComponent
 {
@@ -27,6 +28,8 @@ public:
     void HanldeOnCollisionEnter(UPrimitiveComponent* Other);
     void HanldeOnCollisionExit(UPrimitiveComponent* Other);
     void HanldeOnCollisionHit(UPrimitiveComponent* Other, FHitResult& HitResult, bool bSelfMoved);
+    void HandleAnimNotify(const FName& NotifyName);
+    void HandleAnimNotifyState(const FName& NotifyName, EAnimNotifyEventType EventType, float DeltaSeconds);
 
     inline sol::table GetLuaTable()
     {

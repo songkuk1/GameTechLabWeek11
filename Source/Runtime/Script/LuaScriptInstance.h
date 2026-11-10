@@ -16,6 +16,8 @@ public:
     void OnComponentBeginOverlap(UPrimitiveComponent* Other);
     void OnComponentEndOverlap(UPrimitiveComponent* Other);
     void OnComponentHit(UPrimitiveComponent* Other, FHitResult& HitResult, bool bSelfMoved);
+    void OnAnimNotify(const FName& NotifyName);
+    void OnAnimNotifyState(const FName& NotifyName, EAnimNotifyEventType EventType, float DeltaSeconds);
 
     inline sol::table GetTable()
     {
@@ -36,6 +38,8 @@ private:
     sol::protected_function OnComponentBeginOverlapFunc;
     sol::protected_function OnComponentEndOverlapFunc;
     sol::protected_function OnComponentHitFunc;
+    sol::protected_function OnAnimNotifyFunc;
+    sol::protected_function OnAnimNotifyStateFunc;
 
     bool bLoaded = false;
     bool bHasBegunPlay = false;

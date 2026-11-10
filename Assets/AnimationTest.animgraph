@@ -22,7 +22,7 @@
                 "Y": 496.0
             },
             {
-                "NodeName": "Attack",
+                "NodeName": "Jab",
                 "X": 524.0,
                 "Y": 618.0
             },
@@ -40,6 +40,11 @@
                 "NodeName": "__EditorEntryPoint__",
                 "X": 344.0,
                 "Y": 222.0
+            },
+            {
+                "NodeName": "Straight",
+                "X": 920.0,
+                "Y": 778.0
             }
         ],
         "EntryState": "Locomotion",
@@ -118,7 +123,7 @@
                 "BlendParameterName": "None",
                 "BlendSpace": null,
                 "Looping": false,
-                "Name": "Attack",
+                "Name": "Jab",
                 "NodeType": 0,
                 "PlayRate": 1.0,
                 "Sequence": "Models/UAL1_Standard.fbx::Armature|Punch_Jab"
@@ -131,6 +136,15 @@
                 "NodeType": 0,
                 "PlayRate": 1.0,
                 "Sequence": "Models/UAL1_Standard.fbx::Armature|Hit_Chest"
+            },
+            {
+                "BlendParameterName": "None",
+                "BlendSpace": null,
+                "Looping": false,
+                "Name": "Straight",
+                "NodeType": 0,
+                "PlayRate": 1.0,
+                "Sequence": "Models/UAL1_Standard.fbx::Armature|Punch_Cross"
             }
         ],
         "Transitions": [
@@ -192,13 +206,13 @@
                 "ParameterName": "bIsAttacking",
                 "Priority": 10,
                 "Rule": 1,
-                "ToState": "Attack"
+                "ToState": "Jab"
             },
             {
                 "AnyState": false,
                 "BlendDuration": 0.15000000596046448,
                 "FloatThreshold": 0.0,
-                "FromState": "Attack",
+                "FromState": "Jab",
                 "ParameterName": "None",
                 "Priority": 0,
                 "Rule": 3,
@@ -223,6 +237,26 @@
                 "Priority": 0,
                 "Rule": 3,
                 "ToState": "JumpLand"
+            },
+            {
+                "AnyState": false,
+                "BlendDuration": 0.20000000298023224,
+                "FloatThreshold": 0.0,
+                "FromState": "Jab",
+                "ParameterName": "None",
+                "Priority": 0,
+                "Rule": 0,
+                "ToState": "Straight"
+            },
+            {
+                "AnyState": false,
+                "BlendDuration": 0.20000000298023224,
+                "FloatThreshold": 0.0,
+                "FromState": "Straight",
+                "ParameterName": "None",
+                "Priority": 0,
+                "Rule": 3,
+                "ToState": "Locomotion"
             }
         ]
     },

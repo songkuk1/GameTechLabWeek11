@@ -1,6 +1,4 @@
-local MouseSensitivity = 0.1
 local JumpSpeed = 9.0
-local AttackInterval = 0.7
 local HitCooldown = 0.8
 local WalkMoveSpeed = 5.0
 local RunMoveSpeed = 10.0
@@ -10,6 +8,8 @@ local AnimationComponent = nil
 
 local function QueueAnimationState(Name)
     if Name == "Hit" then
+        state.bComboWindow = false
+        state.bComboRequested = false
         state.PendingAnimationState = Name
     elseif state.PendingAnimationState ~= "Hit" then
         state.PendingAnimationState = Name
@@ -23,17 +23,21 @@ local function UpdateAnimationState()
 
     local CurrentState = AnimationComponent:GetCurrentAnimationState()
 
-    AnimationComponent:SetAnimationBool("bIsAttacking", CurrentState == "Attack")
+    AnimationComponent:SetAnimationBool("bIsAttacking", CurrentState == "Jab" or CurrentState == "Straight")
     AnimationComponent:SetAnimationBool("bIsHit", CurrentState == "Hit")
     AnimationComponent:SetAnimationBool("bIsJumping", CurrentState == "JumpStart" or CurrentState == "JumpLoop")
     AnimationComponent:SetAnimationBool("bIsLanded", CurrentState == "JumpLand")
+
+    if CurrentState == "Jab" and state.bComboRequested then
+        QueueAnimationState("Straight")
+    end
 
     if not state.PendingAnimationState then
         if (CurrentState == "JumpStart" or CurrentState == "JumpLoop") and owner:IsGrounded() then
             QueueAnimationState("JumpLand")
         elseif CurrentState == "JumpStart" and AnimationComponent:IsCurrentAnimationStateFinished() then
             QueueAnimationState("JumpLoop")
-        elseif (CurrentState == "JumpLand" or CurrentState == "Attack" or CurrentState == "Hit") and AnimationComponent:IsCurrentAnimationStateFinished() then
+        elseif (CurrentState == "JumpLand" or CurrentState == "Jab" or CurrentState == "Straight" or CurrentState == "Hit") and AnimationComponent:IsCurrentAnimationStateFinished() then
             QueueAnimationState("Locomotion")
         end
     end
@@ -46,14 +50,44 @@ local function UpdateAnimationState()
 
     if AnimationComponent:RequestAnimationState(NextState) then
         state.PendingAnimationState = nil
+        state.bRecoveryBlend = NextState == "Locomotion"
+
+        if NextState == "Straight" then
+            state.bComboRequested = false
+            state.bComboWindow = false
+        end
     end
+end
+
+local function IsInputLocked(CurrentState)
+    if CurrentState == "JumpLand" or CurrentState == "Jab" or CurrentState == "Straight" or CurrentState == "Hit" then
+        return true
+    end
+
+    local PendingState = state.PendingAnimationState
+
+    if PendingState == "JumpLand" or PendingState == "Jab" or PendingState == "Straight" or PendingState == "Hit" then
+        return true
+    end
+
+    if state.bRecoveryBlend then
+        if AnimationComponent:IsAnimationBlending() then
+            return true
+        end
+
+        state.bRecoveryBlend = false
+    end
+
+    return false
 end
 
 function Init()
     state.PendingAnimationState = nil
     state.AnimationReady = false
-    state.AttackCooldown = 0.0
     state.HitCooldown = 0.0
+    state.bComboWindow = false
+    state.bComboRequested = false
+    state.bRecoveryBlend = false
 end
 
 function BeginPlay()
@@ -77,7 +111,6 @@ function BeginPlay()
 end
 
 function Tick(deltaTime)
-    state.AttackCooldown = math.max(0.0, state.AttackCooldown - deltaTime)
     state.HitCooldown = math.max(0.0, state.HitCooldown - deltaTime)
 
     if state.AnimationReady then
@@ -86,44 +119,52 @@ function Tick(deltaTime)
     end
 
     if not owner:IsInputEnabled() then
+        owner:MoveRelativeToActor(Vector.new(0.0, 0.0, 0.0))
         return
     end
 
-    if Input.IsMouseDown(MouseButton.Right) then
-        local dx, dy = Input.GetMouseDelta()
-        owner:AddYawInput(dx * MouseSensitivity)
-        owner:AddPitchInput(dy * MouseSensitivity)
+    local CurrentState = state.AnimationReady and AnimationComponent:GetCurrentAnimationState() or "Locomotion"
+
+    if state.AnimationReady and Input.IsKeyPressed(KeyCode.Space) and CurrentState == "Locomotion" and not state.PendingAnimationState and not AnimationComponent:IsAnimationBlending() and owner:IsGrounded() then
+        owner:Jump(JumpSpeed)
+        QueueAnimationState("JumpStart")
     end
+
+    if state.AnimationReady and Input.IsMousePressed(MouseButton.Left) then
+        if CurrentState == "Locomotion" and not IsInputLocked(CurrentState) and not state.PendingAnimationState and not AnimationComponent:IsAnimationBlending() then
+            QueueAnimationState("Jab")
+        elseif CurrentState == "Jab" and state.bComboWindow and not state.bComboRequested then
+            state.bComboRequested = true
+        end
+    end
+
+    local bInputLocked = state.AnimationReady and IsInputLocked(CurrentState)
 
     local x = 0.0
     local y = 0.0
 
-    if Input.IsKeyDown(KeyCode.W) then x = x + 1.0 end
-    if Input.IsKeyDown(KeyCode.S) then x = x - 1.0 end
-    if Input.IsKeyDown(KeyCode.D) then y = y + 1.0 end
-    if Input.IsKeyDown(KeyCode.A) then y = y - 1.0 end
-
-    owner:SetMovementSpeed(Input.IsKeyDown(KeyCode.Shift) and RunMoveSpeed or WalkMoveSpeed)
-    owner:Move(Vector.new(x, y, 0.0))
-
-    if Input.IsKeyPressed(KeyCode.Space) and owner:IsGrounded() then
-        local bCanPlayJump = not state.AnimationReady or AnimationComponent:GetCurrentAnimationState() == "Locomotion"
-
-        if bCanPlayJump then
-            owner:Jump(JumpSpeed)
-
-            if state.AnimationReady then
-                QueueAnimationState("JumpStart")
-            end
-        end
+    if not bInputLocked then
+        if Input.IsKeyDown(KeyCode.W) then x = x + 1.0 end
+        if Input.IsKeyDown(KeyCode.S) then x = x - 1.0 end
+        if Input.IsKeyDown(KeyCode.D) then y = y + 1.0 end
+        if Input.IsKeyDown(KeyCode.A) then y = y - 1.0 end
     end
 
-    if Input.IsMousePressed(MouseButton.Left) and state.AttackCooldown <= 0.0 then
-        if state.AnimationReady and AnimationComponent:GetCurrentAnimationState() == "Locomotion" then
-            QueueAnimationState("Attack")
-        end
+    owner:SetMovementSpeed(Input.IsKeyDown(KeyCode.Shift) and RunMoveSpeed or WalkMoveSpeed)
+    owner:MoveRelativeToActor(Vector.new(x, y, 0.0))
+end
 
-        state.AttackCooldown = AttackInterval
+function OnAnimNotifyState(NotifyName, EventType, deltaTime)
+    if NotifyName ~= "ComboWindow" then
+        return
+    end
+
+    if EventType == "Begin" then
+        state.bComboWindow = true
+        Log("[AnimationTest] Combo Window Open")
+    elseif EventType == "End" then
+        state.bComboWindow = false
+        Log("[AnimationTest] Combo Window Closed")
     end
 end
 

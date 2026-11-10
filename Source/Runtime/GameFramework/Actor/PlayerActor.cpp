@@ -144,6 +144,17 @@ void APlayerActor::Move(const FVector& MoveInput)
     CharacterMovementComponent->SetMoveInput(YawQuat.RotateVector(MoveInput));
 }
 
+void APlayerActor::MoveRelativeToActor(const FVector& MoveInput)
+{
+    if (!CharacterMovementComponent)
+    {
+        return;
+    }
+
+    const FQuat YawQuat = FRotator(0.0f, GetActorRotation().Yaw, 0.0f).Quaternion();
+    CharacterMovementComponent->SetMoveInput(YawQuat.RotateVector(MoveInput));
+}
+
 void APlayerActor::Jump(float JumpSpeed)
 {
     CharacterMovementComponent->Jump(JumpSpeed);

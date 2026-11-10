@@ -76,8 +76,8 @@ public:
 
 	virtual bool IsOverlappingActor(const AActor* Other) const;
 
-	virtual void HandleAnimNotify(const FName& NotifyName) {}
-	virtual void HandleAnimNotifyState(const FName& NotifyName, EAnimNotifyEventType EventType, float DeltaSeconds) {}
+	virtual void HandleAnimNotify(const FName& NotifyName);
+	virtual void HandleAnimNotifyState(const FName& NotifyName, EAnimNotifyEventType EventType, float DeltaSeconds);
 
 protected:
 	virtual void OnDefaultSubobjectCreated(UObject* Subobject) override;

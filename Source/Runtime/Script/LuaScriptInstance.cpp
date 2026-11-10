@@ -1,6 +1,6 @@
 #include "EnginePCH.h"
 #include "LuaScriptInstance.h"
-
+#include "Animation/AnimSequence.h"
 #include "GameFramework/Actor/PlayerActor.h"
 #include "GameFramework/Actor/EnemyActor.h"
 
@@ -13,6 +13,8 @@ void FLuaScriptInstance::Load(sol::state& LuaState, AActor* InOwner, const FStri
     BeginPlayFunction = {};
     TickFunction = {};
     EndPlayFunction = {};
+    OnAnimNotifyFunc = {};
+    OnAnimNotifyStateFunc = {};
 
     Owner = InOwner;
     ScriptPath = InScriptPath;
@@ -56,6 +58,8 @@ void FLuaScriptInstance::Load(sol::state& LuaState, AActor* InOwner, const FStri
     OnComponentBeginOverlapFunc = Environment["OnComponentBeginOverlap"];
     OnComponentEndOverlapFunc = Environment["OnComponentEndOverlap"];
     OnComponentHitFunc = Environment["OnComponentHit"];
+    OnAnimNotifyFunc = Environment["OnAnimNotify"];
+    OnAnimNotifyStateFunc = Environment["OnAnimNotifyState"];
 
     bLoaded = true;
     bHasBegunPlay = false;
@@ -101,6 +105,8 @@ void FLuaScriptInstance::Reload(sol::state& LuaState)
     OnComponentBeginOverlapFunc = Environment["OnComponentBeginOverlap"];
     OnComponentEndOverlapFunc = Environment["OnComponentEndOverlap"];
     OnComponentHitFunc = Environment["OnComponentHit"];
+    OnAnimNotifyFunc = Environment["OnAnimNotify"];
+    OnAnimNotifyStateFunc = Environment["OnAnimNotifyState"];
 
     Init();
 }
@@ -230,5 +236,57 @@ void FLuaScriptInstance::OnComponentHit(UPrimitiveComponent* Other, FHitResult& 
     {
         sol::error e = Result;
         HTR_LOG(Error, "[Lua] EndPlay failed: {}, Error: {}", ScriptPath, e.what());
+    }
+}
+
+void FLuaScriptInstance::OnAnimNotify(const FName& NotifyName)
+{
+    if (!OnAnimNotifyFunc)
+    {
+        return;
+    }
+
+    const FString Name = NotifyName.ToString();
+    sol::protected_function_result Result = OnAnimNotifyFunc(Name);
+
+    if (!Result.valid())
+    {
+        sol::error Error = Result;
+        HTR_LOG(Error, "[Lua] OnAnimNotify failed: {}, Error: {}", ScriptPath, Error.what());
+    }
+}
+
+void FLuaScriptInstance::OnAnimNotifyState(const FName& NotifyName, EAnimNotifyEventType EventType, float DeltaSeconds)
+{
+    if (!OnAnimNotifyStateFunc)
+    {
+        return;
+    }
+
+    const char* EventTypeName = "None";
+
+    switch (EventType)
+    {
+    case EAnimNotifyEventType::Trigger:
+        EventTypeName = "Trigger";
+        break;
+    case EAnimNotifyEventType::Begin:
+        EventTypeName = "Begin";
+        break;
+    case EAnimNotifyEventType::Tick:
+        EventTypeName = "Tick";
+        break;
+    case EAnimNotifyEventType::End:
+        EventTypeName = "End";
+        break;
+    }
+
+    const FString Name = NotifyName.ToString();
+    sol::protected_function_result Result = OnAnimNotifyStateFunc(Name, EventTypeName, DeltaSeconds);
+
+    if (!Result.valid())
+    {
+        sol::error Error = Result;
+        HTR_LOG(Error, "[Lua] OnAnimNotifyState failed: {}, Error: {}", ScriptPath, Error.what());
     }
 }

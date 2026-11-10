@@ -638,6 +638,38 @@ bool AActor::IsOverlappingActor(const AActor* Other) const
 	return false;
 }
 
+void AActor::HandleAnimNotify(const FName& NotifyName)
+{
+	if (NotifyName.IsNone())
+	{
+		return;
+	}
+
+	for (UActorComponent* Component : Components)
+	{
+		if (UScriptComponent* ScriptComponent = Cast<UScriptComponent>(Component))
+		{
+			ScriptComponent->HandleAnimNotify(NotifyName);
+		}
+	}
+}
+
+void AActor::HandleAnimNotifyState(const FName& NotifyName, EAnimNotifyEventType EventType, float DeltaSeconds)
+{
+	if (NotifyName.IsNone())
+	{
+		return;
+	}
+
+	for (UActorComponent* Component : Components)
+	{
+		if (UScriptComponent* ScriptComponent = Cast<UScriptComponent>(Component))
+		{
+			ScriptComponent->HandleAnimNotifyState(NotifyName, EventType, DeltaSeconds);
+		}
+	}
+}
+
 bool AActor::TryGetActorBounds(FBox& OutBounds) const
 {
 	bool bHasBounds = false;

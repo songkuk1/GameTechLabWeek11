@@ -70,3 +70,13 @@ void UScriptComponent::HanldeOnCollisionHit(UPrimitiveComponent* Other, FHitResu
 {
     ScriptInstance.OnComponentHit(Other, HitResult, bSelfMoved);
 }
+
+void UScriptComponent::HandleAnimNotify(const FName& NotifyName)
+{
+    ScriptInstance.OnAnimNotify(NotifyName);
+}
+
+void UScriptComponent::HandleAnimNotifyState(const FName& NotifyName, EAnimNotifyEventType EventType, float DeltaSeconds)
+{
+    ScriptInstance.OnAnimNotifyState(NotifyName, EventType, DeltaSeconds);
+}

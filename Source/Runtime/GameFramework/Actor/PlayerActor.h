@@ -24,6 +24,7 @@ public:
     virtual void Tick(float DeltaTime) override;
 
     void Move(const FVector& MoveInput);
+    void MoveRelativeToActor(const FVector& MoveInput);
     void Jump(float JumpSpeed);
     void SetMovementSpeed(float InSpeed);
     float GetMovementSpeed2D() const;
