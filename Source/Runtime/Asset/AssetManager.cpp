@@ -204,9 +204,7 @@ void UAssetManager::Init(const FAssetLoadProgress& OnProgress)
 	Get().CreateDecalMaterial();
 }
 
-void UAssetManager::ScanAssets(
-	const fs::path& AssetRoot,
-	const FAssetLoadProgress& OnProgress)
+void UAssetManager::ScanAssets(const fs::path& AssetRoot, const FAssetLoadProgress& OnProgress)
 {
 	if (!fs::exists(AssetRoot))
 	{
@@ -227,54 +225,106 @@ void UAssetManager::ScanAssets(
 	const int32 Total = Files.Num();
 	int32 Completed = 0;
 
+	TArray<fs::path> ModelBakeFiles;
 	TArray<fs::path> BlendSpaceFiles;
 	TArray<fs::path> AnimationGraphFiles;
+
+	auto ReportProgress = [&](const fs::path& FilePath)
+		{
+			++Completed;
+
+			if (OnProgress)
+			{
+				const FString Key = PathUtils::ToUtf8(fs::relative(FilePath, AssetRoot));
+				OnProgress(Completed, Total, Key);
+			}
+		};
 
 	for (const fs::path& FilePath : Files)
 	{
 		const FString Key = PathUtils::ToUtf8(fs::relative(FilePath, AssetRoot));
 		const FString Path = PathUtils::ToUtf8(FilePath);
+		const FString Extension = PathUtils::ToUtf8(FilePath.extension());
+
 		AssetPathMap.Add(Key, Path);
-		if (FilePath.extension() == ".blendspace")
+
+		// OBJ / FBX Bake 파일은 원본과 분리해서 나중에 로드한다.
+		if (Extension == ".bin")
+		{
+			fs::path SourcePath = FilePath;
+			SourcePath.replace_extension();
+
+			const FString SourceExtension = PathUtils::ToUtf8(SourcePath.extension());
+
+			if (SourceExtension == ".obj" || SourceExtension == ".fbx")
+			{
+				ModelBakeFiles.Add(FilePath);
+			}
+
+			ReportProgress(FilePath);
+			continue;
+		}
+
+		// 원본 OBJ / FBX는 시작 시 자동 임포트하지 않는다.
+		if (Extension == ".obj" || Extension == ".fbx")
+		{
+			ReportProgress(FilePath);
+			continue;
+		}
+
+		if (Extension == ".blendspace")
 		{
 			BlendSpaceFiles.Add(FilePath);
 			continue;
 		}
 
-		if (FilePath.extension() == ".animgraph")
+		if (Extension == ".animgraph")
 		{
 			AnimationGraphFiles.Add(FilePath);
 			continue;
 		}
+
 		LoadAsset(Key, Path);
-		++Completed;
-		if (OnProgress)
+		ReportProgress(FilePath);
+	}
+
+	// 1. 모델 Bake 로드
+	for (const fs::path& FilePath : ModelBakeFiles)
+	{
+		fs::path SourcePath = FilePath;
+		SourcePath.replace_extension();
+
+		const FString SourcePathString = PathUtils::ToUtf8(SourcePath);
+		const FString SourceExtension = PathUtils::ToUtf8(SourcePath.extension());
+
+		if (SourceExtension == ".obj")
 		{
-			OnProgress(Completed, Total, Key);
+			LoadObjStaticMesh(SourcePathString, false);
+		}
+		else if (SourceExtension == ".fbx")
+		{
+			LoadFbxModel(SourcePathString, false);
 		}
 	}
 
+	// 2. BlendSpace 로드
 	for (const fs::path& FilePath : BlendSpaceFiles)
 	{
 		const FString Key = PathUtils::ToUtf8(fs::relative(FilePath, AssetRoot));
 		const FString Path = PathUtils::ToUtf8(FilePath);
+
 		LoadAsset(Key, Path);
-		++Completed;
-		if (OnProgress)
-		{
-			OnProgress(Completed, Total, Key);
-		}
+		ReportProgress(FilePath);
 	}
+
+	// 3. Animation Graph 로드
 	for (const fs::path& FilePath : AnimationGraphFiles)
 	{
 		const FString Key = PathUtils::ToUtf8(fs::relative(FilePath, AssetRoot));
 		const FString Path = PathUtils::ToUtf8(FilePath);
+
 		LoadAsset(Key, Path);
-		++Completed;
-		if (OnProgress)
-		{
-			OnProgress(Completed, Total, Key);
-		}
+		ReportProgress(FilePath);
 	}
 }
 
@@ -295,14 +345,6 @@ void UAssetManager::LoadAsset(const FString& Key, const FString& Path)
 		{
 			AssetMap[Key] = Font;
 		}
-	}
-	else if (Extension == ".obj")
-	{
-		LoadObjStaticMesh(Path);
-	}
-	else if (Extension == ".fbx")
-	{
-		LoadFbxModel(Path);
 	}
 	else if (Extension == ".sequence")
 	{
@@ -566,7 +608,7 @@ UFont* UAssetManager::LoadFontAtlas(const FString& JsonPath, const FString& Atla
 	return Font;
 }
 
-UStaticMesh* UAssetManager::LoadObjStaticMesh(const FString& Path)
+UStaticMesh* UAssetManager::LoadObjStaticMesh(const FString& Path, bool bAllowSourceImport)
 {
 	const FString Key = MakeAssetKey(Path);
 	if (UStaticMesh* Cached = GetAssetByPath<UStaticMesh>(Key))
@@ -574,7 +616,7 @@ UStaticMesh* UAssetManager::LoadObjStaticMesh(const FString& Path)
 		return Cached;
 	}
 
-	TUniquePtr<FModelMeshData> Data = FObjImporter::LoadStaticMeshData(Path);
+	TUniquePtr<FModelMeshData> Data = FObjImporter::LoadStaticMeshData(Path, bAllowSourceImport);
 	UStaticMesh* Mesh = CreateStaticMesh(Data.get());   // Data가 nullptr이면 nullptr 반환
 	if (!Mesh)
 	{
@@ -585,7 +627,7 @@ UStaticMesh* UAssetManager::LoadObjStaticMesh(const FString& Path)
 	return Mesh;
 }
 
-void UAssetManager::LoadFbxModel(const FString& Path)
+void UAssetManager::LoadFbxModel(const FString& Path, bool bAllowSourceImport)
 {
 	const FString MeshKey = MakeAssetKey(Path);
 	if (USkeletalMesh* Cached = GetAssetByPath<USkeletalMesh>(MeshKey))
@@ -594,7 +636,7 @@ void UAssetManager::LoadFbxModel(const FString& Path)
 	}
 
 	FModelData ModelData;
-	if (!FFbxImporter::LoadFromFile(Path, ModelData))
+	if (!FFbxImporter::LoadFromFile(Path, ModelData, bAllowSourceImport))
 	{
 		return;
 	}

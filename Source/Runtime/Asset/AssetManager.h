@@ -68,8 +68,8 @@ public:
 	// 노멀맵·마스크·폰트 커버리지처럼 값 자체가 데이터인 텍스처는 false로 읽는다.
 	UTexture2D* LoadTexture(const FString& InPath, bool bGenerateMips = true, bool bSRGB = true);
 	UFont* LoadFontAtlas(const FString& JsonPath, const FString& AtlasTexturePath);
-	static UStaticMesh* LoadObjStaticMesh(const FString& Path);
-	void LoadFbxModel(const FString& Path);
+	static UStaticMesh* LoadObjStaticMesh(const FString& Path, bool bAllowSourceImport = true);
+	void LoadFbxModel(const FString& Path, bool bAllowSourceImport = true);
 	static ULevelSequence* LoadLevelSequence(const FString& Path);
 	static UBlendSpace1D* LoadBlendSpace(const FString& Path);
 	static UAnimationGraph* LoadAnimationGraph(const FString& Path);

@@ -283,7 +283,7 @@ void FAnimationSequenceViewerTab::DrawToolbar()
 	{
 		Component->SetRootMotionEnabled(bRootMotionEnabled);
 		PreviewActor->SetActorTransform(InitialPreviewActorTransform);
-		Component->SetAnimationPlaybackTime(0.0f);
+		Component->SetAnimationPlaybackTime(Component->GetAnimationPlayRate() < 0.0f ? Duration : 0.0f);
 		Component->TickAnimation(0.0f);
 		bPlaying = false;
 	}
@@ -752,7 +752,7 @@ void FAnimationSequenceViewerTab::ApplyPlaybackSettings(USkeletalMeshComponent* 
 		return;
 	}
 
-	Component->SetAnimationPlayRate(SpeedValues[std::clamp(PlaybackSpeedIndex, 0, 4)]);
+	Component->SetAnimationPlayRate(SpeedValues[std::clamp(PlaybackSpeedIndex, 0, IM_ARRAYSIZE(SpeedValues) - 1)]);
 	Component->SetAnimationLooping(bLooping);
 }
 

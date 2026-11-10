@@ -10,7 +10,7 @@ struct FModelMeshData;
 class FObjImporter
 {
 public:
-	static TUniquePtr<FModelMeshData> LoadStaticMeshData(const FString& Path);
+	static TUniquePtr<FModelMeshData> LoadStaticMeshData(const FString& Path, bool bAllowSourceImport = true);
 
 	// 디버그용 출력
 	static void PrintObjInfo(const FObjInfo& ObjInfo);

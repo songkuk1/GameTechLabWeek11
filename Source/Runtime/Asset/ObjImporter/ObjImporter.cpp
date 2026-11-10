@@ -516,14 +516,19 @@ bool FObjImporter::Cook(const FObjInfo& Raw, FModelMeshData& Out)
 	return true;
 }
 
-TUniquePtr<FModelMeshData> FObjImporter::LoadStaticMeshData(const FString& Path)
+TUniquePtr<FModelMeshData> FObjImporter::LoadStaticMeshData(const FString& Path, bool bAllowSourceImport)
 {
 	const FString BinPath = Path + ".bin";
 
-	// .bin 파일 읽기
 	if (TUniquePtr<FModelMeshData> Baked = FStaticMeshBake::ReadBaked(BinPath))
 	{
 		return Baked;
+	}
+
+	if (!bAllowSourceImport)
+	{
+		HTR_LOG(Warning, "[OBJ] {}: baked data unavailable. Source import skipped.", BinPath);
+		return nullptr;
 	}
 
 	FObjInfo Info;

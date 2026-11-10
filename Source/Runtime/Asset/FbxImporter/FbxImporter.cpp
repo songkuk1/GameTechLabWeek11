@@ -373,7 +373,7 @@ namespace
 	}
 }
 
-bool FFbxImporter::LoadFromFile(const FString& Path, FModelData& OutModelData)
+bool FFbxImporter::LoadFromFile(const FString& Path, FModelData& OutModelData, bool bAllowSourceImport)
 {
 	const FString BinPath = Path + ".bin";
 
@@ -387,6 +387,12 @@ bool FFbxImporter::LoadFromFile(const FString& Path, FModelData& OutModelData)
 		}
 		HTR_LOG(Warning, "[FBX] Invalid baked model data: {} | {}", BinPath, ValidationError);
 		OutModelData = FModelData{};
+	}
+
+	if (!bAllowSourceImport)
+	{
+		HTR_LOG(Warning, "[FBX] {}: baked data unavailable. Source import skipped.", BinPath);
+		return false;
 	}
 
 	std::filesystem::path FbxPath = PathUtils::FromUtf8(Path);

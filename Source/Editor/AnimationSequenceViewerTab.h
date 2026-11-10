@@ -57,7 +57,7 @@ private:
 	UBlendSpace1D* PreviewBlendSpace = nullptr;
 	float BlendAlpha = 0.5f;
 	EAnimationPreviewMode PreviewMode = EAnimationPreviewMode::Sequence;
-	int32 PlaybackSpeedIndex = 2;
+	int32 PlaybackSpeedIndex = 3;
 	int32 SelectedNotifyIndex = -1;
 	bool bDraggingNotify = false;
 	char NotifyNameBuffer[128] = {};

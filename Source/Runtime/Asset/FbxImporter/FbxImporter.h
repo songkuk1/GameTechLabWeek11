@@ -8,7 +8,7 @@
 class FFbxImporter
 {
 public:
-	static bool LoadFromFile(const FString& Path, FModelData& OutModelData);
+	static bool LoadFromFile(const FString& Path, FModelData& OutModelData, bool bAllowSourceImport = true);
 
 private:
 	struct FMeshNode
