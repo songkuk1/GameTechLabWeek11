@@ -16,6 +16,7 @@
 #include "UObject/UObjectIterator.h"
 #include "Animation/AnimSequence.h"
 #include "Animation/AnimationGraph.h"
+#include "Core/SplashScreen.h"
 
 bool FContentDrawerPanel::Init()
 {
@@ -202,18 +203,38 @@ void FContentDrawerPanel::OnRender()
 					}
 					else if (Path.extension() == ".fbx")
 					{
-						UAssetManager::Get().LoadFbxModel(PathString, true, true, false);
+						CreateAssetError.clear();
 
 						const FString MeshKey = PathUtils::ToUtf8(fs::relative(Path, AssetRootPath));
 						USkeletalMesh* SkeletalMesh = UAssetManager::GetAssetByPath<USkeletalMesh>(MeshKey);
+						UStaticMesh* StaticMesh = UAssetManager::GetAssetByPath<UStaticMesh>(MeshKey);
+
+						if (!SkeletalMesh && !StaticMesh)
+						{
+							FSplashScreen::Show(GetModuleHandleW(nullptr), "");
+							FSplashScreen::SetText("Loading FBX: " + PathUtils::ToUtf8(Path.filename()));
+							FSplashScreen::SetProgress(0.0f);
+
+							UAssetManager::Get().LoadFbxModel(PathString, true, true, false);
+
+							FSplashScreen::SetProgress(1.0f);
+							FSplashScreen::Hide();
+
+							SkeletalMesh = UAssetManager::GetAssetByPath<USkeletalMesh>(MeshKey);
+							StaticMesh = UAssetManager::GetAssetByPath<UStaticMesh>(MeshKey);
+						}
 
 						if (SkeletalMesh && OpenSkeletalMeshViewer)
 						{
 							OpenSkeletalMeshViewer(SkeletalMesh);
 						}
+						else if (StaticMesh)
+						{
+							CreateAssetError = "This FBX contains a Static Mesh, not a Skeletal Mesh.";
+						}
 						else
 						{
-							CreateAssetError = "Could not open Skeletal Mesh Viewer. Check whether the FBX contains a skeleton.";
+							CreateAssetError = "FBX loading failed. Check the Output Log.";
 						}
 					}
 					else if (Path.extension() == ".anim")
@@ -553,7 +574,14 @@ void FContentDrawerPanel::ImportModel(bool bImportFbx)
 			return;
 		}
 
+		FSplashScreen::Show(GetModuleHandleW(nullptr), "");
+		FSplashScreen::SetText("Importing FBX: " + PathUtils::ToUtf8(SelectedPath.filename()));
+		FSplashScreen::SetProgress(0.0f);
+
 		UAssetManager::Get().LoadFbxModel(SelectedFile, true, true, true);
+
+		FSplashScreen::SetProgress(1.0f);
+		FSplashScreen::Hide();
 
 		if (!UAssetManager::GetAssetByPath<USkeletalMesh>(AssetKey) && !UAssetManager::GetAssetByPath<UStaticMesh>(AssetKey))
 		{
@@ -569,7 +597,16 @@ void FContentDrawerPanel::ImportModel(bool bImportFbx)
 			return;
 		}
 
-		if (!UAssetManager::LoadObjStaticMesh(SelectedFile, true, true))
+		FSplashScreen::Show(GetModuleHandleW(nullptr), "");
+		FSplashScreen::SetText("Importing OBJ: " + PathUtils::ToUtf8(SelectedPath.filename()));
+		FSplashScreen::SetProgress(0.0f);
+
+		const bool bImported = UAssetManager::LoadObjStaticMesh(SelectedFile, true, true) != nullptr;
+
+		FSplashScreen::SetProgress(1.0f);
+		FSplashScreen::Hide();
+
+		if (!bImported)
 		{
 			CreateAssetError = "OBJ import failed. Check the Output Log.";
 			return;

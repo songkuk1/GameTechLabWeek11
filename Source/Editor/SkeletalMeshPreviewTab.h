@@ -12,7 +12,6 @@ class AActor;
 class FPreviewViewportPanel;
 class FSkeletonTreePanel;
 class FViewportsPanel;
-class UAnimSequence;
 
 class FSkeletalMeshPreviewTab : public FEditorTab
 {
@@ -37,7 +36,6 @@ public:
 	void UpdateBoneGizmo(bool bInputEnabled);
 	UWorld* GetWorld() const override { return PreviewScene->GetWorld(); }
 	virtual const UObject* GetEditingAsset() const { return SkeletalMesh; };
-	void SetOpenAnimationSequenceViewerCallback(std::function<void(USkeletalMesh*, UAnimSequence*)> InCallback) { OpenAnimationSequenceViewer = std::move(InCallback); }
 private:
 	void DrawToolbar();
 	void SelectPosePath();
@@ -63,7 +61,4 @@ private:
 	FGizmo BoneGizmo;
 	// 선택 안 함은 -1이라 부호 있는 정수여야 한다
 	int32 SelectedBone = -1;
-	TArray<UAnimSequence*> Animations;
-	UAnimSequence* SelectedAnimation = nullptr;
-	std::function<void(USkeletalMesh*, UAnimSequence*)> OpenAnimationSequenceViewer;
 };

@@ -5,7 +5,6 @@
 #include "Editor/Viewports/PreviewViewportPanel.h"
 #include "GameFramework/Actor/SkeletalMeshActor.h"
 #include "Animation/Skeleton.h"
-#include "Animation/AnimSequence.h"
 #include "Input/InputSystem.h"
 #include "Camera/CameraTypes.h"
 #include "Core/PathUtils.h"
@@ -59,23 +58,6 @@ FSkeletalMeshPreviewTab::FSkeletalMeshPreviewTab(USkeletalMesh* InSkeletalMesh)
 	PreviewScene = MakeUnique<FPreviewScene>();
 	MeshActor = Cast<ASkeletalMeshActor>(PreviewScene->GetWorld()->SpawnActor(ASkeletalMeshActor::StaticClass()));
 	MeshActor->GetSkeletalMeshComponent()->SetSkeletalMesh(SkeletalMesh);
-	const FString AnimationPrefix = SkeletalMesh->GetPath() + "::";
-	for (TObjectIterator<UAnimSequence> It; It; ++It)
-	{
-		UAnimSequence* Animation = *It;
-		if (Animation && Animation->GetPath().find(AnimationPrefix) == 0)
-		{
-			Animations.Add(Animation);
-
-		}
-	}
-	std::sort(Animations.begin(), Animations.end(), [](const UAnimSequence* A, const UAnimSequence* B) {return A->GetPath() < B->GetPath();});
-
-	if (Animations.Num() > 0)
-	{
-		SelectedAnimation = Animations[0];
-		MeshActor->GetSkeletalMeshComponent()->PlayAnimation(SelectedAnimation);
-	}
 
 	if (const USkeleton* Skeleton = SkeletalMesh->GetSkeleton())
 	{
@@ -108,41 +90,6 @@ FSkeletalMeshPreviewTab::~FSkeletalMeshPreviewTab()
 // 포즈 저장 상태 및 공용 스켈레탈 메시 표시 설정 편집
 void FSkeletalMeshPreviewTab::DrawToolbar()
 {
-	const FString CurrentAnimationName = SelectedAnimation ? SelectedAnimation->GetPath().substr(SkeletalMesh->GetPath().size() + 2) : "None";
-	ImGui::SetNextItemWidth(250.0f);
-	if (ImGui::BeginCombo("Animation", CurrentAnimationName.c_str()))
-	{
-		if (ImGui::Selectable("None", SelectedAnimation == nullptr))
-		{
-			SelectedAnimation = nullptr;
-			MeshActor->GetSkeletalMeshComponent()->PlayAnimation(nullptr);
-		}
-
-		for (UAnimSequence* Animation : Animations)
-		{
-			const FString AnimationName = Animation->GetPath().substr(SkeletalMesh->GetPath().size() + 2);
-			const bool bSelected = (SelectedAnimation == Animation);
-			if (ImGui::Selectable(AnimationName.c_str(), bSelected))
-			{
-				SelectedAnimation = Animation;
-				MeshActor->GetSkeletalMeshComponent()->PlayAnimation(SelectedAnimation);
-			}
-			if (bSelected)
-			{
-				ImGui::SetItemDefaultFocus();
-			}
-		}
-		ImGui::EndCombo();
-	}
-
-	ImGui::SameLine();
-	ImGui::BeginDisabled(SelectedAnimation == nullptr || !OpenAnimationSequenceViewer);
-	if (ImGui::Button("Open Animation Viewer"))
-	{
-		OpenAnimationSequenceViewer(SkeletalMesh, SelectedAnimation);
-	}
-	ImGui::EndDisabled();
-
 	USkeletalMeshComponent* PreviewComponent = MeshActor->GetSkeletalMeshComponent();
 	const USkeleton* Skeleton = SkeletalMesh ? SkeletalMesh->GetSkeleton() : nullptr;
 	const int32 DefaultHeatmapBoneIndex = FindRootBoneIndex(Skeleton);
@@ -249,7 +196,6 @@ void FSkeletalMeshPreviewTab::SavePose()
 void FSkeletalMeshPreviewTab::Tick(float DeltaTime)
 {
 	FEditorTab::Tick(DeltaTime);
-	MeshActor->GetSkeletalMeshComponent()->TickAnimation(DeltaTime);
 	// 화면 비율이 정해진 뒤(뷰포트가 처음 보일 때) 한 번만 카메라를 맞춘다
 	if (!bFramed && ViewportPanel->GetViewport()->IsVisible())
 	{

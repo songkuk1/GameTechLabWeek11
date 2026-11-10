@@ -690,7 +690,7 @@ void UAssetManager::LoadFbxModel(const FString& Path, bool bAllowSourceImport, b
 	USkeletalMesh* CachedSkeletalMesh = GetAssetByPath<USkeletalMesh>(MeshKey);
 	UStaticMesh* CachedStaticMesh = GetAssetByPath<UStaticMesh>(MeshKey);
 
-	if ((CachedSkeletalMesh || CachedStaticMesh) && !bForceSourceImport && (!bSaveAnimationAssets || !CachedSkeletalMesh))
+	if ((CachedSkeletalMesh || CachedStaticMesh) && !bForceSourceImport)
 	{
 		return;
 	}

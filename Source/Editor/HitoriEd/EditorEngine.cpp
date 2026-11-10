@@ -761,7 +761,6 @@ void UEditorEngine::OpenSkeletalMeshViewer(USkeletalMesh* SkeletalMesh)
 
 
 	FSkeletalMeshPreviewTab* PreviewTab = EditorUI->AddTab<FSkeletalMeshPreviewTab>(SkeletalMesh);
-	PreviewTab->SetOpenAnimationSequenceViewerCallback([this](USkeletalMesh* Mesh, UAnimSequence* Animation) {PendingAnimationViewerMesh = Mesh; PendingAnimationViewerAnimation = Animation;});
 	PreviewTab->RequestFocus();
 }
 
