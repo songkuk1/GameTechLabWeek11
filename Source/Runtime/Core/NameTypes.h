@@ -61,3 +61,9 @@ struct FNameHash
 		return Hash1 ^ (Hash2 << 1);
 	}
 };
+
+namespace std
+{
+	template <>
+	struct hash<FName> : FNameHash {};
+}

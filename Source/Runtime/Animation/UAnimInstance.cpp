@@ -47,43 +47,47 @@ void UAnimationInstance::BuildDefaultLocomotionGraph()
 	SequencePlayerNode* JumpEndNode = AddSequenceNode("Models/statemachinefbx/Mixamo_StateMachine_WithSkin.fbx_Anim_3", false, false);
 
 	StateMachineNode* Machine = AddStateMachineNode();
-	Machine->AddTransition(EAnimState::Locomotion, EAnimState::Attack,
+
+	// Any State -> Hit: 공격/점프 등 어떤 동작 중이든 피격 시 즉시 Hit로 전환
+	Machine->AddAnyStateTransition("Hit",
+		[](const AnimationContext& Context) { return Context.bIsHit; }, 0.5f,
+		[HitNode](AnimationContext& Context)
+		{
+			Context.bIsHit = false;
+			Context.bIsAttacking = false;
+			HitNode->ResetAnimation();
+		});
+
+	Machine->AddTransition("Locomotion", "Attack",
 		[](const AnimationContext& Context) { return Context.bIsAttacking; }, 0.5f,
 		[AttackNode](AnimationContext& Context)
 		{
 			Context.bIsAttacking = false;
 			AttackNode->ResetAnimation();
 		});
-	Machine->AddTransition(EAnimState::Locomotion, EAnimState::Hit,
-		[](const AnimationContext& Context) { return Context.bIsHit; }, 0.5f,
-		[HitNode](AnimationContext& Context)
-		{
-			Context.bIsHit = false;
-			HitNode->ResetAnimation();
-		});
-	Machine->AddTransition(EAnimState::Hit, EAnimState::Locomotion,
+	Machine->AddTransition("Hit", "Locomotion",
 		[HitNode](const AnimationContext&) { return HitNode->IsClipFinished(); }, 0.5f);
-	Machine->AddTransition(EAnimState::Attack, EAnimState::Locomotion,
+	Machine->AddTransition("Attack", "Locomotion",
 		[AttackNode](const AnimationContext&) { return AttackNode->IsClipFinished(); }, 0.5f);
 
-	Machine->AddTransition(EAnimState::Locomotion, EAnimState::JumpStart,
+	Machine->AddTransition("Locomotion", "JumpStart",
 		[](const AnimationContext& Context) { return Context.bIsJumpStart; }, 0.15f,
 		[JumpStartNode](AnimationContext&) { JumpStartNode->ResetAnimation(); });
-	Machine->AddTransition(EAnimState::Locomotion, EAnimState::JumpAir,
+	Machine->AddTransition("Locomotion", "JumpAir",
 		[](const AnimationContext& Context) { return Context.bIsJumpAir; }, 0.15f,
 		[JumpAirNode](AnimationContext&) { JumpAirNode->ResetAnimation(); });
 
 	// 착지가 Start 재생 완료보다 우선한다.
-	Machine->AddTransition(EAnimState::JumpStart, EAnimState::JumpEnd,
+	Machine->AddTransition("JumpStart", "JumpEnd",
 		[](const AnimationContext& Context) { return Context.bIsJumpEnd; }, 0.15f,
 		[JumpEndNode](AnimationContext&) { JumpEndNode->ResetAnimation(); });
-	Machine->AddTransition(EAnimState::JumpStart, EAnimState::JumpAir,
+	Machine->AddTransition("JumpStart", "JumpAir",
 		[JumpStartNode](const AnimationContext&) { return JumpStartNode->IsClipFinished(); }, 0.15f,
 		[JumpAirNode](AnimationContext&) { JumpAirNode->ResetAnimation(); });
-	Machine->AddTransition(EAnimState::JumpAir, EAnimState::JumpEnd,
+	Machine->AddTransition("JumpAir", "JumpEnd",
 		[](const AnimationContext& Context) { return Context.bIsJumpEnd; }, 0.15f,
 		[JumpEndNode](AnimationContext&) { JumpEndNode->ResetAnimation(); });
-	Machine->AddTransition(EAnimState::JumpEnd, EAnimState::Locomotion,
+	Machine->AddTransition("JumpEnd", "Locomotion",
 		[JumpEndNode](const AnimationContext& Context)
 		{
 			return JumpEndNode->IsClipFinished()
@@ -91,12 +95,13 @@ void UAnimationInstance::BuildDefaultLocomotionGraph()
 					&& Context.Speed > 0.1f);
 		}, 0.15f);
 
-	Machine->SetStateNode(EAnimState::Locomotion, Blend1Node);
-	Machine->SetStateNode(EAnimState::Attack, AttackNode);
-	Machine->SetStateNode(EAnimState::Hit, HitNode);
-	Machine->SetStateNode(EAnimState::JumpStart, JumpStartNode);
-	Machine->SetStateNode(EAnimState::JumpAir, JumpAirNode);
-	Machine->SetStateNode(EAnimState::JumpEnd, JumpEndNode);
+	Machine->SetStateNode("Locomotion", Blend1Node);
+	Machine->SetStateNode("Attack", AttackNode);
+	Machine->SetStateNode("Hit", HitNode);
+	Machine->SetStateNode("JumpStart", JumpStartNode);
+	Machine->SetStateNode("JumpAir", JumpAirNode);
+	Machine->SetStateNode("JumpEnd", JumpEndNode);
+	Machine->SetInitialState("Locomotion");
 
 	SetRoot(Machine);
 }

@@ -1,67 +1,109 @@
 #pragma once
 
 #include "AnimNode.h"
+#include "Containers/Map.h"
+#include "Core/NameTypes.h"
 #include <functional>
 #include <utility>
 
-enum class EAnimState : uint8
-{
-	Locomotion,   // 안에 BlendSpace1D (Idle / Walk / Run )
-	Attack,
-	Hit,
-	JumpStart,
-	JumpAir,
-	JumpEnd
-};
-
 struct Transition
 {
-	EAnimState StartState;
-	EAnimState EndState;
+	FName StartState;
+	FName EndState;
 	std::function<bool(const AnimationContext&)> Condition;
 	std::function<void(AnimationContext&)> OnTransition;
-	float BlendValue;
+	float BlendValue = 0.0f;
 };
 
 class StateMachineNode : public AnimNode
 {
-	EAnimState State = EAnimState::Locomotion;
-	EAnimState NextState = EAnimState::Locomotion;
-	AnimNode* StateNodes[6] = {};        // 상태마다 포즈를 내는 노드
-	TArray<Transition> TransitionArray[6];
+	FName CurrentState = "Locomotion";
+	TMap<FName, AnimNode*> StateNodes;
+	TMap<FName, TArray<Transition>> TransitionMap;
+	TArray<Transition> AnyStateTransitions;
 
 public:
 	StateMachineNode() = default;
 
-	void SetStateNode(EAnimState InState, AnimNode* Node) { StateNodes[(int)InState] = Node; }
+	void SetInitialState(const FName& InState) { CurrentState = InState; }
+
+	const FName& GetCurrentState() const { return CurrentState; }
+
+	void SetStateNode(const FName& InState, AnimNode* Node)
+	{
+		if (StateNodes.IsEmpty())
+		{
+			CurrentState = InState;
+		}
+		StateNodes.Add(InState, Node);
+	}
+
+	AnimNode* GetStateNode(const FName& InState) const
+	{
+		return StateNodes.FindRef(InState);
+	}
 
 	void Update(AnimationContext& AnimContext) override
 	{
 		ProcessState(AnimContext);
-		StateNodes[(int)State]->Update(AnimContext);   // 현재 상태 노드에 전파
+		if (AnimNode* ActiveNode = StateNodes.FindRef(CurrentState))
+		{
+			ActiveNode->Update(AnimContext);
+		}
 	}
 
 	void EvaluatePose(PoseContext& Context) override
 	{
-		StateNodes[(int)State]->EvaluatePose(Context);  // 현재 상태 노드의 포즈를 그대로 쓴다
+		if (AnimNode* ActiveNode = StateNodes.FindRef(CurrentState))
+		{
+			ActiveNode->EvaluatePose(Context);
+		}
 	}
 
-	void AddTransition(EAnimState StartState, EAnimState EndState,std::function<bool(const AnimationContext&)> Condition, float BlendAlpha, std::function<void(AnimationContext&)> OnTransition = {})
+	void AddTransition(
+		const FName& StartState,
+		const FName& EndState,
+		std::function<bool(const AnimationContext&)> Condition,
+		float BlendAlpha = 0.0f,
+		std::function<void(AnimationContext&)> OnTransition = {})
 	{
-		Transition Trans{ StartState, EndState, std::move(Condition), std::move(OnTransition), BlendAlpha  };
-		TransitionArray[(int)StartState].Add(std::move(Trans));
+		Transition Trans{ StartState, EndState, std::move(Condition), std::move(OnTransition), BlendAlpha };
+		TransitionMap[StartState].Add(std::move(Trans));
+	}
+
+	void AddAnyStateTransition(
+		const FName& EndState,
+		std::function<bool(const AnimationContext&)> Condition,
+		float BlendAlpha = 0.0f,
+		std::function<void(AnimationContext&)> OnTransition = {})
+	{
+		Transition Trans{ NAME_None, EndState, std::move(Condition), std::move(OnTransition), BlendAlpha };
+		AnyStateTransitions.Add(std::move(Trans));
 	}
 
 private:
 	void ProcessState(AnimationContext& AnimContext)
 	{
-		const auto& Transitions = TransitionArray[(int)State];
-
-		for (const Transition& Trans : Transitions)
+		for (const Transition& Trans : AnyStateTransitions)
 		{
-			if (Trans.Condition(AnimContext))
+			if (Trans.Condition && Trans.Condition(AnimContext))
 			{
-				State = Trans.EndState;
+				CurrentState = Trans.EndState;
+				if (Trans.OnTransition)
+					Trans.OnTransition(AnimContext);
+				return;
+			}
+		}
+
+		const TArray<Transition>* Transitions = TransitionMap.Find(CurrentState);
+		if (!Transitions)
+			return;
+
+		for (const Transition& Trans : *Transitions)
+		{
+			if (Trans.Condition && Trans.Condition(AnimContext))
+			{
+				CurrentState = Trans.EndState;
 				if (Trans.OnTransition)
 					Trans.OnTransition(AnimContext);
 				break;
