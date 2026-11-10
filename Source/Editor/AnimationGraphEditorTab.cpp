@@ -339,7 +339,7 @@ FAnimationGraphEditorTab::FAnimationGraphEditorTab(UAnimationGraph* InGraph) : F
     }
 
     GraphEditorPanel = AddPanel<FAnimationGraphEditorPanel>(FString("Animation Graph Editor##") + Graph->GetPath(), [this]() { DrawGraphEditor(); });
-    ViewportPanel = AddPanel<FPreviewViewportPanel>(GetWorld(), FString("AnimationGraphPreview##") + Graph->GetPath(), [this]() { DrawToolbar(); }, 90.0f);
+    ViewportPanel = AddPanel<FPreviewViewportPanel>(GetWorld(), FString("AnimationGraphPreview##") + Graph->GetPath(), [this]() { DrawToolbar(); });
 }
 
 FAnimationGraphEditorTab::~FAnimationGraphEditorTab()

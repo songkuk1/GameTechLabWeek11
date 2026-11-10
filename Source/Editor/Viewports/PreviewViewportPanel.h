@@ -12,7 +12,7 @@ class FPreviewViewportPanel : public IEditorPanel
 {
 public:
 	// InPanelName은 ImGui 창 이름이라 탭마다 달라야 한다. "Viewport##탭이름"처럼 넘긴다
-	FPreviewViewportPanel(UWorld* InWorld, FString InPanelName, std::function<void()> InDrawToolbar, float InMaxToolbarHeight = 280.0f);
+	FPreviewViewportPanel(UWorld* InWorld, FString InPanelName, std::function<void()> InDrawToolbar);
 	~FPreviewViewportPanel() = default;
 
 	FPreviewViewportPanel(const FPreviewViewportPanel&) = delete;
@@ -53,5 +53,6 @@ private:
 	bool bHovered = false;
 	// 우클릭을 누른 채 창 밖으로 나가도 놓을 때까지 카메라를 잡고 있는다
 	bool bCaptured = false;
-	float MaxToolbarHeight = 280.0f;
+	float ToolbarHeight = 0.0f;
+	bool bToolbarHeightInitialized = false;
 };
