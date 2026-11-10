@@ -14,6 +14,8 @@ public:
 	~USkeletalMeshComponent() override;
 	void SetAnimationInstance(UAnimationInstance* InInstance);
 	UAnimationInstance* GetAnimationInstance() const { return AnimInstance; }
+	// Actor 적용 전의 월드 기준 변화 행렬.
+	const FMatrix& GetWorldRootMotionMatrix() const { return WorldRootMotionMatrix; }
 
 	virtual const FModelMeshData* GetMeshData() const override;
 
@@ -26,6 +28,8 @@ public:
 	void ApplyLocalPose(const TArray<PoseTransform>& InPose);
 
 private:
+	void UpdateWorldRootMotion();
+	FMatrix WorldRootMotionMatrix = FMatrix::Identity;
 	USkeleton* Skeleton = nullptr;
 	UAnimationInstance* AnimInstance = nullptr;
 };

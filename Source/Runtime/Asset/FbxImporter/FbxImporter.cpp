@@ -775,6 +775,14 @@ void FFbxImporter::ProcessAnimationNode(FbxAnimStack* AnimStack, TMap<FbxNode*, 
 		AnimSequenceData.BoneAnimationTracks.Add(BoneAnimTrack);
 	}
 
+	for (int i = 0;i < OutModelData.Bones.Num();i++)
+	{
+		if (OutModelData.Bones[i].ParentBoneIndex == -1)
+		{
+			AnimSequenceData.RootNodeIndex = OutModelData.Bones[i].NodeIndex;
+			break;
+		}
+	}
 	OutModelData.AnimData.Add(AnimSequenceData);	// Stack마다 AnimSeqData 배열에 하나씩 추가, 한 FBX 내에서 여러 애니메이션이 나올 수 있음
 }
 

@@ -30,6 +30,12 @@ public:
 		if (!Sequence)
 			return;
 
+		if(Sequence->bEnableRootMotion)
+		{
+			AnimContext.RootTransform = Sequence->CalculateRootTransform(PreviousTime, CurrentPlayTime, bLooping);
+			AnimContext.RootMotionNodeIndex = Sequence->GetAnimData().RootNodeIndex;
+		}
+
 		const double PlayLength = Sequence->GetPlayLength();
 		if (bLooping && PlayLength <= 0.0)
 			return;
@@ -75,6 +81,18 @@ public:
 	void EvaluatePose(PoseContext& Context) override
 	{
 		Sequence->CalculateCurrentPose(CurrentPlayTime, bLooping, Context.LocalPoseTrans);
+		if (Sequence->bEnableRootMotion)
+		{
+			for (const FBoneAnimTrack& BoneTrack : Sequence->GetAnimData().BoneAnimationTracks)
+			{
+				if (BoneTrack.InternalTrack.NodeIndex == static_cast<uint32>(Sequence->GetAnimData().RootNodeIndex))	// Root Lock
+				{
+					Context.LocalPoseTrans[BoneTrack.InternalTrack.NodeIndex].Translation = BoneTrack.InternalTrack.PosKeys[0];
+					Context.LocalPoseTrans[BoneTrack.InternalTrack.NodeIndex].Rotation = BoneTrack.InternalTrack.RotKeys[0];
+					Context.LocalPoseTrans[BoneTrack.InternalTrack.NodeIndex].Scale = BoneTrack.InternalTrack.ScaleKeys[0];
+				}
+			}
+		}
 	}
 
 	bool IsClipFinished() override { if (bReverse) return CurrentPlayTime <= 0;

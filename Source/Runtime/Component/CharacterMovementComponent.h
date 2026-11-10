@@ -31,6 +31,7 @@ public:
 	void SetCollisionComponent(UPrimitiveComponent* InCollisionComponent);
 
 	void AddKnockback(const FVector& InVelocity);
+	void ApplyRootMotion(const FMatrix& WorldDelta, bool bActive);
 
 private:
 	// Delta만큼 sweep 이동하고, 막히면 남은 이동을 표면을 따라 미끄러뜨린다
@@ -44,6 +45,7 @@ private:
 	float Deceleration = 40.0f;
 	bool bSprinting = false;
 	bool bWasInAir = false;
+	bool bRootMotionActive = false;
 
 	// Hit normal의 Z가 이 값 이상이면 걸을 수 있는 바닥 (약 45도 경사까지)
 	float WalkableFloorZ = 0.7f;

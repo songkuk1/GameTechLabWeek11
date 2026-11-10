@@ -65,7 +65,7 @@ void UCharacterMovementComponent::TickComponent(float DeltaTime)
 	const FVector MoveDirection = InputMagnitude > SMALL_NUMBER
 		? PendingMoveInput.GetSafeNormal()
 		: HorizontalVelocity.GetSafeNormal();
-	const FVector NewVelocity = MoveDirection * NewSpeed;
+	const FVector NewVelocity = bRootMotionActive ? FVector::ZeroVector : MoveDirection * NewSpeed;
 	Velocity.X = NewVelocity.X;
 	Velocity.Y = NewVelocity.Y;
 
@@ -84,7 +84,7 @@ void UCharacterMovementComponent::TickComponent(float DeltaTime)
 	const FVector MoveDelta = FinalVelocity * DeltaTime;
 
 	FRotator NewRotation = UpdatedComponent->GetRelativeRotation();
-	if (bOrientRotationToMovement && (Velocity.X * Velocity.X + Velocity.Y * Velocity.Y) > 1e-4f)
+	if (!bRootMotionActive && bOrientRotationToMovement && (Velocity.X * Velocity.X + Velocity.Y * Velocity.Y) > 1e-4f)
 	{
 		const float TargetYaw = std::atan2(Velocity.Y, Velocity.X) * 180.0f / PI;
 		NewRotation.Yaw = StepAngleTowards(NewRotation.Yaw, TargetYaw, RotationRate * DeltaTime);
@@ -127,8 +127,34 @@ void UCharacterMovementComponent::TickComponent(float DeltaTime)
 	UpdateComponentVelocity();
 }
 
+void UCharacterMovementComponent::ApplyRootMotion(const FMatrix& WorldDelta, bool bActive)
+{
+	bRootMotionActive = bActive;
+	if (!bActive || !UpdatedComponent)
+		return;
+
+	const FVector CurrentLocation = UpdatedComponent->GetWorldLocation();
+	const FMatrix TargetWorld = UpdatedComponent->GetWorldMatrix() * WorldDelta;
+	FVector TargetLocation;
+	FQuat TargetRotation;
+	FVector TargetScale;
+	if (!TargetWorld.Decompose(TargetLocation, TargetRotation, TargetScale))
+		return;
+
+	// WorldDelta는 이미 프레임 변화량이므로 DeltaTime을 다시 곱하지 않는다.
+	MoveWithSlide(TargetLocation - CurrentLocation, TargetRotation.ToFRotator());
+	UpdatedComponent->SetWorldScale3D(TargetScale);
+}
+
 void UCharacterMovementComponent::MoveWithSlide(const FVector& Delta, const FRotator& NewRotation)
 {
+	// 이동 없이 회전만 있는 Root Motion도 반영한다.
+	if (Delta.SizeSquared() < 1e-8f)
+	{
+		MoveUpdatedComponent(FVector::ZeroVector, NewRotation, false, nullptr);
+		return;
+	}
+
 	AActor* Owner = GetOwner();
 	UWorld* World = Owner ? Owner->GetWorld() : nullptr;
 

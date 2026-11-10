@@ -25,7 +25,7 @@ UAnimationInstance::UAnimationInstance()
 	Blend1Node->AddSample(Sequence3, 10.0f);
 	// 공격/피격 클립은 준비 전까지 기존 클립을 임시로 사용한다.
 	AnimNode* AttackNode = AddNode(SequencePlayer);
-	static_cast<SequencePlayerNode*>(AttackNode)->InitializeNode(false, false, "Models/statemachinefbx/Mixamo_StateMachine_WithSkin.fbx_Anim_0");
+	static_cast<SequencePlayerNode*>(AttackNode)->InitializeNode(false, false, "Models/statemachinefbx/Mixamo_StateMachine_WithSkin.fbx_Anim_8");
 	AnimNode* HitNode = AddNode(SequencePlayer);
 	static_cast<SequencePlayerNode*>(HitNode)->InitializeNode(false, false, "Models/statemachinefbx/Mixamo_StateMachine_WithSkin.fbx_Anim_1");
 	AnimNode* JumpStartNode = AddNode(SequencePlayer);
@@ -104,7 +104,9 @@ void UAnimationInstance::Tick(float deltaTime, PoseContext& Context)
 	if (!Root) return;
 
 	PendingNotifyNames.Reset();
-	AnimationContext AnimContext{ PendingNotifyNames, deltaTime, Speed, IsAttacking, IsHit, IsJumpStart, IsJumpAir, IsJumpEnd };
+	RootTransform = FTransform::Identity;
+	RootMotionNodeIndex = -1;
+	AnimationContext AnimContext{ PendingNotifyNames, RootTransform, deltaTime, Speed, IsAttacking, IsHit, IsJumpStart, IsJumpAir, IsJumpEnd, RootMotionNodeIndex };
 	CurrentTime += deltaTime;
 	Root->Update(AnimContext);
 	Root->EvaluatePose(Context);

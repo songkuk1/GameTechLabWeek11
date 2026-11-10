@@ -11,7 +11,7 @@
 
 namespace
 {
-constexpr uint32 ModelBakeVersion = 2;
+constexpr uint32 ModelBakeVersion = 3;
 
 struct FModelBakeHeader
 {
@@ -223,6 +223,7 @@ void FModelBake::SerializeAnimSeqData(FStructuredArchive::FRecord& Record, FAnim
 {
 	Record << SA_VALUE("PlayLength", AnimData.PlayLength);
 	Record << SA_VALUE("FrameRate", AnimData.FrameRate);
+	Record << SA_VALUE("RootNodeIndex", AnimData.RootNodeIndex);
 	Record << SA_VALUE("NumberOfFrames", AnimData.NumberOfFrames);
 	Record << SA_VALUE("NumberOfKeys", AnimData.NumberOfKeys);
 	SerializeArray<FBoneAnimTrack>(Record, "BoneAnimationTracks", AnimData.BoneAnimationTracks, SerializeBoneAnimTrack);

@@ -31,7 +31,11 @@ public:
 
 	void CalculateCurrentPose(float CurrentTime, bool bLoop, TArray<PoseTransform>& OutPoseTrans);
 
+	FTransform CalculateRootTransform(float PreviousTime, float CurrentTime, bool bLoop);
+
+	bool bEnableRootMotion;
 private:
 	FAnimSeqData AnimData;
 	TArray<NotifyData> NotifyArray;
+	
 };

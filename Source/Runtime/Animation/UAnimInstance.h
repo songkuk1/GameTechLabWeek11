@@ -15,6 +15,9 @@ public:
 
 	void Tick(float deltaTime, PoseContext& Context);
 
+	FTransform GetRootTransform() const { return RootTransform; }
+	int32 GetRootMotionNodeIndex() const { return RootMotionNodeIndex; }
+
 	AnimNode* AddNode(NodeType Node);
 	void RemoveNode(AnimNode* Node);
 	void SetRoot(AnimNode* Node);
@@ -33,7 +36,8 @@ public:
 
 protected:
 	TArray<TUniquePtr<AnimNode>> Nodes;
-	
+	FTransform RootTransform = FTransform::Identity;
+	int32 RootMotionNodeIndex = -1;
 	AnimNode* Root = nullptr;
 	float JumpTime = 0.0f;
 	float Speed = 0.0f;

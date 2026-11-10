@@ -91,3 +91,131 @@ bool UAnimSequence::RemoveNotify(uint32 Index)
 	NotifyArray.RemoveAt(Index);
 	return true;
 }
+
+
+FTransform UAnimSequence::CalculateRootTransform(float PreviousTime, float CurrentTime, bool bLoop)
+{
+	if (AnimData.NumberOfKeys <= 0 || !std::isfinite(PreviousTime) || !std::isfinite(CurrentTime)
+		|| !std::isfinite(AnimData.FrameRate) || AnimData.FrameRate <= 0.0f
+		|| !std::isfinite(AnimData.PlayLength) || AnimData.PlayLength < 0.0f
+		|| AnimData.RootNodeIndex < 0)
+		return FTransform::Identity;
+
+	const FAnimSeqTrack* RootTrack = nullptr;
+	for (const FBoneAnimTrack& BoneTrack : AnimData.BoneAnimationTracks)
+	{
+		if (BoneTrack.InternalTrack.NodeIndex == static_cast<uint32>(AnimData.RootNodeIndex))
+		{
+			RootTrack = &BoneTrack.InternalTrack;
+			break;
+		}
+	}
+	if (!RootTrack || RootTrack->PosKeys.Num() < AnimData.NumberOfKeys
+		|| RootTrack->RotKeys.Num() < AnimData.NumberOfKeys
+		|| RootTrack->ScaleKeys.Num() < AnimData.NumberOfKeys)
+		return FTransform::Identity;
+
+	const int32 LastIndex = AnimData.NumberOfKeys - 1;
+
+	// 이전 시간의 위치 / 회전 / 스케일 샘플링
+	float PreviousSampleTime = std::clamp(PreviousTime, 0.0f, AnimData.PlayLength);
+	double PreviousLoopIndex = 0.0;
+	if (bLoop && AnimData.PlayLength > 0.0f)
+	{
+		PreviousLoopIndex = std::floor(static_cast<double>(PreviousTime) / AnimData.PlayLength);
+		PreviousSampleTime = std::fmod(PreviousTime, AnimData.PlayLength);
+		if (PreviousSampleTime < 0.0f)
+			PreviousSampleTime += AnimData.PlayLength;
+	}
+	const double PreviousKeyFramePos = PreviousSampleTime >= AnimData.PlayLength
+		? static_cast<double>(LastIndex)
+		: std::clamp(static_cast<double>(PreviousSampleTime) * AnimData.FrameRate, 0.0, static_cast<double>(LastIndex));
+	const int32 PreviousStartIndex = static_cast<int32>(std::floor(PreviousKeyFramePos));
+	const int32 PreviousEndIndex = PreviousStartIndex < LastIndex ? PreviousStartIndex + 1 : LastIndex;
+	const float PreviousAlpha = static_cast<float>(PreviousKeyFramePos - PreviousStartIndex);
+	const FVector PreviousPosition(
+		std::lerp(RootTrack->PosKeys[PreviousStartIndex].X, RootTrack->PosKeys[PreviousEndIndex].X, PreviousAlpha),
+		std::lerp(RootTrack->PosKeys[PreviousStartIndex].Y, RootTrack->PosKeys[PreviousEndIndex].Y, PreviousAlpha),
+		std::lerp(RootTrack->PosKeys[PreviousStartIndex].Z, RootTrack->PosKeys[PreviousEndIndex].Z, PreviousAlpha));
+	const FQuat PreviousRotation = FQuat::Slerp(
+		RootTrack->RotKeys[PreviousStartIndex], RootTrack->RotKeys[PreviousEndIndex], PreviousAlpha);
+	const FVector PreviousScale(
+		std::lerp(RootTrack->ScaleKeys[PreviousStartIndex].X, RootTrack->ScaleKeys[PreviousEndIndex].X, PreviousAlpha),
+		std::lerp(RootTrack->ScaleKeys[PreviousStartIndex].Y, RootTrack->ScaleKeys[PreviousEndIndex].Y, PreviousAlpha),
+		std::lerp(RootTrack->ScaleKeys[PreviousStartIndex].Z, RootTrack->ScaleKeys[PreviousEndIndex].Z, PreviousAlpha));
+
+	// 현재 시간의 위치 / 회전 / 스케일 샘플링 (기존 SampleTime / StartIndex / EndIndex 계산)
+	float SampleTime = std::clamp(CurrentTime, 0.0f, AnimData.PlayLength);
+	double CurrentLoopIndex = 0.0;
+	if (bLoop && AnimData.PlayLength > 0.0f)
+	{
+		CurrentLoopIndex = std::floor(static_cast<double>(CurrentTime) / AnimData.PlayLength);
+		SampleTime = std::fmod(CurrentTime, AnimData.PlayLength);
+		if (SampleTime < 0.0f)
+			SampleTime += AnimData.PlayLength;
+	}
+	const double KeyFramePos = SampleTime >= AnimData.PlayLength
+		? static_cast<double>(LastIndex)
+		: std::clamp(static_cast<double>(SampleTime) * AnimData.FrameRate, 0.0, static_cast<double>(LastIndex));
+	const int32 StartIndex = static_cast<int32>(std::floor(KeyFramePos));
+	const int32 EndIndex = StartIndex < LastIndex ? StartIndex + 1 : LastIndex;
+	const float alpha = static_cast<float>(KeyFramePos - StartIndex);
+	const FVector CurrentPosition(
+		std::lerp(RootTrack->PosKeys[StartIndex].X, RootTrack->PosKeys[EndIndex].X, alpha),
+		std::lerp(RootTrack->PosKeys[StartIndex].Y, RootTrack->PosKeys[EndIndex].Y, alpha),
+		std::lerp(RootTrack->PosKeys[StartIndex].Z, RootTrack->PosKeys[EndIndex].Z, alpha));
+	const FQuat CurrentRotation = FQuat::Slerp(
+		RootTrack->RotKeys[StartIndex], RootTrack->RotKeys[EndIndex], alpha);
+	const FVector CurrentScale(
+		std::lerp(RootTrack->ScaleKeys[StartIndex].X, RootTrack->ScaleKeys[EndIndex].X, alpha),
+		std::lerp(RootTrack->ScaleKeys[StartIndex].Y, RootTrack->ScaleKeys[EndIndex].Y, alpha),
+		std::lerp(RootTrack->ScaleKeys[StartIndex].Z, RootTrack->ScaleKeys[EndIndex].Z, alpha));
+
+	if (std::abs(PreviousScale.X) <= SMALL_NUMBER || std::abs(PreviousScale.Y) <= SMALL_NUMBER
+		|| std::abs(PreviousScale.Z) <= SMALL_NUMBER)
+		return FTransform::Identity;
+
+	const FTransform PreviousTransform(PreviousPosition, PreviousScale, PreviousRotation.ToFRotator());
+	const FTransform CurrentTransform(CurrentPosition, CurrentScale, CurrentRotation.ToFRotator());
+	const FMatrix PreviousMatrix = PreviousTransform.GetLocalMatrix();
+	const FMatrix CurrentMatrix = CurrentTransform.GetLocalMatrix();
+
+	// 반복 경계에서는 위치를 더하는 대신 클립 전체의 변환을 합성한다.
+	FMatrix LoopCorrection = FMatrix::Identity;
+	double LoopCount = CurrentLoopIndex - PreviousLoopIndex;
+	if (LoopCount != 0.0)
+	{
+		const FVector& FirstScale = RootTrack->ScaleKeys[0];
+		const FVector& LastScale = RootTrack->ScaleKeys[LastIndex];
+		if (std::abs(FirstScale.X) <= SMALL_NUMBER || std::abs(FirstScale.Y) <= SMALL_NUMBER
+			|| std::abs(FirstScale.Z) <= SMALL_NUMBER || std::abs(LastScale.X) <= SMALL_NUMBER
+			|| std::abs(LastScale.Y) <= SMALL_NUMBER || std::abs(LastScale.Z) <= SMALL_NUMBER)
+			return FTransform::Identity;
+
+		const FTransform FirstTransform(RootTrack->PosKeys[0], FirstScale, RootTrack->RotKeys[0].ToFRotator());
+		const FTransform LastTransform(RootTrack->PosKeys[LastIndex], LastScale, RootTrack->RotKeys[LastIndex].ToFRotator());
+		FMatrix LoopMatrix = FirstTransform.GetLocalMatrix().Inverse() * LastTransform.GetLocalMatrix();
+		if (LoopCount < 0.0)
+			LoopMatrix = LoopMatrix.Inverse();
+		LoopCount = std::abs(LoopCount);
+
+		// 여러 바퀴도 반복 횟수의 제곱 분할로 합성한다.
+		while (LoopCount >= 1.0)
+		{
+			if (std::fmod(LoopCount, 2.0) >= 1.0)
+				LoopCorrection *= LoopMatrix;
+			LoopCount = std::floor(LoopCount / 2.0);
+			if (LoopCount >= 1.0)
+				LoopMatrix = LoopMatrix * LoopMatrix;
+		}
+	}
+
+	// 행 벡터 규약: Delta * Previous = Current (반복 경계 보정 포함).
+	const FMatrix DeltaMatrix = CurrentMatrix * LoopCorrection * PreviousMatrix.Inverse();
+	FTransform DeltaTransform = FTransform::Identity;
+	FQuat DeltaRotation;
+	if (!DeltaMatrix.Decompose(DeltaTransform.Location, DeltaRotation, DeltaTransform.Scale))
+		return FTransform::Identity;
+	DeltaTransform.Rotation = DeltaRotation.ToFRotator();
+	return DeltaTransform;
+}

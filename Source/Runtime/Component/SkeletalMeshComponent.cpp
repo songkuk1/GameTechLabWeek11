@@ -77,24 +77,34 @@ FPrimitiveSceneProxy* USkeletalMeshComponent::CreateSceneProxy()
 void USkeletalMeshComponent::TickComponent(float DeltaTime)
 {
 	Super::TickComponent(DeltaTime);
+	WorldRootMotionMatrix = FMatrix::Identity;
+	AActor* Owner = GetOwner();
+	UCharacterMovementComponent* Movement = Owner
+		? Cast<UCharacterMovementComponent>(Owner->FindComponentByClass(UCharacterMovementComponent::StaticClass()))
+		: nullptr;
 
 	if (!SkeletalMesh || !AnimInstance || ReferencePose.IsEmpty())
+	{
+		if (Movement) Movement->ApplyRootMotion(WorldRootMotionMatrix, false);
 		return;
+	}
 
 	PoseContext Context{ ReferencePose, ReferencePose };
 
-	if (AActor* Owner = GetOwner())
+	if (Movement)
 	{
-		if (UCharacterMovementComponent* Movement = Cast<UCharacterMovementComponent>(
-			Owner->FindComponentByClass(UCharacterMovementComponent::StaticClass())))
-		{
-			const FVector& Velocity = Movement->Velocity;
-			AnimInstance->SetSpeed(std::sqrt(Velocity.X * Velocity.X + Velocity.Y * Velocity.Y));
-		}
+		const FVector& Velocity = Movement->Velocity;
+		AnimInstance->SetSpeed(std::sqrt(Velocity.X * Velocity.X + Velocity.Y * Velocity.Y));
 	}
 
 	AnimInstance->Tick(DeltaTime, Context);
 	ApplyLocalPose(Context.LocalPoseTrans);
+	UpdateWorldRootMotion();
+	if (Movement)
+	{
+		const bool bRootMotionActive = NodeGlobalTransforms.IsValidIndex(AnimInstance->GetRootMotionNodeIndex());
+		Movement->ApplyRootMotion(WorldRootMotionMatrix, bRootMotionActive);
+	}
 
 	if (AnimInstance->PendingNotifyNames.Num()!=0)
 	{
@@ -103,6 +113,23 @@ void USkeletalMeshComponent::TickComponent(float DeltaTime)
 			GetOwner()->HandleAnimNotify(AnimInstance->PendingNotifyNames[i]);
 		}
 	}
+}
+
+void USkeletalMeshComponent::UpdateWorldRootMotion()
+{
+	const int32 RootNodeIndex = AnimInstance->GetRootMotionNodeIndex();
+	if (!NodeGlobalTransforms.IsValidIndex(RootNodeIndex))
+		return;
+
+	// Root Lock된 루트 로컬 * 부모 누적 변환 * 메시 월드 변환.
+	const FMatrix RootWorldMatrix = NodeGlobalTransforms[RootNodeIndex] * GetWorldMatrix();
+	const float Determinant = RootWorldMatrix.Determinant();
+	if (!std::isfinite(Determinant) || std::abs(Determinant) <= SMALL_NUMBER)
+		return;
+
+	const FMatrix LocalDelta = AnimInstance->GetRootTransform().GetLocalMatrix();
+	// 행 벡터 규약: 루트 기준 변화량을 월드 기준 변화량으로 변환한다.
+	WorldRootMotionMatrix = RootWorldMatrix.Inverse() * LocalDelta * RootWorldMatrix;
 }
 
 void USkeletalMeshComponent::ApplyLocalPose(const TArray<PoseTransform>& InPose)
