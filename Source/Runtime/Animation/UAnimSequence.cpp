@@ -13,7 +13,12 @@ void UAnimSequence::CalculateCurrentPose(float CurrentTime, bool bLoop, TArray<P
 	const int32 LastIndex = AnimData.NumberOfKeys - 1;	// 키프레임 전체 수
 	float SampleTime = std::clamp(CurrentTime, 0.0f, AnimData.PlayLength);	// 현재 애니메이션 프레임 시간, 프레임 끝까지가면 마지막으로 유지
 	if (bLoop && AnimData.PlayLength > 0.0f)
-		SampleTime = std::fmod(std::max(CurrentTime, 0.0f), AnimData.PlayLength);
+	{
+		SampleTime = std::fmod(CurrentTime, AnimData.PlayLength);
+
+		if (SampleTime < 0.0f)
+			SampleTime += AnimData.PlayLength;
+	}
 	const double KeyFramePos = SampleTime >= AnimData.PlayLength? static_cast<double>(LastIndex) : std::clamp(static_cast<double>(SampleTime) * AnimData.FrameRate, 0.0, static_cast<double>(LastIndex));	// 키프레임 현재위치 = FrameRate * 현재 흐른 시간
 	const int32 StartIndex = static_cast<int32>(std::floor(KeyFramePos));
 	const int32 EndIndex = StartIndex < LastIndex ? StartIndex + 1 : LastIndex;  // 현재 구간 처음 인덱스

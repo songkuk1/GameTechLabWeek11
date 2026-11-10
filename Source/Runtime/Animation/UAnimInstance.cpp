@@ -10,13 +10,13 @@ UAnimationInstance::UAnimationInstance()
 {
 	AnimNode* Sequence1 = AddNode(SequencePlayer);
 	SequencePlayerNode* SeqPlayer1 = static_cast<SequencePlayerNode*>(Sequence1);
-	SeqPlayer1->InitializeNode(true, "Models/statemachinefbx/Mixamo_StateMachine_WithSkin.fbx_Anim_2");
+	SeqPlayer1->InitializeNode(true, false, "Models/statemachinefbx/Mixamo_StateMachine_WithSkin.fbx_Anim_2");
 	AnimNode* Sequence2 = AddNode(SequencePlayer);
 	SequencePlayerNode* SeqPlayer2 = static_cast<SequencePlayerNode*>(Sequence2);
-	SeqPlayer2->InitializeNode(true, "Models/statemachinefbx/Mixamo_StateMachine_WithSkin.fbx_Anim_7");
+	SeqPlayer2->InitializeNode(true, false, "Models/statemachinefbx/Mixamo_StateMachine_WithSkin.fbx_Anim_7");
 	AnimNode* Sequence3 = AddNode(SequencePlayer);
 	SequencePlayerNode* SeqPlayer3 = static_cast<SequencePlayerNode*>(Sequence3);
-	SeqPlayer3->InitializeNode(true, "Models/statemachinefbx/Mixamo_StateMachine_WithSkin.fbx_Anim_6");
+	SeqPlayer3->InitializeNode(true, false, "Models/statemachinefbx/Mixamo_StateMachine_WithSkin.fbx_Anim_6");
 
 	AnimNode* Blends = AddNode(BlendSpace1D);
 	BlendSpace1DNode* Blend1Node = static_cast<BlendSpace1DNode*>(Blends);
@@ -25,15 +25,15 @@ UAnimationInstance::UAnimationInstance()
 	Blend1Node->AddSample(Sequence3, 10.0f);
 	// 공격/피격 클립은 준비 전까지 기존 클립을 임시로 사용한다.
 	AnimNode* AttackNode = AddNode(SequencePlayer);
-	static_cast<SequencePlayerNode*>(AttackNode)->InitializeNode(false, "Models/statemachinefbx/Mixamo_StateMachine_WithSkin.fbx_Anim_0");
+	static_cast<SequencePlayerNode*>(AttackNode)->InitializeNode(false, false, "Models/statemachinefbx/Mixamo_StateMachine_WithSkin.fbx_Anim_0");
 	AnimNode* HitNode = AddNode(SequencePlayer);
-	static_cast<SequencePlayerNode*>(HitNode)->InitializeNode(false, "Models/statemachinefbx/Mixamo_StateMachine_WithSkin.fbx_Anim_1");
+	static_cast<SequencePlayerNode*>(HitNode)->InitializeNode(false, false, "Models/statemachinefbx/Mixamo_StateMachine_WithSkin.fbx_Anim_1");
 	AnimNode* JumpStartNode = AddNode(SequencePlayer);
-	static_cast<SequencePlayerNode*>(JumpStartNode)->InitializeNode(false, "Models/statemachinefbx/Mixamo_StateMachine_WithSkin.fbx_Anim_5");
+	static_cast<SequencePlayerNode*>(JumpStartNode)->InitializeNode(false, false, "Models/statemachinefbx/Mixamo_StateMachine_WithSkin.fbx_Anim_5");
 	AnimNode* JumpAirNode = AddNode(SequencePlayer);
-	static_cast<SequencePlayerNode*>(JumpAirNode)->InitializeNode(true, "Models/statemachinefbx/Mixamo_StateMachine_WithSkin.fbx_Anim_4");
+	static_cast<SequencePlayerNode*>(JumpAirNode)->InitializeNode(true, false, "Models/statemachinefbx/Mixamo_StateMachine_WithSkin.fbx_Anim_4");
 	AnimNode* JumpEndNode = AddNode(SequencePlayer);
-	static_cast<SequencePlayerNode*>(JumpEndNode)->InitializeNode(false, "Models/statemachinefbx/Mixamo_StateMachine_WithSkin.fbx_Anim_3");
+	static_cast<SequencePlayerNode*>(JumpEndNode)->InitializeNode(false, false, "Models/statemachinefbx/Mixamo_StateMachine_WithSkin.fbx_Anim_3");
 
 
 

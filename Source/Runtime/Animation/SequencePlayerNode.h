@@ -23,7 +23,10 @@ public:
 	void Update(AnimationContext& AnimContext) override
 	{
 		const float PreviousTime = CurrentPlayTime;
-		CurrentPlayTime += AnimContext.deltaTime;
+
+		if(bReverse) CurrentPlayTime -= AnimContext.deltaTime;
+		else CurrentPlayTime += AnimContext.deltaTime;
+
 		if (!Sequence)
 			return;
 
@@ -32,14 +35,21 @@ public:
 			return;
 
 		// 비반복은 원래 시간으로, 반복은 각 바퀴의 누적 발생 시점으로 검사한다.
+		const bool bMovingReverse = CurrentPlayTime < PreviousTime;
 		const double FirstLoop = bLooping ? std::floor(PreviousTime / PlayLength) : 0.0;
 		const double LastLoop = bLooping ? std::floor(CurrentPlayTime / PlayLength) : 0.0;
-		for (double LoopIndex = FirstLoop; LoopIndex <= LastLoop; LoopIndex += 1.0)
+		const double LoopStep = bMovingReverse ? -1.0 : 1.0;
+		for (double LoopIndex = FirstLoop;
+			bMovingReverse ? LoopIndex >= LastLoop : LoopIndex <= LastLoop;
+			LoopIndex += LoopStep)
 		{
 			for (const NotifyData& Notify : Sequence->GetNotifyData())
 			{
 				const double TriggerTime = Notify.TriggerTime + LoopIndex * PlayLength;
-				if (Notify.Duration == 0.0f && PreviousTime < TriggerTime && TriggerTime <= CurrentPlayTime)
+				const bool bCrossed = bMovingReverse
+					? CurrentPlayTime <= TriggerTime && TriggerTime < PreviousTime
+					: PreviousTime < TriggerTime && TriggerTime <= CurrentPlayTime;
+				if (Notify.Duration == 0.0f && bCrossed)
 					AnimContext.TriggeredNotifyNames.Add(Notify.NotifyName);
 			}
 		}
@@ -53,11 +63,13 @@ public:
 	void SetSequence(UAnimSequence* AnimSeq) { Sequence = AnimSeq; }
 	void SetLoop(bool InLoop) { bLooping = InLoop; }
 
-	void InitializeNode(bool bLoop, const FString& Path)
+	void InitializeNode(bool bLoop, bool InReverse, const FString& Path)
 	{
-		SetCurrentPlayTime(0);
 		SetLoop(bLoop);
 		SetSequence(UAssetManager::GetAssetByPath<UAnimSequence>(Path));
+		bReverse = InReverse;
+		if (bReverse) SetCurrentPlayTime(Sequence->GetPlayLength());
+		else SetCurrentPlayTime(0);
 	}
 
 	void EvaluatePose(PoseContext& Context) override
@@ -65,9 +77,10 @@ public:
 		Sequence->CalculateCurrentPose(CurrentPlayTime, bLooping, Context.LocalPoseTrans);
 	}
 
-	bool IsClipFinished() override { return CurrentPlayTime >= Sequence->GetAnimData().PlayLength; }
+	bool IsClipFinished() override { if (bReverse) return CurrentPlayTime <= 0;
+		else return CurrentPlayTime >= Sequence->GetAnimData().PlayLength; }
 
-	void ResetAnimation() override { SetCurrentPlayTime(0); }
+	void ResetAnimation() override {if (bReverse) SetCurrentPlayTime(Sequence->GetPlayLength()); else SetCurrentPlayTime(0); }
 
 	bool IsNotifyActivated(uint32 Index)
 	{
@@ -82,4 +95,5 @@ private:
 	UAnimSequence* Sequence = nullptr;
 	float CurrentPlayTime = 0;
 	bool bLooping = false;
+	bool bReverse = false;
 };
