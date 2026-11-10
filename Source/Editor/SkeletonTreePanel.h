@@ -22,7 +22,7 @@ public:
 	// 선택이 바뀌면 본 인덱스로 부른다. 선택 해제는 -1이다
 	void SetBoneSelectedCallback(std::function<void(int32)> InCallback) { OnBoneSelected = std::move(InCallback); }
 	int32 GetSelectedBone() const { return SelectedBone; }
-
+	void SetSelectedBone(int32 BoneIndex) { SelectBone(BoneIndex); }
 private:
 	void DrawBone(int32 BoneIndex);
 	void SelectBone(int32 BoneIndex);

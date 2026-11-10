@@ -40,7 +40,7 @@ private:
 	void DrawToolbar();
 	void SelectPosePath();
 	void SavePose();
-
+	void PickBone(const FVector2& MousePosition);
 	// 메시 바운드가 화면에 들어오도록 Preview 카메라를 놓는다
 	void FrameMesh();
 	bool bFramed = false;

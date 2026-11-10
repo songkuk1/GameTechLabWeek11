@@ -13,6 +13,7 @@
 #include "SkeletonTreePanel.h"
 #include "UObject/UObjectIterator.h"
 #include "Component/SkeletalMeshComponent.h"
+#include "Collision/Ray.h"
 
 #include <algorithm>
 #include <cmath>
@@ -193,6 +194,105 @@ void FSkeletalMeshPreviewTab::SavePose()
 	}
 }
 
+void FSkeletalMeshPreviewTab::PickBone(const FVector2& MousePosition)
+{
+	USkeleton* Skeleton = SkeletalMesh ? SkeletalMesh->GetSkeleton() : nullptr;
+	if (!Skeleton || !SkeletonTreePanel)
+		return;
+
+	USkeletalMeshComponent* MeshComponent = MeshActor->GetSkeletalMeshComponent();
+	const TArray<FModelBone>& Bones = Skeleton->GetBones();
+	const TArray<FModelNode>& Nodes = Skeleton->GetNodes();
+
+	const FViewport* Viewport = ViewportPanel->GetViewport();
+	const FVector2 OutputSize = Viewport->GetOutputSize();
+	if (OutputSize.X <= 0.0f || OutputSize.Y <= 0.0f)
+		return;
+
+	const FMatrix ComponentWorld = MeshComponent->GetWorldMatrix();
+	const FMatrix ViewProjection = Viewport->PrepareView().ViewProjection;
+	const int32 ScreenWidth = static_cast<int32>(OutputSize.X);
+	const int32 ScreenHeight = static_cast<int32>(OutputSize.Y);
+
+	// 각 노드가 어떤 Bone에 해당하는지 기록한다.
+	TArray<int32> NodeToBone;
+	NodeToBone.SetNum(Nodes.Num());
+	for (int32 NodeIndex = 0; NodeIndex < Nodes.Num(); ++NodeIndex)
+		NodeToBone[NodeIndex] = -1;
+
+	for (int32 BoneIndex = 0; BoneIndex < Bones.Num(); ++BoneIndex)
+	{
+		const int32 NodeIndex = Bones[BoneIndex].NodeIndex;
+		if (NodeIndex >= 0 && NodeIndex < Nodes.Num())
+			NodeToBone[NodeIndex] = BoneIndex;
+	}
+
+	// 각 Bone의 관절 위치를 화면 좌표로 변환한다.
+	TArray<FVector2> ScreenJoints;
+	TArray<uint8> bVisibleJoints;
+	ScreenJoints.SetNum(Bones.Num());
+	bVisibleJoints.SetNum(Bones.Num());
+
+	for (int32 BoneIndex = 0; BoneIndex < Bones.Num(); ++BoneIndex)
+	{
+		bVisibleJoints[BoneIndex] = 0;
+
+		const FMatrix JointWorld = MeshComponent->GetBoneComponentMatrix(BoneIndex) * ComponentWorld;
+		const FVector JointPosition(JointWorld.M[3][0], JointWorld.M[3][1], JointWorld.M[3][2]);
+		const FVector2 ScreenPosition = WorldToScreen(JointPosition, ViewProjection, ScreenWidth, ScreenHeight);
+
+		if (!std::isfinite(ScreenPosition.X) || !std::isfinite(ScreenPosition.Y) || ScreenPosition.X < -1.0e20f || ScreenPosition.Y < -1.0e20f)
+			continue;
+
+		ScreenJoints[BoneIndex] = ScreenPosition;
+		bVisibleJoints[BoneIndex] = 1;
+	}
+
+	int32 PickedBoneIndex = -1;
+	float BestDistance = 10.0f;
+
+	// 관절과 본을 잇는 선 중 마우스에 가장 가까운 본을 찾는다.
+	for (int32 BoneIndex = 0; BoneIndex < Bones.Num(); ++BoneIndex)
+	{
+		if (!bVisibleJoints[BoneIndex])
+			continue;
+
+		const FVector2& Joint = ScreenJoints[BoneIndex];
+		const float DeltaX = MousePosition.X - Joint.X;
+		const float DeltaY = MousePosition.Y - Joint.Y;
+		const float JointDistance = std::sqrt(DeltaX * DeltaX + DeltaY * DeltaY);
+
+		// 관절 중심을 클릭한 경우
+		if (JointDistance < BestDistance)
+		{
+			BestDistance = JointDistance;
+			PickedBoneIndex = BoneIndex;
+		}
+
+		// 부모 관절부터 현재 관절까지 이어지는 본 선을 검사한다.
+		const int32 NodeIndex = Bones[BoneIndex].NodeIndex;
+		const int32 ParentNodeIndex = Nodes[NodeIndex].ParentNodeIndex;
+
+		if (ParentNodeIndex < 0 || ParentNodeIndex >= Nodes.Num())
+			continue;
+
+		const int32 ParentBoneIndex = NodeToBone[ParentNodeIndex];
+		if (ParentBoneIndex < 0 || !bVisibleJoints[ParentBoneIndex])
+			continue;
+
+		const float SegmentDistance = DistanceToSegment(MousePosition, ScreenJoints[ParentBoneIndex], Joint);
+
+		if (SegmentDistance <= 8.0f && SegmentDistance < BestDistance)
+		{
+			BestDistance = SegmentDistance;
+			PickedBoneIndex = BoneIndex;
+		}
+	}
+
+	if (PickedBoneIndex >= 0)
+		SkeletonTreePanel->SetSelectedBone(PickedBoneIndex);
+}
+
 void FSkeletalMeshPreviewTab::Tick(float DeltaTime)
 {
 	FEditorTab::Tick(DeltaTime);
@@ -260,6 +360,12 @@ void FSkeletalMeshPreviewTab::RouteInput(const FViewportInput& BaseInput)
 	}
 
 	UpdateBoneGizmo(BaseInput.bEnabled);
+	if (BaseInput.bEnabled && ViewportPanel->IsHovered() && !ViewportPanel->IsCameraCaptured() && FInputSystem::IsMousePressed(EMouseButton::Left) && !BoneGizmo.IsUsing() && (!BoneGizmo.GetTarget() || BoneGizmo.GetHoveredAxis() < 0))
+	{
+		FVector2 MousePosition;
+		if (ViewportPanel->GetMouseViewportPosition(MousePosition))
+			PickBone(MousePosition);
+	}
 }
 
 void FSkeletalMeshPreviewTab::UpdateBoneGizmoTarget()
