@@ -21,6 +21,7 @@
 #include "Serialization/JsonArchive.h"
 
 #include "Asset/FbxImporter/FbxImporter.h"
+#include "Asset/ModelBake.h"
 #include "Animation/Skeleton.h"
 #include "Animation/AnimSequence.h"
 #include "Animation/BlendSpace1D.h"
@@ -182,6 +183,45 @@ namespace
 	{
 		return fs::relative(Path, "Assets").generic_string();
 	}
+
+	UAnimSequence* CreateAnimationSequence(const FModelAnimation& ModelAnimation, USkeleton* Skeleton)
+	{
+		if (!Skeleton)
+		{
+			return nullptr;
+		}
+
+		UAnimSequence* Animation = NewObject<UAnimSequence>();
+		Animation->SetName(ModelAnimation.Name);
+		Animation->SetSkeleton(Skeleton);
+
+		UAnimDataModel* DataModel = Animation->GetDataModel();
+		if (!DataModel)
+		{
+			delete Animation;
+			return nullptr;
+		}
+
+		DataModel->PlayLength = ModelAnimation.PlayLength;
+		DataModel->FrameRate.Numerator = ModelAnimation.FrameRateNumerator;
+		DataModel->FrameRate.Denominator = ModelAnimation.FrameRateDenominator;
+		DataModel->NumberOfFrames = ModelAnimation.NumberOfFrames;
+		DataModel->NumberOfKeys = ModelAnimation.NumberOfKeys;
+		DataModel->CurveData.Curves = ModelAnimation.CurveData.Curves;
+
+		for (const FModelAnimationTrack& ModelTrack : ModelAnimation.Tracks)
+		{
+			FBoneAnimationTrack BoneTrack;
+			BoneTrack.Name = ModelTrack.Name;
+			BoneTrack.NodeIndex = ModelTrack.NodeIndex;
+			BoneTrack.InternalTrack.PosKeys = ModelTrack.PosKeys;
+			BoneTrack.InternalTrack.RotKeys = ModelTrack.RotKeys;
+			BoneTrack.InternalTrack.ScaleKeys = ModelTrack.ScaleKeys;
+			DataModel->BoneAnimationTracks.Add(std::move(BoneTrack));
+		}
+
+		return Animation;
+	}
 }
 
 UAssetManager& UAssetManager::Get()
@@ -226,6 +266,7 @@ void UAssetManager::ScanAssets(const fs::path& AssetRoot, const FAssetLoadProgre
 	int32 Completed = 0;
 
 	TArray<fs::path> ModelBakeFiles;
+	TArray<fs::path> AnimationFiles;
 	TArray<fs::path> BlendSpaceFiles;
 	TArray<fs::path> AnimationGraphFiles;
 
@@ -272,6 +313,13 @@ void UAssetManager::ScanAssets(const fs::path& AssetRoot, const FAssetLoadProgre
 			continue;
 		}
 
+		if (Extension == ".anim")
+		{
+			AnimationFiles.Add(FilePath);
+			ReportProgress(FilePath);
+			continue;
+		}
+
 		if (Extension == ".blendspace")
 		{
 			BlendSpaceFiles.Add(FilePath);
@@ -303,8 +351,14 @@ void UAssetManager::ScanAssets(const fs::path& AssetRoot, const FAssetLoadProgre
 		}
 		else if (SourceExtension == ".fbx")
 		{
-			LoadFbxModel(SourcePathString, false);
+			LoadFbxModel(SourcePathString, false, true, false);
 		}
+	}
+
+	for (const fs::path& FilePath : AnimationFiles)
+	{
+		const FString Path = PathUtils::ToUtf8(FilePath);
+		LoadAnimSequence(Path);
 	}
 
 	// 2. BlendSpace 로드
@@ -608,15 +662,18 @@ UFont* UAssetManager::LoadFontAtlas(const FString& JsonPath, const FString& Atla
 	return Font;
 }
 
-UStaticMesh* UAssetManager::LoadObjStaticMesh(const FString& Path, bool bAllowSourceImport)
+UStaticMesh* UAssetManager::LoadObjStaticMesh(const FString& Path, bool bAllowSourceImport, bool bForceSourceImport)
 {
 	const FString Key = MakeAssetKey(Path);
 	if (UStaticMesh* Cached = GetAssetByPath<UStaticMesh>(Key))
 	{
-		return Cached;
+		if (!bForceSourceImport)
+		{
+			return Cached;
+		}
 	}
 
-	TUniquePtr<FModelMeshData> Data = FObjImporter::LoadStaticMeshData(Path, bAllowSourceImport);
+	TUniquePtr<FModelMeshData> Data = FObjImporter::LoadStaticMeshData(Path, bAllowSourceImport, bForceSourceImport);
 	UStaticMesh* Mesh = CreateStaticMesh(Data.get());   // Data가 nullptr이면 nullptr 반환
 	if (!Mesh)
 	{
@@ -627,76 +684,112 @@ UStaticMesh* UAssetManager::LoadObjStaticMesh(const FString& Path, bool bAllowSo
 	return Mesh;
 }
 
-void UAssetManager::LoadFbxModel(const FString& Path, bool bAllowSourceImport)
+void UAssetManager::LoadFbxModel(const FString& Path, bool bAllowSourceImport, bool bSaveAnimationAssets, bool bForceSourceImport)
 {
 	const FString MeshKey = MakeAssetKey(Path);
-	if (USkeletalMesh* Cached = GetAssetByPath<USkeletalMesh>(MeshKey))
+	USkeletalMesh* CachedSkeletalMesh = GetAssetByPath<USkeletalMesh>(MeshKey);
+	UStaticMesh* CachedStaticMesh = GetAssetByPath<UStaticMesh>(MeshKey);
+
+	if ((CachedSkeletalMesh || CachedStaticMesh) && !bForceSourceImport && (!bSaveAnimationAssets || !CachedSkeletalMesh))
 	{
 		return;
 	}
 
 	FModelData ModelData;
-	if (!FFbxImporter::LoadFromFile(Path, ModelData, bAllowSourceImport))
+	if (!FFbxImporter::LoadFromFile(Path, ModelData, bAllowSourceImport, bForceSourceImport))
 	{
 		return;
 	}
 
-	UAsset* Mesh = nullptr;
 	if (ModelData.IsSkeletal)
 	{
-		USkeleton* Skeleton = CreateSkeleton(ModelData);
-		Skeleton->LoadDefaultPose(Path);
+		USkeleton* Skeleton = !bForceSourceImport && CachedSkeletalMesh ? CachedSkeletalMesh->GetSkeleton() : nullptr;
 
-		USkeletalMesh* Mesh = CreateSkeletalMesh(ModelData);
-		Mesh->SetSkeleton(Skeleton);
-
-		std::filesystem::path SkeletonPath = Path;
-		SkeletonPath.replace_filename(std::format("{}_Skeleton", SkeletonPath.stem().generic_string()));
-
-		const FString SkeletonKey = MakeAssetKey(SkeletonPath.generic_string());
-		RegisterAsset(SkeletonKey, Skeleton);
-
-		RegisterAsset(MeshKey, Mesh);
-
-		for (const FModelAnimation& ModelAnimation : ModelData.Animations)
+		if (!Skeleton)
 		{
-			UAnimSequence* AnimSequence = NewObject<UAnimSequence>();
-			AnimSequence->SetName(ModelAnimation.Name);
-			AnimSequence->SetSkeleton(Skeleton);
-			UAnimDataModel* AnimDataModel = AnimSequence->GetDataModel();
-			assert(AnimDataModel != nullptr);
-			AnimDataModel->PlayLength = ModelAnimation.PlayLength;
-			AnimDataModel->FrameRate.Numerator = ModelAnimation.FrameRateNumerator;
-			AnimDataModel->FrameRate.Denominator = ModelAnimation.FrameRateDenominator;
-			AnimDataModel->NumberOfFrames = ModelAnimation.NumberOfFrames;
-			AnimDataModel->NumberOfKeys = ModelAnimation.NumberOfKeys;
-			AnimDataModel->CurveData.Curves = ModelAnimation.CurveData.Curves;
-
-			for (const FModelAnimationTrack& ModelTrack : ModelAnimation.Tracks)
+			Skeleton = CreateSkeleton(ModelData);
+			if (!Skeleton)
 			{
-				FBoneAnimationTrack BoneTrack;
-				BoneTrack.Name = ModelTrack.Name;
-				BoneTrack.NodeIndex = ModelTrack.NodeIndex;
-				BoneTrack.InternalTrack.PosKeys = ModelTrack.PosKeys;
-				BoneTrack.InternalTrack.RotKeys = ModelTrack.RotKeys;
-				BoneTrack.InternalTrack.ScaleKeys = ModelTrack.ScaleKeys;
-				AnimDataModel->BoneAnimationTracks.Add(std::move(BoneTrack));
+				return;
 			}
-			const FString AnimationKey = MeshKey + "::" + ModelAnimation.Name.ToString();
-			RegisterAsset(AnimationKey, AnimSequence);
 
-			const FString NotifyPath = FJsonArchive::GetAnimationNotifyPath(AnimationKey);
+			Skeleton->LoadDefaultPose(Path);
 
-			if (!FJsonArchive::LoadAnimNotifies(AnimSequence, NotifyPath))
+			std::filesystem::path SkeletonPath = PathUtils::FromUtf8(Path);
+			SkeletonPath.replace_filename(std::format("{}_Skeleton", SkeletonPath.stem().generic_string()));
+
+			RegisterAsset(MakeAssetKey(PathUtils::ToUtf8(SkeletonPath)), Skeleton);
+		}
+
+		USkeletalMesh* SkeletalMesh = !bForceSourceImport ? CachedSkeletalMesh : nullptr;
+
+		if (!SkeletalMesh)
+		{
+			SkeletalMesh = CreateSkeletalMesh(ModelData);
+			if (!SkeletalMesh)
 			{
-				HTR_LOG(Warning, "Failed to load animation notifies: {}", NotifyPath);
+				return;
+			}
+
+			SkeletalMesh->SetSkeleton(Skeleton);
+			RegisterAsset(MeshKey, SkeletalMesh);
+		}
+		else if (SkeletalMesh->GetSkeleton() != Skeleton)
+		{
+			SkeletalMesh->SetSkeleton(Skeleton);
+		}
+
+		if (bSaveAnimationAssets)
+		{
+			for (FModelAnimation& ModelAnimation : ModelData.Animations)
+			{
+				std::filesystem::path AnimationPath = PathUtils::FromUtf8(Path);
+				AnimationPath.replace_extension();
+
+				FString AnimationFileName = ModelAnimation.Name.ToString();
+				const FString InvalidCharacters = "\\/:*?\"<>|";
+
+				for (char& Character : AnimationFileName)
+				{
+					if (InvalidCharacters.find(Character) != FString::npos)
+					{
+						Character = '_';
+					}
+				}
+
+				AnimationPath += "_" + AnimationFileName + ".anim";
+
+				const FString AnimationPathString = PathUtils::ToUtf8(AnimationPath);
+				const bool bAnimationFileExists = fs::exists(AnimationPath);
+
+				if (bForceSourceImport || !bAnimationFileExists)
+				{
+					if (!FModelBake::WriteAnimationAsset(AnimationPathString, MeshKey, ModelAnimation))
+					{
+						HTR_LOG(Error, "[ANIMATION] Failed to save animation asset: {}", AnimationPathString);
+						continue;
+					}
+				}
+				else if (!LoadAnimSequence(AnimationPathString))
+				{
+					if (!FModelBake::WriteAnimationAsset(AnimationPathString, MeshKey, ModelAnimation))
+					{
+						HTR_LOG(Error, "[ANIMATION] Failed to rebuild animation asset: {}", AnimationPathString);
+						continue;
+					}
+				}
+
+				LoadAnimSequence(AnimationPathString);
 			}
 		}
 	}
-	else
+	else if (bForceSourceImport || !CachedStaticMesh)
 	{
-		UStaticMesh* Mesh = CreateStaticMesh(&ModelData.MeshData);
-		RegisterAsset(MeshKey, Mesh);
+		UStaticMesh* StaticMesh = CreateStaticMesh(&ModelData.MeshData);
+		if (StaticMesh)
+		{
+			RegisterAsset(MeshKey, StaticMesh);
+		}
 	}
 }
 
@@ -757,6 +850,64 @@ UAnimationGraph* UAssetManager::LoadAnimationGraph(const FString& Path)
 	}
 	Get().RegisterAsset(Key, Graph);
 	return Graph;
+}
+
+UAnimSequence* UAssetManager::LoadAnimSequence(const FString& Path, USkeletalMesh** OutSkeletalMesh)
+{
+	if (OutSkeletalMesh)
+	{
+		*OutSkeletalMesh = nullptr;
+	}
+
+	FString SourceMeshKey;
+	FModelAnimation ModelAnimation;
+
+	if (!FModelBake::ReadAnimationAsset(Path, SourceMeshKey, ModelAnimation))
+	{
+		HTR_LOG(Error, "[ANIMATION] Failed to load animation asset: {}", Path);
+		return nullptr;
+	}
+
+	const std::filesystem::path SourceMeshPath = std::filesystem::path("Assets") / PathUtils::FromUtf8(SourceMeshKey);
+	Get().LoadFbxModel(PathUtils::ToUtf8(SourceMeshPath), false);
+
+	USkeletalMesh* SkeletalMesh = GetAssetByPath<USkeletalMesh>(SourceMeshKey);
+	if (!SkeletalMesh || !SkeletalMesh->GetSkeleton())
+	{
+		HTR_LOG(Error, "[ANIMATION] Source Skeletal Mesh is unavailable: {}", SourceMeshKey);
+		return nullptr;
+	}
+
+	if (OutSkeletalMesh)
+	{
+		*OutSkeletalMesh = SkeletalMesh;
+	}
+
+	const FString AnimationKey = SourceMeshKey + "::" + ModelAnimation.Name.ToString();
+
+	if (UAnimSequence* Cached = GetAssetByPath<UAnimSequence>(AnimationKey))
+	{
+		if (Cached->GetSkeleton() == SkeletalMesh->GetSkeleton())
+		{
+			return Cached;
+		}
+	}
+
+	UAnimSequence* Animation = CreateAnimationSequence(ModelAnimation, SkeletalMesh->GetSkeleton());
+	if (!Animation)
+	{
+		return nullptr;
+	}
+
+	Get().RegisterAsset(AnimationKey, Animation);
+
+	const FString NotifyPath = FJsonArchive::GetAnimationNotifyPath(AnimationKey);
+	if (fs::exists(PathUtils::FromUtf8(NotifyPath)))
+	{
+		FJsonArchive::LoadAnimNotifies(Animation, NotifyPath);
+	}
+
+	return Animation;
 }
 
 bool UAssetManager::ReorientStaticMesh(UStaticMesh& Mesh, const std::function<FVector(const FVector&)>& Rotate)

@@ -9,6 +9,7 @@ namespace fs = std::filesystem;
 
 class UTexture2D;
 class UBlendSpace1D;
+class UStaticMesh;
 class USkeletalMesh;
 class UAnimationGraph;
 class UAnimSequence;
@@ -21,6 +22,8 @@ public:
 	void OnRender() override;
 	const char* GetPanelName() const override { return "Content Drawer"; }
 	void RenderFolderTree(const fs::path& Path, fs::path& SelectedPath);
+	void SetOpenSkeletalMeshViewerBinding(std::function<void(USkeletalMesh*)> InCallback) { OpenSkeletalMeshViewer = std::move(InCallback); }
+	void SetOpenAnimationSequenceViewerBinding(std::function<void(USkeletalMesh*, UAnimSequence*)> InCallback) { OpenAnimationSequenceViewer = std::move(InCallback); }
 	void SetOpenLevelSequenceBinding(std::function<void(const FString&)> InOpenLevelSequence) { OpenLevelSequence = std::move(InOpenLevelSequence); }
 	void SetOpenBlendSpaceBinding(std::function<void(UBlendSpace1D*)> InOpenBlendSpace) { OpenBlendSpace = std::move(InOpenBlendSpace); }
 	void SetOpenAnimationGraphBinding(std::function<void(UAnimationGraph*)> InOpenAnimationGraph) { OpenAnimationGraph = std::move(InOpenAnimationGraph); }
@@ -31,6 +34,10 @@ private:
 	bool CreateBlendSpaceFile(USkeletalMesh* InSkeletalMesh);
 	std::function<void(UBlendSpace1D*)> OpenBlendSpace;
 	bool CreateAnimationGraphFile(USkeletalMesh* InSkeletalMesh, UAnimSequence* InitialAnimation);
+	void ImportModel(bool bImportFbx);
+	std::function<void(USkeletalMesh*)> OpenSkeletalMeshViewer;
+	std::function<void(USkeletalMesh*, UAnimSequence*)> OpenAnimationSequenceViewer;
+
 	std::function<void(UAnimationGraph*)> OpenAnimationGraph;
 	bool bOpenCreateAnimationGraphPopup = false;
 	USkeletalMesh* SelectedCreateAnimationGraphMesh = nullptr;

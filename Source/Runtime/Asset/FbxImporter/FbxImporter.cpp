@@ -373,12 +373,12 @@ namespace
 	}
 }
 
-bool FFbxImporter::LoadFromFile(const FString& Path, FModelData& OutModelData, bool bAllowSourceImport)
+bool FFbxImporter::LoadFromFile(const FString& Path, FModelData& OutModelData, bool bAllowSourceImport, bool bForceSourceImport)
 {
 	const FString BinPath = Path + ".bin";
 
 	// .bin 파일 읽기
-	if (FModelBake::ReadBaked(BinPath, OutModelData))
+	if (!bForceSourceImport && FModelBake::ReadBaked(BinPath, OutModelData))
 	{
 		FString ValidationError;
 		if (ValidateImportedModelData(OutModelData, ValidationError))

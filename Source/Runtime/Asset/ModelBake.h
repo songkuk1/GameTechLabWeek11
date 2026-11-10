@@ -11,6 +11,9 @@ public:
 
 	static bool WriteBaked(const FString& Path, FModelData& ModelData);
 
+	static bool ReadAnimationAsset(const FString& Path, FString& OutSourceMeshKey, FModelAnimation& OutAnimation);
+
+	static bool WriteAnimationAsset(const FString& Path, const FString& SourceMeshKey, FModelAnimation& Animation);
 private:
 	static void SerializeModelNode(FStructuredArchive::FRecord& Record, FModelNode& Node);
 

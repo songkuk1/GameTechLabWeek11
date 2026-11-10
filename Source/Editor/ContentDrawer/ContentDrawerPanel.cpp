@@ -6,10 +6,12 @@
 #include "Editor/HitoriEd/EditorDragDrop.h"
 #include "Editor/HitoriEd/EditorResourcePaths.h"
 #include "Editor/Script/LuaScriptEditor.h"
+#include "Editor/HitoriEd/EditorFileUtils.h"
 #include "Sequence/LevelSequence.h"
 #include "Sequence/MovieScene.h"
 #include "Serialization/JsonArchive.h"
 #include "Animation/BlendSpace1D.h"
+#include "Render/Mesh.h"
 #include "Render/SkeletalMesh.h"
 #include "UObject/UObjectIterator.h"
 #include "Animation/AnimSequence.h"
@@ -67,6 +69,19 @@ void FContentDrawerPanel::OnRender()
 	ImGui::BeginChild("AssetGridView");
 	{
 		DrawPathBar();
+
+		if (ImGui::Button("Import OBJ"))
+		{
+			ImportModel(false);
+		}
+
+		ImGui::SameLine();
+
+		if (ImGui::Button("Import FBX"))
+		{
+			ImportModel(true);
+		}
+
 		ImGui::Separator();
 		if (!CreateAssetError.empty())
 		{
@@ -96,6 +111,9 @@ void FContentDrawerPanel::OnRender()
 				const bool bIsDirectory = fs::is_directory(Path, TypeError);
 
 				if (TypeError)
+					continue;
+
+				if (!bIsDirectory && (Path.extension() == ".bin" || Path.extension() == ".animnotify" || Path.extension() == ".pose"))
 					continue;
 
 				ImGui::TableNextColumn();
@@ -181,6 +199,36 @@ void FContentDrawerPanel::OnRender()
 					else if (Path.extension() == ".sequence" && OpenLevelSequence)
 					{
 						OpenLevelSequence(PathString);
+					}
+					else if (Path.extension() == ".fbx")
+					{
+						UAssetManager::Get().LoadFbxModel(PathString, true, true, false);
+
+						const FString MeshKey = PathUtils::ToUtf8(fs::relative(Path, AssetRootPath));
+						USkeletalMesh* SkeletalMesh = UAssetManager::GetAssetByPath<USkeletalMesh>(MeshKey);
+
+						if (SkeletalMesh && OpenSkeletalMeshViewer)
+						{
+							OpenSkeletalMeshViewer(SkeletalMesh);
+						}
+						else
+						{
+							CreateAssetError = "Could not open Skeletal Mesh Viewer. Check whether the FBX contains a skeleton.";
+						}
+					}
+					else if (Path.extension() == ".anim")
+					{
+						USkeletalMesh* SkeletalMesh = nullptr;
+						UAnimSequence* Animation = UAssetManager::LoadAnimSequence(PathString, &SkeletalMesh);
+
+						if (Animation && SkeletalMesh && OpenAnimationSequenceViewer)
+						{
+							OpenAnimationSequenceViewer(SkeletalMesh, Animation);
+						}
+						else
+						{
+							CreateAssetError = "Could not open Animation Sequence Viewer. Check the animation asset and its source FBX.";
+						}
 					}
 					else if (Path.extension() == ".blendspace")
 					{
@@ -459,6 +507,76 @@ void FContentDrawerPanel::OnRender()
 	}
 	ImGui::EndChild();
 	ImGui::End();
+}
+
+void FContentDrawerPanel::ImportModel(bool bImportFbx)
+{
+	CreateAssetError.clear();
+
+	const FString SelectedFile = FEditorFileUtils::OpenImportModelDialog(PathUtils::ToUtf8(CurrentPath), bImportFbx);
+	if (SelectedFile.empty())
+	{
+		return;
+	}
+
+	const fs::path SelectedPath = PathUtils::FromUtf8(SelectedFile);
+
+	std::error_code PathError;
+	const fs::path AbsoluteRoot = fs::absolute(AssetRootPath, PathError).lexically_normal();
+	if (PathError)
+	{
+		CreateAssetError = "Could not resolve the Assets directory.";
+		return;
+	}
+
+	const fs::path AbsoluteFile = fs::absolute(SelectedPath, PathError).lexically_normal();
+	if (PathError)
+	{
+		CreateAssetError = "Could not resolve the selected file path.";
+		return;
+	}
+
+	const fs::path RelativePath = fs::relative(AbsoluteFile, AbsoluteRoot, PathError);
+	if (PathError || RelativePath.empty() || *RelativePath.begin() == "..")
+	{
+		CreateAssetError = "Please select a model file inside the Assets directory.";
+		return;
+	}
+
+	const FString AssetKey = PathUtils::ToUtf8(RelativePath);
+
+	if (bImportFbx)
+	{
+		if (RelativePath.extension() != ".fbx")
+		{
+			CreateAssetError = "Please select an FBX file.";
+			return;
+		}
+
+		UAssetManager::Get().LoadFbxModel(SelectedFile, true, true, true);
+
+		if (!UAssetManager::GetAssetByPath<USkeletalMesh>(AssetKey) && !UAssetManager::GetAssetByPath<UStaticMesh>(AssetKey))
+		{
+			CreateAssetError = "FBX import failed. Check the Output Log.";
+			return;
+		}
+	}
+	else
+	{
+		if (RelativePath.extension() != ".obj")
+		{
+			CreateAssetError = "Please select an OBJ file.";
+			return;
+		}
+
+		if (!UAssetManager::LoadObjStaticMesh(SelectedFile, true, true))
+		{
+			CreateAssetError = "OBJ import failed. Check the Output Log.";
+			return;
+		}
+	}
+
+	HTR_LOG(Info, "Model imported: {}", SelectedFile);
 }
 
 void FContentDrawerPanel::CreateLevelSequenceFile()

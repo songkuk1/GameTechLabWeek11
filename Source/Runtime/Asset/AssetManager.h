@@ -19,6 +19,7 @@ class ULevelSequence;
 class FShader;
 class UBlendSpace1D;
 class UAnimationGraph;
+class UAnimSequence;
 
 namespace fs = std::filesystem;
 
@@ -68,11 +69,12 @@ public:
 	// 노멀맵·마스크·폰트 커버리지처럼 값 자체가 데이터인 텍스처는 false로 읽는다.
 	UTexture2D* LoadTexture(const FString& InPath, bool bGenerateMips = true, bool bSRGB = true);
 	UFont* LoadFontAtlas(const FString& JsonPath, const FString& AtlasTexturePath);
-	static UStaticMesh* LoadObjStaticMesh(const FString& Path, bool bAllowSourceImport = true);
-	void LoadFbxModel(const FString& Path, bool bAllowSourceImport = true);
+	static UStaticMesh* LoadObjStaticMesh(const FString& Path, bool bAllowSourceImport = true, bool bForceSourceImport = false);
+	void LoadFbxModel(const FString& Path, bool bAllowSourceImport = true, bool bSaveAnimationAssets = false, bool bForceSourceImport = false);
 	static ULevelSequence* LoadLevelSequence(const FString& Path);
 	static UBlendSpace1D* LoadBlendSpace(const FString& Path);
 	static UAnimationGraph* LoadAnimationGraph(const FString& Path);
+	static UAnimSequence* LoadAnimSequence(const FString& Path, USkeletalMesh** OutSkeletalMesh = nullptr);
 
 	FLODGenerateResult GenerateStaticMeshLODs(UStaticMesh& Mesh,const FLODGenerateRequest& Request);
 

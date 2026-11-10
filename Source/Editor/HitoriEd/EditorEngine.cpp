@@ -145,6 +145,8 @@ bool UEditorEngine::Init()
 	ContentDrawerPanel->SetOpenLevelSequenceBinding([this](const FString& Path){LevelSequencerPanel->OpenSequenceFile(Path);});
 	ContentDrawerPanel->SetOpenBlendSpaceBinding([this](UBlendSpace1D* BlendSpace){PendingBlendSpaceEditorAsset = BlendSpace;});
 	ContentDrawerPanel->SetOpenAnimationGraphBinding([this](UAnimationGraph* Graph) {PendingAnimationGraphEditorAsset = Graph;});
+	ContentDrawerPanel->SetOpenSkeletalMeshViewerBinding([this](USkeletalMesh* Mesh) { PendingPreviewMesh = Mesh; });
+	ContentDrawerPanel->SetOpenAnimationSequenceViewerBinding([this](USkeletalMesh* Mesh, UAnimSequence* Animation) { PendingAnimationViewerMesh = Mesh; PendingAnimationViewerAnimation = Animation; });
 	EditorUI->GetLevelTab()->SetGizmo(Gizmo.get());
 	EditorUI->GetLevelTab()->SetViewportsPanel(ViewportsPanel);
 	EditorUI->GetLevelTab()->SetIsPlayingViewQuery([this](int32 ViewIndex) { return IsPlayingView(ViewIndex); });

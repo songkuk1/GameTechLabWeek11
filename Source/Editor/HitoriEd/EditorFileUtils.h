@@ -11,7 +11,7 @@ public:
 	static bool LoadScene(UWorld* World);
 
 	static const FString& GetCurrentScenePath() { return CurrentScenePath; }
-
+	static FString OpenImportModelDialog(const FString& InitialDirectory, bool bImportFbx);
 private:
 	static FString OpenSaveSceneDialog();
 	static FString OpenLoadSceneDialog();

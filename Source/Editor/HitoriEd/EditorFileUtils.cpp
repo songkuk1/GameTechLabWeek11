@@ -103,6 +103,30 @@ bool FEditorFileUtils::LoadScene(UWorld* World)
 	return true;
 }
 
+FString FEditorFileUtils::OpenImportModelDialog(const FString& InitialDirectory, bool bImportFbx)
+{
+	char FilePath[MAX_PATH] = {};
+
+	static const char ObjFilter[] = "OBJ Files (*.obj)\0*.obj\0All Files (*.*)\0*.*\0";
+	static const char FbxFilter[] = "FBX Files (*.fbx)\0*.fbx\0All Files (*.*)\0*.*\0";
+
+	OPENFILENAMEA Ofn = {};
+	Ofn.lStructSize = sizeof(OPENFILENAMEA);
+	Ofn.lpstrFile = FilePath;
+	Ofn.nMaxFile = MAX_PATH;
+	Ofn.lpstrFilter = bImportFbx ? FbxFilter : ObjFilter;
+	Ofn.lpstrInitialDir = InitialDirectory.empty() ? "Assets" : InitialDirectory.c_str();
+	Ofn.lpstrDefExt = bImportFbx ? "fbx" : "obj";
+	Ofn.Flags = OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST | OFN_NOCHANGEDIR;
+
+	if (GetOpenFileNameA(&Ofn))
+	{
+		return FString(FilePath);
+	}
+
+	return FString();
+}
+
 FString FEditorFileUtils::OpenSaveSceneDialog()
 {
 	char FilePath[MAX_PATH] = {};

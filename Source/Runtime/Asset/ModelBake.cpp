@@ -5,9 +5,11 @@
 #include "Serialization/MemoryReader.h"
 #include "Serialization/Formatter/BinaryArchiveFormatter.h"
 #include "Serialization/MathSerialization.h"
+#include "Core/PathUtils.h"
 #include <fstream>
 #include <filesystem>
 #include <cstring>
+#include <limits>
 
 namespace
 {
@@ -17,6 +19,14 @@ struct FModelBakeHeader
 {
 	char Magic[4] = { 'M', 'O', 'D', 'B' }; // 'M''o'del 'D'ata 'B'ake
 	uint32 Version = ModelBakeVersion;
+};
+
+constexpr uint32 AnimationAssetVersion = 1;
+
+struct FAnimationAssetHeader
+{
+	char Magic[4] = { 'A', 'N', 'I', 'M' };
+	uint32 Version = AnimationAssetVersion;
 };
 }
 
@@ -115,6 +125,102 @@ bool FModelBake::WriteBaked(const FString& Path, FModelData& ModelData)
 	}
 
 	Out.write(reinterpret_cast<const char*>(Bytes.GetData()), Bytes.Num());
+
+	return true;
+}
+
+bool FModelBake::WriteAnimationAsset(const FString& Path, const FString& SourceMeshKey, FModelAnimation& Animation)
+{
+	TArray<uint8> Bytes;
+	FMemoryWriter Writer(Bytes);
+
+	FAnimationAssetHeader Header;
+	Writer.Serialize(&Header, sizeof(Header));
+
+	FBinaryArchiveFormatter Formatter(Writer);
+	FStructuredArchive Archive(Formatter);
+
+	auto Root = Archive.Open().EnterRecord();
+	FString StoredSourceMeshKey = SourceMeshKey;
+	Root << SA_VALUE("SourceMeshKey", StoredSourceMeshKey);
+	SerializeModelAnimation(Root, Animation);
+	Archive.Close();
+
+	if (Writer.IsError())
+	{
+		HTR_LOG(Warning, "[ANIMATION] {}: failed to serialize animation.", Path);
+		return false;
+	}
+
+	std::ofstream Out(PathUtils::FromUtf8(Path), std::ios::binary | std::ios::trunc);
+	if (!Out)
+	{
+		HTR_LOG(Warning, "[ANIMATION] {}: cannot open for writing.", Path);
+		return false;
+	}
+
+	Out.write(reinterpret_cast<const char*>(Bytes.GetData()), Bytes.Num());
+	return !Out.fail();
+}
+
+bool FModelBake::ReadAnimationAsset(const FString& Path, FString& OutSourceMeshKey, FModelAnimation& OutAnimation)
+{
+	const std::filesystem::path FilePath = PathUtils::FromUtf8(Path);
+
+	if (!fs::exists(FilePath))
+	{
+		return false;
+	}
+
+	std::ifstream In(FilePath, std::ios::binary);
+	if (!In)
+	{
+		return false;
+	}
+
+	const uintmax_t FileSize = fs::file_size(FilePath);
+	if (FileSize < sizeof(FAnimationAssetHeader) || FileSize > static_cast<uintmax_t>(INT32_MAX))
+	{
+		return false;
+	}
+
+	TArray<uint8> Bytes;
+	Bytes.SetNum(static_cast<int32>(FileSize));
+	In.read(reinterpret_cast<char*>(Bytes.GetData()), Bytes.Num());
+
+	if (!In)
+	{
+		return false;
+	}
+
+	FMemoryReader Reader(Bytes);
+
+	FAnimationAssetHeader Header;
+	Reader.Serialize(&Header, sizeof(Header));
+
+	const FAnimationAssetHeader Expected;
+	if (Reader.IsError() || std::memcmp(Header.Magic, Expected.Magic, sizeof(Header.Magic)) != 0 || Header.Version != Expected.Version)
+	{
+		HTR_LOG(Warning, "[ANIMATION] {}: invalid header or version.", Path);
+		return false;
+	}
+
+	OutSourceMeshKey.clear();
+	OutAnimation = FModelAnimation{};
+
+	FBinaryArchiveFormatter Formatter(Reader);
+	FStructuredArchive Archive(Formatter);
+
+	auto Root = Archive.Open().EnterRecord();
+	Root << SA_VALUE("SourceMeshKey", OutSourceMeshKey);
+	SerializeModelAnimation(Root, OutAnimation);
+	Archive.Close();
+
+	if (Reader.IsError() || OutSourceMeshKey.empty() || !std::isfinite(OutAnimation.PlayLength) || OutAnimation.PlayLength < 0.0f || OutAnimation.FrameRateNumerator <= 0 || OutAnimation.FrameRateDenominator <= 0 || OutAnimation.NumberOfFrames <= 0)
+	{
+		HTR_LOG(Warning, "[ANIMATION] {}: invalid animation data.", Path);
+		return false;
+	}
 
 	return true;
 }
