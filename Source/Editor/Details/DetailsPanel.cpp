@@ -9,6 +9,7 @@
 #include "Component/PrimitiveComponent.h"
 #include "Component/StaticMeshComponent.h"
 #include "Component/SkeletalMeshComponent.h"
+#include "Animation/UAnimSequence.h"
 #include "Component/DecalComponent.h"
 #include "Component/TextRenderComponent.h"
 #include "Component/ParticleSubUVComponent.h"
@@ -1603,6 +1604,42 @@ void FDetailsPanel::OnRender()
 				if (ImGui::Button("Open Preview", ImVec2(-1.0f, 0.0f)))
 					OpenPreviewCallback(PreviewMesh);
 				ImGui::EndDisabled();
+
+				ImGui::BeginDisabled(!PreviewMesh || !OpenAnimationPreviewCallback);
+				if (ImGui::Button("Open Animation Preview", ImVec2(-1.0f, 0.0f)))
+					ImGui::OpenPopup("AnimationPreviewClips");
+				ImGui::EndDisabled();
+				if (ImGui::BeginPopup("AnimationPreviewClips"))
+				{
+					TArray<UAnimSequence*> Clips;
+					if (PreviewMesh)
+					{
+						// FBX 로더는 클립을 메시 에셋 경로 + "_Anim_인덱스"로 등록한다.
+						const FString ClipPrefix = PreviewMesh->GetPath() + "_Anim_";
+						for (TObjectIterator<UAnimSequence> It; It; ++It)
+						{
+							if (It->GetPath().compare(0, ClipPrefix.size(), ClipPrefix) == 0)
+								Clips.Add(*It);
+						}
+					}
+					std::sort(Clips.begin(), Clips.end(), [](const UAnimSequence* A, const UAnimSequence* B)
+					{
+						return A->GetPath() < B->GetPath();
+					});
+					if (Clips.IsEmpty())
+						ImGui::TextDisabled("No animation clips imported with this mesh.");
+					for (UAnimSequence* Clip : Clips)
+					{
+						ImGui::PushID(Clip);
+						const FString ClipName = PathUtils::ToUtf8(fs::path(Clip->GetPath()).filename());
+						if (ImGui::Selectable(ClipName.c_str())
+							&& PreviewMesh && OpenAnimationPreviewCallback)
+							OpenAnimationPreviewCallback(PreviewMesh, Clip);
+						if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", Clip->GetPath().c_str());
+						ImGui::PopID();
+					}
+					ImGui::EndPopup();
+				}
 			}
 
 			if (USkeletalMeshComponent* MeshComponent = Cast<USkeletalMeshComponent>(TargetComponent))

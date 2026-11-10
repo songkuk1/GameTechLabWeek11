@@ -93,12 +93,17 @@ void USkeletalMeshComponent::TickComponent(float DeltaTime)
 	}
 
 	AnimInstance->Tick(DeltaTime, Context);
-	if (Context.LocalPoseTrans.Num() != ReferencePose.Num())
+	ApplyLocalPose(Context.LocalPoseTrans);
+}
+
+void USkeletalMeshComponent::ApplyLocalPose(const TArray<PoseTransform>& InPose)
+{
+	if (InPose.Num() != ReferencePose.Num())
 		return;
-	LocalPose.SetNum(Context.LocalPoseTrans.Num());
-	for (int i = 0;i < Context.LocalPoseTrans.Num();i++)
+	LocalPose.SetNum(InPose.Num());
+	for (int i = 0;i < InPose.Num();i++)
 	{
-		const PoseTransform& Transform = Context.LocalPoseTrans[i];
+		const PoseTransform& Transform = InPose[i];
 		FMatrix Matrix = Transform.Rotation.ToFMatrix();
 		for (int Axis = 0; Axis < 3; ++Axis)
 		{

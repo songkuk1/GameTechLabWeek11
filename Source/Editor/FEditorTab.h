@@ -83,7 +83,7 @@ public:
 protected:
 	// imgui.ini에 이 탭의 배치가 없을 때 한 번 부른다. 기본은 모든 패널을 한 노드에 겹친다
 	// DockBuilder로 DockSpaceRoot를 나누고 패널 창 이름으로 배치한다
-	void BuildDefaultLayout(ImGuiID DockSpaceRoot);
+	virtual void BuildDefaultLayout(ImGuiID DockSpaceRoot);
 	//이 탭이 가지고있는 패널들
 	TArray<TUniquePtr<IEditorPanel>> Panels;
 private:

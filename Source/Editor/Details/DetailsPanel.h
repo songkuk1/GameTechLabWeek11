@@ -7,10 +7,12 @@
 
 struct FTransform;
 class USkeletalMesh;
+class UAnimSequence;
 
 using DetailsSelectionCallback = std::function<void(UActorComponent*)>;
 using DetailsDeleteComponentCallback = std::function<void(UActorComponent*)>;
 using DetailsOpenPreviewCallback = std::function<void(USkeletalMesh*)>;
+using DetailsOpenAnimationPreviewCallback = std::function<void(USkeletalMesh*, UAnimSequence*)>;
 
 class FDetailsPanel : public IEditorPanel
 {
@@ -39,6 +41,7 @@ public:
 	void SetDeleteComponentCallback(DetailsDeleteComponentCallback InCallback) { DeleteCallback = InCallback; }
 	// 스켈레탈 메시 컴포넌트의 Open Preview 버튼이 부른다
 	void SetOpenPreviewCallback(DetailsOpenPreviewCallback InCallback) { OpenPreviewCallback = InCallback; }
+	void SetOpenAnimationPreviewCallback(DetailsOpenAnimationPreviewCallback InCallback) { OpenAnimationPreviewCallback = InCallback; }
 
 	void SetWorld(UWorld* InWorld) { World = InWorld; }
 
@@ -56,6 +59,7 @@ private:
 	DetailsSelectionCallback Callback;
 	DetailsDeleteComponentCallback DeleteCallback;
 	DetailsOpenPreviewCallback OpenPreviewCallback;
+	DetailsOpenAnimationPreviewCallback OpenAnimationPreviewCallback;
 
 	UActorComponent* PendingDeleteComponent = nullptr;
 	UActorComponent* EditingNameComponent = nullptr;

@@ -17,6 +17,7 @@
 #include "Render/DepthViewRenderer.h"
 #include "Render/SceneRenderer.h"
 #include "Render/SceneRenderTargets.h"
+#include "Animation/UAnimSequence.h"
 
 #include "Editor/EditorUI/EditorUI.h"
 #include "Editor/OutputLog/OutputLogPanel.h"
@@ -113,6 +114,7 @@ private:
 	FSceneRenderSettings MakeSceneRenderSettings() const;
 
 	void OpenSkeletalMeshViewer(USkeletalMesh* SkeletalMesh);
+	void OpenAnimationSequenceViewer(USkeletalMesh* SkeletalMesh, UAnimSequence* InAnimSeq);
 
 	//Overlay Pass
 	void RenderOverlayPass(const FViewport& Viewport, FEditorViewportClient* OverlayClient, UWorld& ViewWorld, const FSceneView& View, FRenderQueue& RenderQueue, const FGizmo* ViewGizmo);
@@ -169,6 +171,8 @@ private:
 
 	//Detail 패널에서 Open Preview를 요청받은 SkeletalMesh
 	USkeletalMesh* PendingPreviewMesh = nullptr;
+	USkeletalMesh* PendingAnimationPreviewMesh = nullptr;
+	UAnimSequence* PendingPreviewSequence = nullptr;
 
 	UWorld* EditorWorld = nullptr;
 	UWorld* PlayWorld = nullptr;

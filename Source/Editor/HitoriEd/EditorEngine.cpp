@@ -47,6 +47,7 @@
 #include "Component/SkinnedMeshComponent.h"
 #include "Engine/GameViewportClient.h"
 #include "Editor/SkeletalMeshPreviewTab.h"
+#include "Editor/FAnimSequencePreviewTab.h"
 
 namespace
 {
@@ -237,6 +238,13 @@ bool UEditorEngine::Init()
 		[this](USkeletalMesh* SkeletalMesh)
 		{
 			PendingPreviewMesh = SkeletalMesh;
+		}
+	);
+	DetailsPanel->SetOpenAnimationPreviewCallback(
+		[this](USkeletalMesh* SkeletalMesh, UAnimSequence* Sequence)
+		{
+			PendingAnimationPreviewMesh = SkeletalMesh;
+			PendingPreviewSequence = Sequence;
 		}
 	);
 
@@ -631,6 +639,12 @@ void UEditorEngine::UpdateEditorTabs()
 		OpenSkeletalMeshViewer(PendingPreviewMesh);
 		PendingPreviewMesh = nullptr;
 	}
+	if (PendingPreviewSequence)
+	{
+		OpenAnimationSequenceViewer(PendingAnimationPreviewMesh, PendingPreviewSequence);
+		PendingAnimationPreviewMesh = nullptr;
+		PendingPreviewSequence = nullptr;
+	}
 
 }
 
@@ -726,6 +740,25 @@ void UEditorEngine::OpenSkeletalMeshViewer(USkeletalMesh* SkeletalMesh)
 
 
 	EditorUI->AddTab<FSkeletalMeshPreviewTab>(SkeletalMesh)->RequestFocus();
+}
+
+void UEditorEngine::OpenAnimationSequenceViewer(USkeletalMesh* SkeletalMesh, UAnimSequence* InAnimSeq)
+{
+	if (!InAnimSeq || !SkeletalMesh)
+		return;
+
+	//같은 메시의 미리보기 탭이 존재한다면 해당 탭을 포커스한다.
+	for (const TUniquePtr<FEditorTab>& Tab : EditorUI->GetTabs())
+	{
+		if (Tab->GetEditingAsset() == InAnimSeq)
+		{
+			Tab->RequestFocus();
+			return;
+		}
+	}
+
+
+	EditorUI->AddTab<FAnimSequencePreviewTab>(InAnimSeq, SkeletalMesh)->RequestFocus();
 }
 
 FWorldContext& UEditorEngine::GetEditorWorldContext()

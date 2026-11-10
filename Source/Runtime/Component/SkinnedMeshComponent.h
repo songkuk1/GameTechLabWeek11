@@ -33,6 +33,7 @@ public:
 
 	const TArray<FMatrix>& GetBoneMatrices() const;
 	const TArray<FMatrix>& GetLocalPose() const;
+	const TArray<PoseTransform>& GetReferencePose() const { return ReferencePose; }
 
 	USkeletalMesh* GetSkeletalMesh();
 

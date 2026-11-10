@@ -23,6 +23,8 @@ public:
 
 	void TickComponent(float DeltaTime) override;
 
+	void ApplyLocalPose(const TArray<PoseTransform>& InPose);
+
 private:
 	USkeleton* Skeleton = nullptr;
 	UAnimationInstance* AnimInstance = nullptr;
