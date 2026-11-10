@@ -19,8 +19,8 @@ struct Transition
 	EAnimState StartState;
 	EAnimState EndState;
 	std::function<bool(const AnimationContext&)> Condition;
-	float BlendValue;
 	std::function<void(AnimationContext&)> OnTransition;
+	float BlendValue;
 };
 
 class StateMachineNode : public AnimNode
@@ -46,11 +46,9 @@ public:
 		StateNodes[(int)State]->EvaluatePose(Context);  // 현재 상태 노드의 포즈를 그대로 쓴다
 	}
 
-	void AddTransition(EAnimState StartState, EAnimState EndState,
-		std::function<bool(const AnimationContext&)> Condition, float BlendAlpha,
-		std::function<void(AnimationContext&)> OnTransition = {})
+	void AddTransition(EAnimState StartState, EAnimState EndState,std::function<bool(const AnimationContext&)> Condition, float BlendAlpha, std::function<void(AnimationContext&)> OnTransition = {})
 	{
-		Transition Trans{ StartState, EndState, std::move(Condition), BlendAlpha, std::move(OnTransition) };
+		Transition Trans{ StartState, EndState, std::move(Condition), std::move(OnTransition), BlendAlpha  };
 		TransitionArray[(int)StartState].Add(std::move(Trans));
 	}
 

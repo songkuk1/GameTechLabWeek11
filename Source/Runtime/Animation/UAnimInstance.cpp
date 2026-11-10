@@ -75,7 +75,14 @@ UAnimationInstance::UAnimationInstance()
 		[](const AnimationContext& Context) { return Context.bIsJumpEnd; }, 0.15f,
 		[JumpEndNode](AnimationContext&) { JumpEndNode->ResetAnimation(); });
 	Machine->AddTransition(EAnimState::JumpEnd, EAnimState::Locomotion,
-		[JumpEndNode](const AnimationContext&) { return JumpEndNode->IsClipFinished(); }, 0.15f);
+		[JumpEndNode](const AnimationContext& Context)
+		{
+			auto* Player = static_cast<SequencePlayerNode*>(JumpEndNode);
+
+			return Player->IsClipFinished()
+				|| (Player->GetCurrentPlayTime() >= 0.25f
+					&& Context.Speed > 0.1f);
+		}, 0.15f);
 
 	Machine->SetStateNode(EAnimState::Locomotion, Blend1Node);
 	Machine->SetStateNode(EAnimState::Attack, AttackNode);
