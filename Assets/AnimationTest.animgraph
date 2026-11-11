@@ -34,7 +34,7 @@
             {
                 "NodeName": "None",
                 "X": -240.0,
-                "Y": 672.0
+                "Y": 867.0
             },
             {
                 "NodeName": "__EditorEntryPoint__",
@@ -50,6 +50,16 @@
                 "NodeName": "Roll",
                 "X": -896.0,
                 "Y": 99.0
+            },
+            {
+                "NodeName": "Death",
+                "X": -528.0,
+                "Y": 1078.0
+            },
+            {
+                "NodeName": "Dance",
+                "X": -32.0,
+                "Y": 1058.0
             }
         ],
         "EntryState": "Locomotion",
@@ -82,6 +92,12 @@
                 "BoolDefault": false,
                 "FloatDefault": 0.0,
                 "Name": "bIsLanded",
+                "Type": 0
+            },
+            {
+                "BoolDefault": false,
+                "FloatDefault": 0.0,
+                "Name": "bIsRolling",
                 "Type": 0
             }
         ],
@@ -191,6 +207,32 @@
                 "OverlaySequence": null,
                 "PlayRate": 2.0,
                 "Sequence": "Models/UAL1_Standard/UAL1_Standard.fbx::Armature|Roll"
+            },
+            {
+                "BlendParameterName": "None",
+                "BlendSpace": null,
+                "BlendWeight": 1.0,
+                "BranchBoneName": "spine_1",
+                "Looping": false,
+                "Name": "Death",
+                "NodeType": 0,
+                "OverlayLooping": false,
+                "OverlaySequence": null,
+                "PlayRate": 1.0,
+                "Sequence": "Models/Mannequin/UnrealCharac/Hit/MM_Death_Front_01.FBX::Unreal Take"
+            },
+            {
+                "BlendParameterName": "None",
+                "BlendSpace": null,
+                "BlendWeight": 1.0,
+                "BranchBoneName": "spine_1",
+                "Looping": true,
+                "Name": "Dance",
+                "NodeType": 0,
+                "OverlayLooping": false,
+                "OverlaySequence": null,
+                "PlayRate": 1.0,
+                "Sequence": "Models/UAL1_Standard/UAL1_Standard.fbx::Armature|Dance_Loop"
             }
         ],
         "Transitions": [
@@ -309,9 +351,9 @@
                 "BlendDuration": 0.11999999731779099,
                 "FloatThreshold": 0.0,
                 "FromState": "Locomotion",
-                "ParameterName": "None",
+                "ParameterName": "bIsRolling",
                 "Priority": 15,
-                "Rule": 0,
+                "Rule": 1,
                 "ToState": "Roll"
             },
             {
@@ -323,6 +365,26 @@
                 "Priority": 0,
                 "Rule": 3,
                 "ToState": "Locomotion"
+            },
+            {
+                "AnyState": true,
+                "BlendDuration": 0.20000000298023224,
+                "FloatThreshold": 0.0,
+                "FromState": "None",
+                "ParameterName": "None",
+                "Priority": 0,
+                "Rule": 3,
+                "ToState": "Death"
+            },
+            {
+                "AnyState": true,
+                "BlendDuration": 0.20000000298023224,
+                "FloatThreshold": 0.0,
+                "FromState": "None",
+                "ParameterName": "None",
+                "Priority": 0,
+                "Rule": 3,
+                "ToState": "Dance"
             }
         ]
     },

@@ -30,6 +30,29 @@ local function StopMoving()
     owner:MoveToward(Vector.new(0.0, 0.0, 0.0), 0.0)
 end
 
+local function ProcessPendingDamage()
+    local Damage = state.PendingDamage or 0.0
+    if Damage <= 0.0 or state.bIsDead then
+        return
+    end
+
+    state.PendingDamage = 0.0
+    state.CurrentHp = math.max(0.0, state.CurrentHp - Damage)
+
+    state.AttackResolveTimer = 0.0
+    state.bAttackDamageResolved = true
+
+    Log("[AnimationTestEnemy] Hit: -" .. tostring(Damage) .. " HP: " .. tostring(state.CurrentHp) .. "/" .. tostring(state.MaxHp))
+
+    if state.CurrentHp <= 0.0 then
+        state.bIsDead = true
+        state.bDeathAnimationPending = true
+        Log("[AnimationTestEnemy] Defeated")
+    else
+        state.bHitAnimationPending = true
+    end
+end
+
 local function BeginAttack()
     if not AnimationComponent or AnimationComponent:IsAnimationBlending() then
         return false
@@ -83,6 +106,13 @@ function Init()
     state.AttackResolveTimer = 0.0
     state.bAttackDamageResolved = true
     state.AnimationSpeed = 0.0
+
+    state.MaxHp = 100.0
+    state.CurrentHp = state.MaxHp
+    state.PendingDamage = 0.0
+    state.bIsDead = false
+    state.bDeathAnimationPending = false
+    state.bHitAnimationPending = false
 end
 
 function BeginPlay()
@@ -99,11 +129,33 @@ function BeginPlay()
     end
 
     state.AnimationReady = true
-    Log("[AnimationTestEnemy] Animation Graph ready")
+    Log("[AnimationTestEnemy] Animation Graph ready: " .. AnimationComponent:GetCurrentAnimationState())
 end
 
 function Tick(deltaTime)
     state.AttackCooldown = math.max(0.0, state.AttackCooldown - deltaTime)
+
+    ProcessPendingDamage()
+
+    if state.bIsDead then
+        StopMoving()
+
+        if state.AnimationReady and state.bDeathAnimationPending and not AnimationComponent:IsAnimationBlending() then
+            if AnimationComponent:RequestAnimationState("Death") then
+                state.bDeathAnimationPending = false
+            end
+        end
+
+        return
+    end
+
+    if state.bHitAnimationPending and state.AnimationReady and not AnimationComponent:IsAnimationBlending() then
+        if AnimationComponent:RequestAnimationState("Hit") then
+            state.bHitAnimationPending = false
+            StopMoving()
+            return
+        end
+    end
 
     local TargetPlayer = FindPlayer()
     if not TargetPlayer then
@@ -111,11 +163,29 @@ function Tick(deltaTime)
         return
     end
 
+    local PlayerScript = TargetPlayer:FindComponentByName("UScriptComponent")
+    if PlayerScript then
+        local PlayerState = PlayerScript:GetLuaTable()
+
+        if PlayerState["bIsDead"] then
+            StopMoving()
+
+            if state.AnimationReady and AnimationComponent:GetCurrentAnimationState() ~= "Dance" and not AnimationComponent:IsAnimationBlending() then
+                AnimationComponent:RequestAnimationState("Dance")
+            end
+
+            return
+        end
+    end
+
     local Distance, Direction = GetHorizontalDistanceAndDirection(TargetPlayer)
     local CurrentState = state.AnimationReady and AnimationComponent:GetCurrentAnimationState() or "Locomotion"
-
+    if state.LastLoggedAnimationState ~= CurrentState then
+        Log("[AnimationTestEnemy] State: " .. CurrentState)
+        state.LastLoggedAnimationState = CurrentState
+    end
     if state.AnimationReady then
-        local TargetSpeed = (CurrentState == "Locomotion" and Distance > AttackStopDistance) and ChaseSpeed * AnimationSpeedScale or 0.0
+        local TargetSpeed = (CurrentState == "Locomotion" and Distance > AttackStopDistance) and 300.0 or 0.0
         local SpeedAlpha = math.min(deltaTime * AnimationSpeedInterp, 1.0)
         state.AnimationSpeed = state.AnimationSpeed + (TargetSpeed - state.AnimationSpeed) * SpeedAlpha
         AnimationComponent:SetAnimationFloat("Speed", state.AnimationSpeed)

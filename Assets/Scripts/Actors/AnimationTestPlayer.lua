@@ -3,6 +3,8 @@ local RunMoveSpeed = 10.0
 local AnimationSpeedScale = 60.0
 local AnimationSpeedInterp = 6.0
 local MouseSensitivity = 0.1
+local PlayerAttackDamage = 20.0
+local PlayerAttackRange = 2.0
 
 local RollMoveSpeed = 9.0
 local RollMoveDuration = 0.42
@@ -119,10 +121,44 @@ local function ProcessPendingMeleeDamage()
 
     Log("[AnimationTest] Player hit: -" .. tostring(Damage) .. " HP: " .. tostring(state.CurrentHp) .. "/" .. tostring(state.MaxHp))
 
-    if state.CurrentHp <= 0.0 then
+    if state.CurrentHp <= 0.0 and not state.bIsDead then
         state.bIsDead = true
+        state.bDeathAnimationPending = true
+        state.PendingAnimationState = nil
+        state.bRolling = false
+        state.bIsInvulnerable = false
         Log("[AnimationTest] Player defeated")
     end
+end
+
+local function ApplyPlayerAttackDamage()
+    local EnemyActor = GamePlayStatics.GetActorOfClass(owner, Enemy.StaticClass())
+    if not EnemyActor then
+        return
+    end
+
+    local Direction = EnemyActor:GetActorLocation() - owner:GetActorLocation()
+    Direction.z = 0.0
+
+    local Distance = math.sqrt(Direction.x * Direction.x + Direction.y * Direction.y)
+    if Distance > PlayerAttackRange then
+        Log("[AnimationTest] Attack missed: Enemy out of range")
+        return
+    end
+
+    local EnemyScript = EnemyActor:FindComponentByName("UScriptComponent")
+    if not EnemyScript then
+        Log("[AnimationTest] Enemy ScriptComponent not found")
+        return
+    end
+
+    local EnemyState = EnemyScript:GetLuaTable()
+    if EnemyState["bIsDead"] then
+        return
+    end
+
+    EnemyState["PendingDamage"] = (EnemyState["PendingDamage"] or 0.0) + PlayerAttackDamage
+    Log("[AnimationTest] Enemy hit: -" .. tostring(PlayerAttackDamage))
 end
 
 local function GetMoveInput()
@@ -157,7 +193,14 @@ local function StartRoll(MoveInput)
     state.RollMoveRemaining = RollMoveDuration
     state.RollInvulnerabilityRemaining = RollInvulnerabilityDuration
     state.RollCooldown = RollCooldownDuration
-    if not AnimationComponent or not AnimationComponent:RequestAnimationState("Roll") then
+    if not AnimationComponent then
+        return false
+    end
+
+    AnimationComponent:SetAnimationBool("bIsRolling", true);
+
+    if not AnimationComponent:RequestAnimationState("Roll") then
+        AnimationComponent:SetAnimationBool("bIsRolling", false);
         Log("[AnimationTest] Roll state or Locomotion -> Roll transition is missing")
         return false
     end
@@ -190,6 +233,8 @@ function Init()
     state.RollMoveRemaining = 0.0
     state.RollInvulnerabilityRemaining = 0.0
     state.RollCooldown = 0.0
+
+    state.bDeathAnimationPending = false
 end
 
 function BeginPlay()
@@ -223,6 +268,13 @@ function Tick(deltaTime)
     if state.bIsDead then
         owner:SetMovementSpeed(0.0)
         owner:Move(Vector.new(0.0, 0.0, 0.0))
+
+        if state.AnimationReady and state.bDeathAnimationPending and not AnimationComponent:IsAnimationBlending() then
+            if AnimationComponent:RequestAnimationState("Death") then
+                state.bDeathAnimationPending = false
+            end
+        end
+
         return
     end
 
@@ -281,6 +333,13 @@ function Tick(deltaTime)
 end
 
 function OnAnimNotifyState(NotifyName, EventType, deltaTime)
+    if NotifyName == "AttackHit" then
+        if EventType == "Begin" and not state.bIsDead then
+            ApplyPlayerAttackDamage()
+        end
+        return
+    end
+
     if NotifyName ~= "ComboWindow" then
         return
     end
