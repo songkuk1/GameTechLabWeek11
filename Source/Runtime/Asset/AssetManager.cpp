@@ -821,22 +821,26 @@ void UAssetManager::LoadFbxModel(const FString& Path, bool bAllowSourceImport, b
 			RegisterAsset(MakeAssetKey(PathUtils::ToUtf8(SkeletonPath)), Skeleton);
 		}
 
+		const bool bHasMeshGeometry = !ModelData.Meshs.IsEmpty() && ModelData.MeshData.Vertices.Num() > 0;
 		USkeletalMesh* SkeletalMesh = !bForceSourceImport ? CachedSkeletalMesh : nullptr;
 
-		if (!SkeletalMesh)
+		if (bHasMeshGeometry)
 		{
-			SkeletalMesh = CreateSkeletalMesh(ModelData);
 			if (!SkeletalMesh)
 			{
-				return;
-			}
+				SkeletalMesh = CreateSkeletalMesh(ModelData);
+				if (!SkeletalMesh)
+				{
+					return;
+				}
 
-			SkeletalMesh->SetSkeleton(Skeleton);
-			RegisterAsset(MeshKey, SkeletalMesh);
-		}
-		else if (SkeletalMesh->GetSkeleton() != Skeleton)
-		{
-			SkeletalMesh->SetSkeleton(Skeleton);
+				SkeletalMesh->SetSkeleton(Skeleton);
+				RegisterAsset(MeshKey, SkeletalMesh);
+			}
+			else if (SkeletalMesh->GetSkeleton() != Skeleton)
+			{
+				SkeletalMesh->SetSkeleton(Skeleton);
+			}
 		}
 
 		if (bSaveAnimationAssets)
@@ -994,28 +998,42 @@ UAnimSequence* UAssetManager::LoadAnimSequence(const FString& Path, USkeletalMes
 	Get().LoadFbxModel(PathUtils::ToUtf8(SourceMeshPath), false);
 
 	USkeletalMesh* SkeletalMesh = GetAssetByPath<USkeletalMesh>(SourceMeshKey);
-	if (!SkeletalMesh || !SkeletalMesh->GetSkeleton())
+	USkeleton* TargetSkeleton = SkeletalMesh ? SkeletalMesh->GetSkeleton() : nullptr;
+
+	if (!TargetSkeleton)
 	{
-		HTR_LOG(Error, "[ANIMATION] Source Skeletal Mesh is unavailable: {}", SourceMeshKey);
+		std::filesystem::path SkeletonPath = SourceMeshPath;
+		SkeletonPath.replace_filename(std::format("{}_Skeleton", SkeletonPath.stem().generic_string()));
+		TargetSkeleton = GetAssetByPath<USkeleton>(MakeAssetKey(PathUtils::ToUtf8(SkeletonPath)));
+	}
+
+	if (!TargetSkeleton)
+	{
+		TargetSkeleton = GetAssetByPath<USkeleton>("Models/Mannequin/UnrealCharac/SKM_Manny_Simple_Skeleton");
+	}
+
+	if (!TargetSkeleton)
+	{
+		HTR_LOG(Error, "[ANIMATION] Target Skeleton is unavailable for: {}", SourceMeshKey);
 		return nullptr;
 	}
 
 	if (OutSkeletalMesh)
 	{
-		*OutSkeletalMesh = SkeletalMesh;
+		*OutSkeletalMesh = SkeletalMesh ? SkeletalMesh : TargetSkeleton->GetPreviewMesh();
 	}
 
 	const FString AnimationKey = SourceMeshKey + "::" + ModelAnimation.Name.ToString();
 
 	if (UAnimSequence* Cached = GetAssetByPath<UAnimSequence>(AnimationKey))
 	{
-		if (Cached->GetSkeleton() == SkeletalMesh->GetSkeleton())
+		if (Cached->GetSkeleton() == TargetSkeleton)
 		{
 			return Cached;
 		}
 	}
 
-	UAnimSequence* Animation = CreateAnimationSequence(ModelAnimation, ModelNotifies, SkeletalMesh->GetSkeleton());
+	UAnimSequence* Animation = CreateAnimationSequence(ModelAnimation, ModelNotifies, TargetSkeleton);
 	if (!Animation)
 	{
 		return nullptr;
