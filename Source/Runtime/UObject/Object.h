@@ -65,6 +65,10 @@ public:                                                                 \
 			{															\
 				ClassName::RegisterProperties(&c);						\
 			}															\
+			if (&ClassName::RegisterFunctions != &Super::RegisterFunctions) \
+			{															\
+				ClassName::RegisterFunctions(&c);						\
+			}															\
 			RegisterClass(&c);											\
             bIsInit = true;                                             \
         }                                                               \
@@ -101,6 +105,7 @@ public:
 	void SetName(const FName& InName) { Name = FName(InName); }
 
 	inline static void RegisterProperties(UClass* InClass) {};
+	inline static void RegisterFunctions(UClass* InClass) {};   // UFUNCTION이 있는 클래스는 HHT가 이걸 가린다
 
 	inline void SetFlags(EObjectFlags NewFlags) { Flags |= NewFlags; }
 	inline void ClearFlags(EObjectFlags FlagsToClear) { Flags &= ~FlagsToClear; }
