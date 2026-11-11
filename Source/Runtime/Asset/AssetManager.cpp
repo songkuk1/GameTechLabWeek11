@@ -318,6 +318,14 @@ void UAssetManager::ScanAssets(const fs::path& AssetRoot, const FAssetLoadProgre
 			continue;
 		}
 
+		// 이미지 파일은 시작 시 일괄 로드하지 않고, 머티리얼/뷰어에서 필요로 할 때 GetAssetByPath로 자동 로드 (Lazy Loading)
+		if (_stricmp(Extension.c_str(), ".png") == 0 || _stricmp(Extension.c_str(), ".jpg") == 0 ||
+			_stricmp(Extension.c_str(), ".jpeg") == 0 || _stricmp(Extension.c_str(), ".hdr") == 0)
+		{
+			ReportProgress(FilePath);
+			continue;
+		}
+
 		if (Extension == ".anim")
 		{
 			AnimationFiles.Add(FilePath);
@@ -356,7 +364,7 @@ void UAssetManager::ScanAssets(const fs::path& AssetRoot, const FAssetLoadProgre
 		}
 		else if (SourceExtension == ".fbx")
 		{
-			LoadFbxModel(SourcePathString, false, true, false);
+			LoadFbxModel(SourcePathString, false, false, false);
 		}
 	}
 
