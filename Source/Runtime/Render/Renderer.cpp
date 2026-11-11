@@ -12,6 +12,7 @@
 #include "RenderResourceManager.h"
 #include "ColorWorkflow.h"
 #include "Asset/ModelData.h"
+#include "Asset/AssetManager.h"
 
 #include <algorithm>
 #include <chrono>
@@ -56,6 +57,9 @@ bool FRenderer::Init()
 	LightingCB = RenderCommand::CreateConstantBuffer(sizeof(FLightingConstants));
 	FLightingConstants LightingConstant{};
 	RenderCommand::UpdateBufferData(LightingCB.get(), &LightingConstant);
+	SkinWeightCB = RenderCommand::CreateConstantBuffer(sizeof(FSkinWeightConstants));
+	FSkinWeightConstants DefaultSkinWeight{};
+	RenderCommand::UpdateBufferData(SkinWeightCB.get(), &DefaultSkinWeight);
 
 	FShaderProgramDesc SurfaceStaticSPDesc;
 	SurfaceStaticSPDesc.Path = "Resources/Shader/SurfaceShader.hlsl";
@@ -281,6 +285,24 @@ void FRenderer::RenderOpaque()
 	DrawPackets(0, FirstTranslucentIndex);
 }
 
+void FRenderer::RenderBoneWeightWireframeOverlay()
+{
+	if (!bShowBoneWeightHeatmap)
+		return;
+
+	bHeatmapWireframePass = true;
+	RenderCommand::SetRasterizerState(ERasterizerState::Wireframe);
+	RenderCommand::SetBlendState(EBlendState::AlphaBlend);
+	RenderCommand::SetDepthStencilState(EDepthStencilState::ReadOnly);
+
+	DrawPackets(0, FirstTranslucentIndex);
+
+	bHeatmapWireframePass = false;
+	RenderCommand::SetRasterizerState(ERasterizerState::SolidBack);
+	RenderCommand::SetBlendState(EBlendState::Opaque);
+	RenderCommand::SetDepthStencilState(EDepthStencilState::Default);
+}
+
 // RenderOpaque가 남긴 반투명 패킷을 먼 것부터 그린다.
 void FRenderer::RenderTranslucent()
 {
@@ -460,6 +482,30 @@ void FRenderer::DrawPackets(uint32 Begin, uint32 End)
 	RenderCommand::BindConstantBuffer(0, ViewCB.get(), EShaderBindFlagBits::Vertex | EShaderBindFlagBits::Pixel);
 	RenderCommand::BindConstantBuffer(3, LightingCB.get(), EShaderBindFlagBits::Vertex | EShaderBindFlagBits::Pixel);
 
+	if (bShowBoneWeightHeatmap)
+	{
+		FSkinWeightConstants SkinWeightData{};
+		SkinWeightData.SelectedBoneIndex = HeatmapBoneIndex;
+		SkinWeightData.bShowBoneWeight = 1;
+		SkinWeightData.bUseProceduralHeatmap = bUseProceduralHeatmap ? 1 : 0;
+		uint32 WireMode = 0;
+		if (bHeatmapWireframePass)
+		{
+			WireMode = bHeatmapWireframeTinted ? 1 : 2;
+		}
+		SkinWeightData.bWireframePass = WireMode;
+		RenderCommand::UpdateBufferData(SkinWeightCB.get(), &SkinWeightData);
+		RenderCommand::BindConstantBuffer(7, SkinWeightCB.get(), EShaderBindFlagBits::Vertex | EShaderBindFlagBits::Pixel);
+		if (!bUseProceduralHeatmap)
+		{
+			UTexture2D* HeatMapLUT = UAssetManager::Get().GetAssetByPath<UTexture2D>("HeatMapLookUpTexture");
+			if (HeatMapLUT && HeatMapLUT->GetResource())
+			{
+				RenderCommand::BindShaderResource(6, HeatMapLUT->GetResource(), EShaderBindFlagBits::Pixel);
+			}
+		}
+	}
+
 	// 한계: 같은 머티리얼인데 ReceiveShadow가 번갈아 다르면 셰이더를 매번 재바인딩하게 됨.
 	// 제대로 하려면 정렬 키에 플래그를 넣어 같은 값끼리 모아야 하는데, 이번 마감 범위 밖입니다.
 	for (uint32 k = Begin; k < End; ++k)          // k = 정렬된 위치
@@ -518,6 +564,10 @@ void FRenderer::DrawPackets(uint32 Begin, uint32 End)
 		LastMaterial = RenderPacket.Material;
 		LastReceiveShadow = CurrentRS;
 		LastUseSkinning = CurrentSkinning;
+	}
+	if (bShowBoneWeightHeatmap)
+	{
+		RenderCommand::UnbindShaderResource(6, EShaderBindFlagBits::Pixel);
 	}
 }
 
@@ -744,7 +794,16 @@ void FRenderer::BindMaterial(UMaterial* material, bool bReceiveShadow, bool bUse
 			SetViewMode(FViewRenderMode{});
 
 		bool bUseNormalMap = material->Textures.size() > 1 && material->Textures[1] != nullptr;
-		if (bUseNormalMap)
+		if (bShowBoneWeightHeatmap && bUseSkinning)
+		{
+			static FShaderProgram* HeatmapShader = nullptr;
+			if (!HeatmapShader)
+			{
+				HeatmapShader = FRenderResourceManager::GetShaderProgram("Resources/Shader/UberLit.hlsl_HEATMAP_SKINNED");
+			}
+			RenderCommand::BindShaderProgram(HeatmapShader);
+		}
+		else if (bUseNormalMap)
 		{
 			RenderCommand::BindShaderProgram(ViewModeShaders[bUseSkinning ? 1 : 0][1][bReceiveShadow ? 1 : 0]);
 		}

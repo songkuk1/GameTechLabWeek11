@@ -48,6 +48,11 @@ struct FSceneRenderSettings
 	bool bVisualizeCascades = false;
 	bool bVisualizeTileLightCount = false;
 	float DamageEffectIntensity = 0.0f;
+	bool bShowBoneWeightHeatmap = false;
+	int32 SelectedBoneIndex = -1;
+	bool bUseProceduralHeatmap = false;
+	bool bShowHeatmapWireframe = true;
+	bool bHeatmapWireframeTinted = true;
 	// Fade, 비네트 등 화면 효과 (게임·PIE는 PCM 값, 에디터 View는 에디터 설정 값)
 	FCameraScreenEffects ScreenEffects;
 };
@@ -87,6 +92,7 @@ private:
 
 	FRenderer* Renderer = nullptr;
 	TUniquePtr<FSkyboxRenderer> SkyboxRenderer;
+	TUniquePtr<FSkyboxRenderer> PreviewSkyboxRenderer;
 	TUniquePtr<FFogRenderer> FogRenderer;
 	TUniquePtr<FFXAARenderer> FXAARenderer;
 	TUniquePtr<FGammaEncodeRenderer> GammaEncodeRenderer;

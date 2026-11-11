@@ -18,6 +18,10 @@ void USkeletalMesh::Initialize(const FModelMeshData& InMeshData, const TArray<FM
 void USkeletalMesh::SetSkeleton(USkeleton* InSkeleton)
 {
 	Skeleton = InSkeleton;
+	if (Skeleton && !Skeleton->GetPreviewMesh())
+	{
+		Skeleton->SetPreviewMesh(this);
+	}
 }
 
 USkeleton* USkeletalMesh::GetSkeleton()

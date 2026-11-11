@@ -25,6 +25,7 @@ void FAnimNode_SequencePlayer::SetSequence(UAnimSequence* InSequence)
     CurrentTime = 0.0f;
     bHasUpdated = false;
     bExtractRootMotion = false;
+    CurrentRootMotionScale = 1.0f;
 }
 
 void FAnimNode_SequencePlayer::SetPlaybackPosition(float InTime)
@@ -77,7 +78,8 @@ void FAnimNode_SequencePlayer::SetPlayRate(float InPlayRate)
 
 void FAnimNode_SequencePlayer::Update(const FAnimationUpdateContext& Context)
 {
-    bExtractRootMotion = Context.AnimInstance && Context.AnimInstance->IsRootMotionEnabled();
+    bExtractRootMotion = bAllowRootMotion && Context.AnimInstance && Context.AnimInstance->IsRootMotionEnabled();
+    CurrentRootMotionScale = (bAllowRootMotion && Context.AnimInstance) ? Context.AnimInstance->GetRootMotionScale() : 1.0f;
     if (!Sequence || !Sequence->GetDataModel())
     {
         return;
@@ -196,19 +198,28 @@ void FAnimNode_SequencePlayer::Evaluate(FPoseContext& Output)
         Output.Pose[NodeIndex] = MakeAnimationMatrix(Position, Rotation, Scale);
     }
 
-    if (bExtractRootMotion)
+    const int32 RootNodeIndex = Sequence->GetRootBoneNodeIndex();
+
+    if (Output.Pose.IsValidIndex(RootNodeIndex))
     {
-        const int32 RootNodeIndex = Sequence->GetRootBoneNodeIndex();
+        FVector RootPosition;
+        FVector RootScale;
+        FQuat RootRotation;
 
-        if (Output.Pose.IsValidIndex(RootNodeIndex))
+        if (Sequence->GetRootBoneTransform(0.0f, RootPosition, RootRotation, RootScale))
         {
-            FVector RootPosition;
-            FVector RootScale;
-            FQuat RootRotation;
-
-            if (Sequence->GetRootBoneTransform(0.0f, RootPosition, RootRotation, RootScale))
+            if (bExtractRootMotion)
             {
                 Output.Pose[RootNodeIndex] = MakeAnimationMatrix(RootPosition, RootRotation, RootScale);
+            }
+            else if (std::abs(CurrentRootMotionScale - 1.0f) > 1.0e-4f)
+            {
+                FMatrix& RootPose = Output.Pose[RootNodeIndex];
+                const FVector CurrentPos(RootPose[3][0], RootPose[3][1], RootPose[3][2]);
+                const FVector ScaledPos = RootPosition + (CurrentPos - RootPosition) * CurrentRootMotionScale;
+                RootPose[3][0] = ScaledPos.X;
+                RootPose[3][1] = ScaledPos.Y;
+                RootPose[3][2] = ScaledPos.Z;
             }
         }
     }

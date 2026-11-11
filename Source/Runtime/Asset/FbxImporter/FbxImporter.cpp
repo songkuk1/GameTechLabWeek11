@@ -208,7 +208,14 @@ namespace
 			}
 
 			Scene->SetCurrentAnimationStack(AnimStack);
-			const fbxsdk::FbxTimeSpan TimeSpan = AnimStack->GetLocalTimeSpan();
+			fbxsdk::FbxTimeSpan TimeSpan = AnimStack->GetLocalTimeSpan();
+			if ((TimeSpan.GetStop() - TimeSpan.GetStart()).GetSecondDouble() <= 0.0)
+			{
+				if (fbxsdk::FbxTakeInfo* TakeInfo = Scene->GetTakeInfo(AnimStack->GetName()))
+				{
+					TimeSpan = TakeInfo->mLocalTimeSpan;
+				}
+			}
 			const fbxsdk::FbxTime StartTime = TimeSpan.GetStart();
 			const fbxsdk::FbxTime StopTime = TimeSpan.GetStop();
 			const double StartSeconds = StartTime.GetSecondDouble();
@@ -247,9 +254,14 @@ namespace
 {
 	bool ValidateImportedModelData(const FModelData& ModelData, FString& OutError)
 	{
-		if (!ModelData.MeshData.Validate(OutError))
+		const bool bIsAnimationOnly = (ModelData.MeshData.Vertices.IsEmpty() && !ModelData.Animations.IsEmpty());
+
+		if (!bIsAnimationOnly)
 		{
-			return false;
+			if (!ModelData.MeshData.Validate(OutError))
+			{
+				return false;
+			}
 		}
 
 		if (!ModelData.IsSkeletal)
@@ -257,13 +269,13 @@ namespace
 			return true;
 		}
 
-		if (ModelData.Bones.IsEmpty())
+		if (ModelData.Bones.IsEmpty() && !bIsAnimationOnly)
 		{
 			OutError = "Skeletal mesh has no bones.";
 			return false;
 		}
 
-		if (ModelData.VertexInfluencesList.Num() != ModelData.MeshData.Vertices.Num())
+		if (!bIsAnimationOnly && ModelData.VertexInfluencesList.Num() != ModelData.MeshData.Vertices.Num())
 		{
 			OutError = "Vertex and skin influence counts do not match.";
 			return false;
@@ -539,8 +551,11 @@ bool FFbxImporter::LoadFromFile(const FString& Path, FModelData& OutModelData, b
 		}
 	}
 
-	OutModelData.MeshData.BuildAABB();
-	OutModelData.MeshData.BuildTriangleBVH();
+	if (!OutModelData.MeshData.Vertices.IsEmpty())
+	{
+		OutModelData.MeshData.BuildAABB();
+		OutModelData.MeshData.BuildTriangleBVH();
+	}
 
 	FString ValidationError;
 

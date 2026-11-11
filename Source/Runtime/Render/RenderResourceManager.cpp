@@ -234,4 +234,13 @@ void FRenderResourceManager::LoadUberLitPermutations()
 			}
 		}
 	}
+
+	{
+		const D3D_SHADER_MACRO HeatmapDefines[] = {
+			{ "USE_SKINNING", "1" },
+			{ "BONE_WEIGHT_HEATMAP", "1" },
+			{ nullptr, nullptr }
+		};
+		LoadOrCompileShader(UberLitPath, "_HEATMAP_SKINNED", HeatmapDefines, SkinLayout);
+	}
 }

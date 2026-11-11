@@ -3,6 +3,7 @@
 #include "Animation/AnimSequence.h"
 #include "GameFramework/Actor/PlayerActor.h"
 #include "GameFramework/Actor/EnemyActor.h"
+#include "GameFramework/Actor/LayerCharacter.h"
 
 void FLuaScriptInstance::Load(sol::state& LuaState, AActor* InOwner, const FString& InScriptPath)
 {
@@ -31,6 +32,10 @@ void FLuaScriptInstance::Load(sol::state& LuaState, AActor* InOwner, const FStri
     if (APlayerActor* Player = Cast<APlayerActor>(Owner))
     {
         Environment["owner"] = Player;
+    }
+    else if (ALayerCharacter* LayerChar = Cast<ALayerCharacter>(Owner))
+    {
+        Environment["owner"] = LayerChar;
     }
     else if (AEnemyActor* Enemy = Cast<AEnemyActor>(Owner))
     {
@@ -77,6 +82,10 @@ void FLuaScriptInstance::Reload(sol::state& LuaState)
     if (APlayerActor* Player = Cast<APlayerActor>(Owner))
     {
         NewEnvironment["owner"] = Player;
+    }
+    else if (ALayerCharacter* LayerChar = Cast<ALayerCharacter>(Owner))
+    {
+        NewEnvironment["owner"] = LayerChar;
     }
     else if (AEnemyActor* Enemy = Cast<AEnemyActor>(Owner))
     {

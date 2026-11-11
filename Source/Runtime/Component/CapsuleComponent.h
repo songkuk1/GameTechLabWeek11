@@ -28,6 +28,11 @@ public:
 
 	float GetWorldCapsuleHalfHeight()const;
 
+	void SetCapsuleHalfHeight(float InHalfHeight) { CapsuleHalfHeight = InHalfHeight; }
+	void SetCapsuleRadius(float InRadius) { CapsuleRadius = InRadius; }
+	float GetCapsuleHalfHeight() const { return CapsuleHalfHeight; }
+	float GetCapsuleRadius() const { return CapsuleRadius; }
+
 	virtual FBox CalcLocalBounds() const override;		
 
 private:

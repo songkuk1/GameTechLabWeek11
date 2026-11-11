@@ -83,16 +83,20 @@ bool UAnimationGraph::AddSequenceState(const FName& StateName, UAnimSequence* Se
     return true;
 }
 
-bool UAnimationGraph::AddBlendSpaceState(const FName& StateName, UBlendSpace1D* BlendSpace, const FName& BlendParameterName, float PlayRate, bool bLooping)
+bool UAnimationGraph::AddBlendSpaceState(const FName& StateName, UBlendSpace1D* BlendSpace, float PlayRate, bool bLooping)
 {
     if (StateName.IsNone() || FindStateIndex(StateName) != -1 || !Skeleton || !BlendSpace || BlendSpace->GetSkeleton() != Skeleton || !BlendSpace->IsBlendSpaceDataValid() || !std::isfinite(PlayRate))
     {
         return false;
     }
-    if (!BlendParameterName.IsNone() && !HasParameterType(BlendParameterName, EAnimGraphParameterType::Float))
+
+    const FName BlendParameterName = BlendSpace->GetAxis().Name;
+
+    if (!EnsureFloatParameter(BlendParameterName))
     {
         return false;
     }
+
     FAnimGraphStateDefinition State;
     State.Name = StateName;
     State.NodeType = EAnimGraphStateNodeType::BlendSpacePlayer;
@@ -100,6 +104,57 @@ bool UAnimationGraph::AddBlendSpaceState(const FName& StateName, UBlendSpace1D* 
     State.BlendParameterName = BlendParameterName;
     State.PlayRate = PlayRate;
     State.bLooping = bLooping;
+    States.Add(std::move(State));
+
+    return true;
+}
+
+bool UAnimationGraph::AddLayeredBlendState(const FName& StateName, UBlendSpace1D* BaseBlendSpace, UAnimSequence* BaseSequence, UAnimSequence* OverlaySequence, const FName& BranchBoneName, float BlendWeight, bool bOverlayLooping, float PlayRate, bool bBaseLooping)
+{
+    if (StateName.IsNone() || FindStateIndex(StateName) != -1 || !Skeleton || !OverlaySequence || OverlaySequence->GetSkeleton() != Skeleton || !std::isfinite(PlayRate) || !std::isfinite(BlendWeight))
+    {
+        return false;
+    }
+
+    if (!BaseBlendSpace && !BaseSequence)
+    {
+        return false;
+    }
+
+    FName BlendParameterName = NAME_None;
+    if (BaseBlendSpace)
+    {
+        if (BaseBlendSpace->GetSkeleton() != Skeleton || !BaseBlendSpace->IsBlendSpaceDataValid())
+        {
+            return false;
+        }
+        BlendParameterName = BaseBlendSpace->GetAxis().Name;
+        if (!EnsureFloatParameter(BlendParameterName))
+        {
+            return false;
+        }
+    }
+    else if (BaseSequence)
+    {
+        if (BaseSequence->GetSkeleton() != Skeleton)
+        {
+            return false;
+        }
+    }
+
+    FAnimGraphStateDefinition State;
+    State.Name = StateName;
+    State.NodeType = EAnimGraphStateNodeType::LayeredBoneBlend;
+    State.BlendSpace = BaseBlendSpace;
+    State.Sequence = BaseSequence;
+    State.BlendParameterName = BlendParameterName;
+    State.PlayRate = PlayRate;
+    State.bLooping = bBaseLooping;
+    State.OverlaySequence = OverlaySequence;
+    State.BranchBoneName = BranchBoneName.IsNone() ? FName("spine_01") : BranchBoneName;
+    State.BlendWeight = FMath::Clamp(BlendWeight, 0.0f, 1.0f);
+    State.bOverlayLooping = bOverlayLooping;
+
     States.Add(std::move(State));
     return true;
 }
@@ -240,6 +295,42 @@ bool UAnimationGraph::IsAnimationGraphDataValid() const
             }
 
             if (!State.BlendParameterName.IsNone() && !HasParameterType(State.BlendParameterName, EAnimGraphParameterType::Float))
+            {
+                return false;
+            }
+        }
+        else if (State.NodeType == EAnimGraphStateNodeType::LayeredBoneBlend)
+        {
+            if (!State.OverlaySequence || State.OverlaySequence->GetSkeleton() != Skeleton)
+            {
+                return false;
+            }
+
+            if (!State.BlendSpace && !State.Sequence)
+            {
+                return false;
+            }
+
+            if (State.BlendSpace)
+            {
+                if (State.BlendSpace->GetSkeleton() != Skeleton || !State.BlendSpace->IsBlendSpaceDataValid())
+                {
+                    return false;
+                }
+                if (!State.BlendParameterName.IsNone() && !HasParameterType(State.BlendParameterName, EAnimGraphParameterType::Float))
+                {
+                    return false;
+                }
+            }
+            else if (State.Sequence)
+            {
+                if (State.Sequence->GetSkeleton() != Skeleton)
+                {
+                    return false;
+                }
+            }
+
+            if (!std::isfinite(State.BlendWeight) || State.BlendWeight < 0.0f || State.BlendWeight > 1.0f)
             {
                 return false;
             }
@@ -457,7 +548,7 @@ bool UAnimationGraph::SetSequenceState(const FName& StateName, UAnimSequence* Se
     return true;
 }
 
-bool UAnimationGraph::SetBlendSpaceState(const FName& StateName, UBlendSpace1D* BlendSpace, const FName& BlendParameterName, float PlayRate, bool bLooping)
+bool UAnimationGraph::SetBlendSpaceState(const FName& StateName, UBlendSpace1D* BlendSpace, float PlayRate, bool bLooping)
 {
     const int32 Index = FindStateIndex(StateName);
 
@@ -466,7 +557,9 @@ bool UAnimationGraph::SetBlendSpaceState(const FName& StateName, UBlendSpace1D* 
         return false;
     }
 
-    if (!BlendParameterName.IsNone() && !HasParameterType(BlendParameterName, EAnimGraphParameterType::Float))
+    const FName BlendParameterName = BlendSpace->GetAxis().Name;
+
+    if (!EnsureFloatParameter(BlendParameterName))
     {
         return false;
     }
@@ -479,6 +572,55 @@ bool UAnimationGraph::SetBlendSpaceState(const FName& StateName, UBlendSpace1D* 
     State.BlendParameterName = BlendParameterName;
     State.PlayRate = PlayRate;
     State.bLooping = bLooping;
+
+    return true;
+}
+
+bool UAnimationGraph::SetLayeredBlendState(const FName& StateName, UBlendSpace1D* BaseBlendSpace, UAnimSequence* BaseSequence, UAnimSequence* OverlaySequence, const FName& BranchBoneName, float BlendWeight, bool bOverlayLooping, float PlayRate, bool bBaseLooping)
+{
+    const int32 Index = FindStateIndex(StateName);
+    if (Index == -1 || !Skeleton || !OverlaySequence || OverlaySequence->GetSkeleton() != Skeleton || !std::isfinite(PlayRate) || !std::isfinite(BlendWeight))
+    {
+        return false;
+    }
+
+    if (!BaseBlendSpace && !BaseSequence)
+    {
+        return false;
+    }
+
+    FName BlendParameterName = NAME_None;
+    if (BaseBlendSpace)
+    {
+        if (BaseBlendSpace->GetSkeleton() != Skeleton || !BaseBlendSpace->IsBlendSpaceDataValid())
+        {
+            return false;
+        }
+        BlendParameterName = BaseBlendSpace->GetAxis().Name;
+        if (!EnsureFloatParameter(BlendParameterName))
+        {
+            return false;
+        }
+    }
+    else if (BaseSequence)
+    {
+        if (BaseSequence->GetSkeleton() != Skeleton)
+        {
+            return false;
+        }
+    }
+
+    FAnimGraphStateDefinition& State = States[Index];
+    State.NodeType = EAnimGraphStateNodeType::LayeredBoneBlend;
+    State.BlendSpace = BaseBlendSpace;
+    State.Sequence = BaseSequence;
+    State.BlendParameterName = BlendParameterName;
+    State.PlayRate = PlayRate;
+    State.bLooping = bBaseLooping;
+    State.OverlaySequence = OverlaySequence;
+    State.BranchBoneName = BranchBoneName.IsNone() ? FName("spine_01") : BranchBoneName;
+    State.BlendWeight = FMath::Clamp(BlendWeight, 0.0f, 1.0f);
+    State.bOverlayLooping = bOverlayLooping;
 
     return true;
 }
@@ -602,6 +744,7 @@ void UAnimationGraph::Serialize(FStructuredArchive::FRecord Record)
 
         UObject* SequenceObject = State.Sequence;
         UObject* BlendSpaceObject = State.BlendSpace;
+        UObject* OverlaySequenceObject = State.OverlaySequence;
 
         StateRecord << SA_VALUE("Name", State.Name);
         StateRecord << SA_VALUE("NodeType", NodeTypeValue);
@@ -610,6 +753,10 @@ void UAnimationGraph::Serialize(FStructuredArchive::FRecord Record)
         StateRecord << SA_VALUE("BlendParameterName", State.BlendParameterName);
         StateRecord << SA_VALUE("PlayRate", State.PlayRate);
         StateRecord << SA_VALUE("Looping", State.bLooping);
+        StateRecord << SA_VALUE("OverlaySequence", OverlaySequenceObject);
+        StateRecord << SA_VALUE("BranchBoneName", State.BranchBoneName);
+        StateRecord << SA_VALUE("BlendWeight", State.BlendWeight);
+        StateRecord << SA_VALUE("OverlayLooping", State.bOverlayLooping);
 
         if (bIsLoading)
         {
@@ -617,8 +764,9 @@ void UAnimationGraph::Serialize(FStructuredArchive::FRecord Record)
 
             State.Sequence = Cast<UAnimSequence>(SequenceObject);
             State.BlendSpace = Cast<UBlendSpace1D>(BlendSpaceObject);
+            State.OverlaySequence = Cast<UAnimSequence>(OverlaySequenceObject);
 
-            if ((SequenceObject && !State.Sequence) || (BlendSpaceObject && !State.BlendSpace))
+            if ((SequenceObject && !State.Sequence) || (BlendSpaceObject && !State.BlendSpace) || (OverlaySequenceObject && !State.OverlaySequence))
             {
                 bSerializationValid = false;
             }
@@ -793,4 +941,21 @@ bool UAnimationGraph::IsTransitionDefinitionValid( const FAnimGraphTransitionDef
         return false;
     }
     return true;
+}
+
+bool UAnimationGraph::EnsureFloatParameter(const FName& Name)
+{
+    if (Name.IsNone())
+    {
+        return false;
+    }
+
+    const int32 Index = FindParameterIndex(Name);
+
+    if (Index != -1)
+    {
+        return Parameters[Index].Type == EAnimGraphParameterType::Float;
+    }
+
+    return AddFloatParameter(Name, 0.0f);
 }

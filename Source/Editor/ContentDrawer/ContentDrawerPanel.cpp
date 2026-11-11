@@ -15,6 +15,7 @@
 #include "Render/SkeletalMesh.h"
 #include "UObject/UObjectIterator.h"
 #include "Animation/AnimSequence.h"
+#include "Animation/Skeleton.h"
 #include "Animation/AnimationGraph.h"
 #include "Core/SplashScreen.h"
 
@@ -114,7 +115,7 @@ void FContentDrawerPanel::OnRender()
 				if (TypeError)
 					continue;
 
-				if (!bIsDirectory && (Path.extension() == ".bin" || Path.extension() == ".animnotify" || Path.extension() == ".pose"))
+				if (!bIsDirectory && (_wcsicmp(Path.extension().c_str(), L".bin") == 0 || _wcsicmp(Path.extension().c_str(), L".animnotify") == 0 || _wcsicmp(Path.extension().c_str(), L".pose") == 0))
 					continue;
 
 				ImGui::TableNextColumn();
@@ -180,7 +181,7 @@ void FContentDrawerPanel::OnRender()
 
 					ImGui::EndDragDropSource();
 				}
-				if (!bIsDirectory && Path.extension() == ".sequence" && ImGui::BeginDragDropSource())
+				if (!bIsDirectory && _wcsicmp(Path.extension().c_str(), L".sequence") == 0 && ImGui::BeginDragDropSource())
 				{
 					ImGui::SetDragDropPayload(EditorDragDrop::Sequence, PathString.c_str(), PathString.size() + 1);
 					ImGui::TextUnformatted(FilenameString.c_str());
@@ -193,15 +194,15 @@ void FContentDrawerPanel::OnRender()
 					{
 						CurrentPath /= Path.filename(); // 하위 폴더로 이동
 					}
-					else if (Path.extension() == ".lua")
+					else if (_wcsicmp(Path.extension().c_str(), L".lua") == 0)
 					{
 						FLuaScriptEditor::EditScript(PathString);
 					}
-					else if (Path.extension() == ".sequence" && OpenLevelSequence)
+					else if (_wcsicmp(Path.extension().c_str(), L".sequence") == 0 && OpenLevelSequence)
 					{
 						OpenLevelSequence(PathString);
 					}
-					else if (Path.extension() == ".fbx")
+					else if (_wcsicmp(Path.extension().c_str(), L".fbx") == 0)
 					{
 						CreateAssetError.clear();
 
@@ -234,15 +235,74 @@ void FContentDrawerPanel::OnRender()
 						}
 						else
 						{
-							CreateAssetError = "FBX loading failed. Check the Output Log.";
+							// 애니메이션 전용 FBX인지 확인
+							UAnimSequence* FoundAnim = nullptr;
+							const FString AnimationPrefix = MeshKey + "::";
+							for (TObjectIterator<UAnimSequence> It; It; ++It)
+							{
+								if (It->GetPath().find(AnimationPrefix) == 0 || It->GetPath().find(MeshKey) != FString::npos)
+								{
+									FoundAnim = *It;
+									break;
+								}
+							}
+
+							if (!FoundAnim)
+							{
+								// 1. 같은 디렉토리에 생성된 .anim 파일 검색
+								std::filesystem::path FbxFilePath = PathUtils::FromUtf8(PathString);
+								std::filesystem::path Dir = FbxFilePath.parent_path();
+								const FString Stem = PathUtils::ToUtf8(FbxFilePath.stem());
+
+								if (fs::exists(Dir))
+								{
+									for (const auto& Entry : fs::directory_iterator(Dir))
+									{
+										if (Entry.is_regular_file() && Entry.path().extension() == ".anim")
+										{
+											const FString Filename = PathUtils::ToUtf8(Entry.path().filename());
+											if (Filename.find(Stem) == 0)
+											{
+												USkeletalMesh* DummyMesh = nullptr;
+												FoundAnim = UAssetManager::LoadAnimSequence(PathUtils::ToUtf8(Entry.path()), &DummyMesh);
+												if (FoundAnim)
+												{
+													break;
+												}
+											}
+										}
+									}
+								}
+
+								// 2. 구버전 .anim.bin 검색
+								if (!FoundAnim)
+								{
+									const FString AnimBinPath = PathString + ".anim.bin";
+									if (fs::exists(PathUtils::FromUtf8(AnimBinPath)))
+									{
+										USkeletalMesh* DummyMesh = nullptr;
+										FoundAnim = UAssetManager::LoadAnimSequence(AnimBinPath, &DummyMesh);
+									}
+								}
+							}
+
+							if (FoundAnim && OpenAnimationSequenceViewer)
+							{
+								USkeletalMesh* FallbackMesh = FoundAnim->GetSkeleton() ? FoundAnim->GetSkeleton()->GetPreviewMesh() : nullptr;
+								OpenAnimationSequenceViewer(FallbackMesh, FoundAnim);
+							}
+							else
+							{
+								CreateAssetError = "FBX loading failed. Check the Output Log.";
+							}
 						}
 					}
-					else if (Path.extension() == ".anim")
+					else if (_wcsicmp(Path.extension().c_str(), L".anim") == 0)
 					{
 						USkeletalMesh* SkeletalMesh = nullptr;
 						UAnimSequence* Animation = UAssetManager::LoadAnimSequence(PathString, &SkeletalMesh);
 
-						if (Animation && SkeletalMesh && OpenAnimationSequenceViewer)
+						if (Animation && OpenAnimationSequenceViewer)
 						{
 							OpenAnimationSequenceViewer(SkeletalMesh, Animation);
 						}
@@ -251,7 +311,7 @@ void FContentDrawerPanel::OnRender()
 							CreateAssetError = "Could not open Animation Sequence Viewer. Check the animation asset and its source FBX.";
 						}
 					}
-					else if (Path.extension() == ".blendspace")
+					else if (_wcsicmp(Path.extension().c_str(), L".blendspace") == 0)
 					{
 						UBlendSpace1D* BlendSpace = UAssetManager::LoadBlendSpace(PathString);
 						if (BlendSpace && OpenBlendSpace)
@@ -263,7 +323,7 @@ void FContentDrawerPanel::OnRender()
 							CreateAssetError = "Could not open BlendSpace.";
 						}
 					}
-					else if (Path.extension() == ".animgraph")
+					else if (_wcsicmp(Path.extension().c_str(), L".animgraph") == 0)
 					{
 						UAnimationGraph* Graph = UAssetManager::LoadAnimationGraph(PathString);
 
@@ -568,7 +628,7 @@ void FContentDrawerPanel::ImportModel(bool bImportFbx)
 
 	if (bImportFbx)
 	{
-		if (RelativePath.extension() != ".fbx")
+		if (_wcsicmp(RelativePath.extension().c_str(), L".fbx") != 0)
 		{
 			CreateAssetError = "Please select an FBX file.";
 			return;
@@ -591,7 +651,7 @@ void FContentDrawerPanel::ImportModel(bool bImportFbx)
 	}
 	else
 	{
-		if (RelativePath.extension() != ".obj")
+		if (_wcsicmp(RelativePath.extension().c_str(), L".obj") != 0)
 		{
 			CreateAssetError = "Please select an OBJ file.";
 			return;

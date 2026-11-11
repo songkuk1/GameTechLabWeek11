@@ -30,6 +30,10 @@ public:
     void SetAnimationBlendInput(float InInput);
     float GetAnimationBlendInput() const;
 
+    void PlayLayeredBoneBlend(UAnimSequence* InBaseAnim, UAnimSequence* InOverlayAnim, const FName& InBranchBoneName = "spine_01", float InBlendWeight = 1.0f);
+    void SetLayeredBlendWeight(float InWeight);
+    float GetLayeredBlendWeight() const;
+
     void TickAnimation(float DeltaSeconds);
 
     virtual const FModelMeshData* GetMeshData() const override;
@@ -41,6 +45,7 @@ public:
     UAnimInstance* GetAnimInstance() const { return AnimInstance; }
     UAnimInstance* GetOrCreateAnimInstance();
     void SetAnimInstanceClass(UClass* InAnimInstanceClass);
+    void SetAnimInstance(UAnimInstance* InAnimInstance);
 
     void SetAnimationRootNode(FAnimNode_Base* InRootNode);
     bool SetAnimationGraph(UAnimationGraph* InGraph);
@@ -65,6 +70,8 @@ public:
 
     void SetRootMotionEnabled(bool bEnabled) { bRootMotionEnabled = bEnabled; }
     bool IsRootMotionEnabled() const { return bRootMotionEnabled; }
+    void SetRootMotionScale(float InScale) { RootMotionScale = InScale; }
+    float GetRootMotionScale() const { return RootMotionScale; }
 private:
     bool EnsureAnimInstance();
     void EvaluateAnimationPose();
@@ -73,4 +80,5 @@ private:
     UAnimInstance* AnimInstance = nullptr;
     bool bPlayingAnimation = false;
     bool bRootMotionEnabled = false;
+    float RootMotionScale = 1.0f;
 };

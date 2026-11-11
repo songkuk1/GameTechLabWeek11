@@ -22,7 +22,12 @@ public:
 	// 선택이 바뀌면 본 인덱스로 부른다. 선택 해제는 -1이다
 	void SetBoneSelectedCallback(std::function<void(int32)> InCallback) { OnBoneSelected = std::move(InCallback); }
 	int32 GetSelectedBone() const { return SelectedBone; }
-	void SetSelectedBone(int32 BoneIndex) { SelectBone(BoneIndex); }
+	void SetSelectedBone(int32 BoneIndex)
+	{
+		SelectedBone = BoneIndex;
+		bScrollTreeToSelection = (BoneIndex >= 0);
+	}
+
 private:
 	void DrawBone(int32 BoneIndex);
 	void SelectBone(int32 BoneIndex);
@@ -37,6 +42,7 @@ private:
 	TArray<FString> BoneNames;
 	// 선택 안 함은 -1이라 부호 있는 정수여야 한다
 	int32 SelectedBone = -1;
+	bool bScrollTreeToSelection = false;
 
 	std::function<void(int32)> OnBoneSelected;
 };

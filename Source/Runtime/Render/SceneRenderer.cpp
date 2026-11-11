@@ -52,6 +52,9 @@ void FSceneRenderer::Init(FRenderer* InRenderer)
 
 	DecalRenderer = MakeUnique<FDecalRenderer>();
 	DecalRenderer->Init();
+
+	PreviewSkyboxRenderer = MakeUnique<FSkyboxRenderer>();
+	PreviewSkyboxRenderer->Init(ResourcePaths::PreviewSkyPanorama);
 }
 
 void FSceneRenderer::BeginFrame()
@@ -239,7 +242,13 @@ void FSceneRenderer::RenderOpaquePass(const FSceneView& SceneView, const FSceneR
 	// 데이터 시각화 뷰도 하늘은 데이터가 없으므로 그리지 않는다.
 	if (!SceneView.bOrthographic && !IsDataVisualization(ViewRenderMode.ViewMode))
 	{
-		SkyboxRenderer->OnRender(SceneView.ViewProjection, SceneView.Location, DirectionalLight);
+		FSkyboxRenderer* ActiveSky = (ViewWorld.GetWorldType() == EWorldType::EditorPreview && PreviewSkyboxRenderer && PreviewSkyboxRenderer->IsValid())
+			? PreviewSkyboxRenderer.get()
+			: SkyboxRenderer.get();
+		if (ActiveSky)
+		{
+			ActiveSky->OnRender(SceneView.ViewProjection, SceneView.Location, DirectionalLight);
+		}
 	}
 
 	RenderCommand::EndRenderPass();
@@ -267,6 +276,8 @@ void FSceneRenderer::RenderOpaquePass(const FSceneView& SceneView, const FSceneR
 		RenderCommand::SetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
 		Renderer->SetViewMode(ViewRenderMode);
+		Renderer->SetBoneWeightHeatmap(Settings.bShowBoneWeightHeatmap, Settings.SelectedBoneIndex, Settings.bUseProceduralHeatmap);
+		Renderer->SetHeatmapWireframeTinted(Settings.bHeatmapWireframeTinted);
 		
 		// 불투명을 먼저 그리고 반투명을 먼 것부터 그린다.
 		// Grid는 깊이를 쓰지 않는 반투명 위에도 겹칠 수 있지만, 언리얼의 에디터 프리미티브처럼 Overlay Pass에서 마지막에 합성한다.
@@ -276,6 +287,12 @@ void FSceneRenderer::RenderOpaquePass(const FSceneView& SceneView, const FSceneR
 		Renderer->RenderOpaque();
 		RenderCommand::UnbindShaderResource(4, EShaderBindFlagBits::Vertex | EShaderBindFlagBits::Pixel);
 		RenderCommand::UnbindShaderResource(5, EShaderBindFlagBits::Pixel);
+
+		// 와이어프레임 오버레이: 본 가중치 히트맵 모드일 때 메쉬 위에 반투명 와이어프레임 겹쳐 그리기
+		if (Settings.bShowBoneWeightHeatmap && Settings.bShowHeatmapWireframe)
+		{
+			Renderer->RenderBoneWeightWireframeOverlay();
+		}
 		// 장면 Wireframe이 Grid·Gizmo·UI로 전파되지 않도록 복원한다.
 		RenderCommand::SetRasterizerState(ERasterizerState::SolidBack);
 	}

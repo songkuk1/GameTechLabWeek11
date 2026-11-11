@@ -14,6 +14,11 @@ public:
 	FVector GetUnfixedCameraPosition() const { return UnfixedCameraPosition; }
 	bool IsCollisionFixApplied() const { return bIsCameraFixed; }
 
+	void SetTargetArmLength(float InLength) { TargetArmLength = InLength; }
+	float GetTargetArmLength() const { return TargetArmLength; }
+	void SetDoCollisionTest(bool bInTest) { bDoCollisionTest = bInTest; }
+	bool GetDoCollisionTest() const { return bDoCollisionTest; }
+
 	void TickComponent(float DeltaTime) override;
 
 private:

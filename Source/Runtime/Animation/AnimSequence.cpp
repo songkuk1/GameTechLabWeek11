@@ -116,11 +116,22 @@ int32 UAnimSequenceBase::GetRootBoneNodeIndex() const
         return -1;
     }
 
+    const TArray<FModelNode>& Nodes = Skeleton->GetNodes();
     for (const FModelBone& Bone : Skeleton->GetBones())
     {
         if (Bone.ParentBoneIndex == -1)
         {
-            return Bone.NodeIndex;
+            const int32 BoneNodeIndex = Bone.NodeIndex;
+            if (Nodes.IsValidIndex(BoneNodeIndex))
+            {
+                const int32 ParentNodeIndex = Nodes[BoneNodeIndex].ParentNodeIndex;
+                if (Nodes.IsValidIndex(ParentNodeIndex) &&
+                    _stricmp(Nodes[ParentNodeIndex].Name.c_str(), "root") == 0)
+                {
+                    return ParentNodeIndex;
+                }
+            }
+            return BoneNodeIndex;
         }
     }
     return -1;
@@ -369,4 +380,104 @@ bool UAnimSequenceBase::ExtractRootMotion(float StartTime, float DeltaTime, bool
     OutRotation = MatrixToRotator(AccumulatedDelta).Quaternion().Normalized();
 
     return true;
+}
+
+static FString NormalizeBoneName(const FString& InName)
+{
+    FString Out;
+    Out.reserve(InName.size());
+    for (char c : InName)
+    {
+        Out.push_back(static_cast<char>(std::tolower(static_cast<unsigned char>(c))));
+    }
+    size_t UnderscorePos = 0;
+    while ((UnderscorePos = Out.find('_', UnderscorePos)) != FString::npos)
+    {
+        size_t DigitStart = UnderscorePos + 1;
+        if (DigitStart < Out.size() && Out[DigitStart] == '0')
+        {
+            size_t NonZero = Out.find_first_not_of('0', DigitStart);
+            if (NonZero != FString::npos && std::isdigit(static_cast<unsigned char>(Out[NonZero])))
+            {
+                Out.erase(DigitStart, NonZero - DigitStart);
+            }
+        }
+        UnderscorePos++;
+    }
+    return Out;
+}
+
+void UAnimSequenceBase::RetargetToSkeleton(USkeleton* InSkeleton)
+{
+    if (!InSkeleton || !DataModel)
+    {
+        return;
+    }
+
+    SetSkeleton(InSkeleton);
+
+    const TArray<FModelNode>& TargetNodes = InSkeleton->GetNodes();
+    if (TargetNodes.IsEmpty())
+    {
+        return;
+    }
+
+    TMap<FString, int32> NameToNodeMap;
+    TMap<FString, int32> NormNameToNodeMap;
+    for (int32 i = 0; i < TargetNodes.Num(); ++i)
+    {
+        NameToNodeMap.Add(TargetNodes[i].Name, i);
+        NormNameToNodeMap.Add(NormalizeBoneName(TargetNodes[i].Name), i);
+    }
+
+    for (FBoneAnimationTrack& Track : DataModel->BoneAnimationTracks)
+    {
+        const FString RawName = Track.Name.ToString();
+        const int32* FoundIndex = NameToNodeMap.Find(RawName);
+        if (!FoundIndex)
+        {
+            FoundIndex = NormNameToNodeMap.Find(NormalizeBoneName(RawName));
+        }
+
+        if (FoundIndex)
+        {
+            Track.NodeIndex = *FoundIndex;
+
+            // 스케일 불일치 보정 (예: 순수 애니메이션 FBX에서 root 스케일이 0.01인데 스켈레톤의 root 스케일은 1.0인 경우)
+            if (!Track.InternalTrack.ScaleKeys.IsEmpty())
+            {
+                const FMatrix& NodeTransform = TargetNodes[*FoundIndex].LocalTransform;
+                const float NodeScaleX = FVector(NodeTransform.M[0][0], NodeTransform.M[0][1], NodeTransform.M[0][2]).Size();
+                const float TrackScaleX = Track.InternalTrack.ScaleKeys[0].X;
+
+                if (TrackScaleX > 0.0f && NodeScaleX > 0.0f)
+                {
+                    const float Ratio = NodeScaleX / TrackScaleX;
+                    if (Ratio > 50.0f && Ratio < 150.0f)
+                    {
+                        for (FVector& SKey : Track.InternalTrack.ScaleKeys)
+                        {
+                            SKey *= Ratio;
+                        }
+                        for (FVector& PKey : Track.InternalTrack.PosKeys)
+                        {
+                            PKey *= Ratio;
+                        }
+                    }
+                }
+            }
+        }
+        else
+        {
+            if (Track.NodeIndex >= 0 && Track.NodeIndex < TargetNodes.Num() &&
+                NormalizeBoneName(TargetNodes[Track.NodeIndex].Name) == NormalizeBoneName(RawName))
+            {
+                // 기존 인덱스가 이미 일치하는 노드를 가리키고 있음
+            }
+            else
+            {
+                Track.NodeIndex = -1;
+            }
+        }
+    }
 }

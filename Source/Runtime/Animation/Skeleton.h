@@ -6,6 +6,8 @@
 #include <filesystem>
 #include "Skeleton.generated.h"
 
+class USkeletalMesh;
+
 UCLASS()
 class USkeleton : public UAsset
 {
@@ -23,9 +25,16 @@ public:
 
 	const TArray<FModelBone>& GetBones() const;
 
+	bool IsCompatibleWith(const USkeleton* Other) const;
+
+	void SetPreviewMesh(USkeletalMesh* InMesh) { PreviewMesh = InMesh; }
+	USkeletalMesh* GetPreviewMesh() const { return PreviewMesh; }
+
 private:
 	TArray<FModelNode> Nodes;
 	TArray<FModelBone> Bones;
 	std::filesystem::path DefaultPosePath;
 	std::filesystem::path PosePath;
+
+	USkeletalMesh* PreviewMesh = nullptr;
 };

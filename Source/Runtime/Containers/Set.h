@@ -30,6 +30,12 @@ public:
 	bool IsEmpty() const;
 	void Reserve(int32 capacity);
 
+	void Empty(int32 ExpectedNumElements = 0)
+	{
+		mSet.clear();
+		mSet.reserve(ExpectedNumElements);
+	}
+
 	/*
 	void Empty(int32 ExpectedNumElements = 0)
 	*/

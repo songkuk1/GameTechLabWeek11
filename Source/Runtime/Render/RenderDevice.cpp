@@ -202,7 +202,11 @@ void FRenderDevice::CreateStates()
 
 		Desc.FillMode = D3D11_FILL_WIREFRAME;
 		Desc.CullMode = D3D11_CULL_NONE;
+		Desc.DepthBias = -50;
+		Desc.SlopeScaledDepthBias = -1.0f;
 		Device->CreateRasterizerState(&Desc, RasterizerStates[(uint8)ERasterizerState::Wireframe].GetAddressOf());
+		Desc.DepthBias = 0;
+		Desc.SlopeScaledDepthBias = 0.0f;
 
 		// 섀도우 맵 렌더 전용: Shadow Pancaking (DepthClipEnable = FALSE) 및 하드웨어 Slope-Scaled Depth Bias 적용
 		D3D11_RASTERIZER_DESC ShadowDesc = {};

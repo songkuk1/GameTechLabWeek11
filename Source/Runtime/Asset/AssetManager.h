@@ -77,6 +77,7 @@ public:
 	static UBlendSpace1D* LoadBlendSpace(const FString& Path);
 	static UAnimationGraph* LoadAnimationGraph(const FString& Path);
 	static UAnimSequence* LoadAnimSequence(const FString& Path, USkeletalMesh** OutSkeletalMesh = nullptr);
+	TArray<UAnimSequence*> GetAnimSequencesForMesh(const FString& MeshKey) const;
 
 	FLODGenerateResult GenerateStaticMeshLODs(UStaticMesh& Mesh,const FLODGenerateRequest& Request);
 

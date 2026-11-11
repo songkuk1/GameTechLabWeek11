@@ -19,7 +19,8 @@ enum class EAnimGraphParameterType : uint8
 enum class EAnimGraphStateNodeType : uint8
 {
     SequencePlayer,
-    BlendSpacePlayer
+    BlendSpacePlayer,
+    LayeredBoneBlend
 };
 
 struct FAnimGraphParameterDefinition
@@ -39,6 +40,12 @@ struct FAnimGraphStateDefinition
     FName BlendParameterName = NAME_None;
     float PlayRate = 1.0f;
     bool bLooping = true;
+
+    // Layered Bone Blend fields
+    UAnimSequence* OverlaySequence = nullptr;
+    FName BranchBoneName = "spine_01";
+    float BlendWeight = 1.0f;
+    bool bOverlayLooping = false;
 };
 
 struct FAnimGraphTransitionDefinition
@@ -70,7 +77,8 @@ public:
     bool AddBoolParameter(const FName& Name, bool DefaultValue = false);
     bool AddFloatParameter(const FName& Name, float DefaultValue = 0.0f);
     bool AddSequenceState(const FName& StateName, UAnimSequence* Sequence, float PlayRate = 1.0f, bool bLooping = true);
-    bool AddBlendSpaceState(const FName& StateName, UBlendSpace1D* BlendSpace, const FName& BlendParameterName = NAME_None, float PlayRate = 1.0f, bool bLooping = true);
+    bool AddBlendSpaceState(const FName& StateName, UBlendSpace1D* BlendSpace, float PlayRate = 1.0f, bool bLooping = true);
+    bool AddLayeredBlendState(const FName& StateName, UBlendSpace1D* BaseBlendSpace, UAnimSequence* BaseSequence, UAnimSequence* OverlaySequence, const FName& BranchBoneName = "spine_01", float BlendWeight = 1.0f, bool bOverlayLooping = false, float PlayRate = 1.0f, bool bBaseLooping = true);
     bool SetEntryState(const FName& StateName);
     FName GetEntryState() const { return EntryStateName; }
     bool AddTransition(const FName& FromState, const FName& ToState, EAnimTransitionRule Rule, const FName& ParameterName = NAME_None, int32 Priority = 0, float BlendDuration = 0.0f, float FloatThreshold = 0.0f);
@@ -93,7 +101,8 @@ public:
     bool RenameState(const FName& OldName, const FName& NewName);
     bool RemoveState(const FName& StateName);
     bool SetSequenceState(const FName& StateName, UAnimSequence* Sequence, float PlayRate = 1.0f, bool bLooping = true);
-    bool SetBlendSpaceState( const FName& StateName, UBlendSpace1D* BlendSpace, const FName& BlendParameterName = NAME_None, float PlayRate = 1.0f, bool bLooping = true);
+    bool SetBlendSpaceState(const FName& StateName, UBlendSpace1D* BlendSpace, float PlayRate = 1.0f, bool bLooping = true);
+    bool SetLayeredBlendState(const FName& StateName, UBlendSpace1D* BaseBlendSpace, UAnimSequence* BaseSequence, UAnimSequence* OverlaySequence, const FName& BranchBoneName = "spine_01", float BlendWeight = 1.0f, bool bOverlayLooping = false, float PlayRate = 1.0f, bool bBaseLooping = true);
 
     // Transition
     bool SetTransition(int32 Index, const FAnimGraphTransitionDefinition& Transition);
@@ -106,6 +115,7 @@ private:
     bool HasParameterType(const FName& ParameterName, EAnimGraphParameterType Type) const;
     bool AddTransitionInternal( const FName& FromState, const FName& ToState, EAnimTransitionRule Rule, const FName& ParameterName, int32 Priority, float BlendDuration, float FloatThreshold, bool bAnyState);
     bool IsTransitionDefinitionValid(const FAnimGraphTransitionDefinition& Transition) const;
+    bool EnsureFloatParameter(const FName& Name);
 private:
     USkeleton* Skeleton = nullptr;
     FName EntryStateName = NAME_None;

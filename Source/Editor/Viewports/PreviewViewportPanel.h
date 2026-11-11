@@ -53,6 +53,4 @@ private:
 	bool bHovered = false;
 	// 우클릭을 누른 채 창 밖으로 나가도 놓을 때까지 카메라를 잡고 있는다
 	bool bCaptured = false;
-	float ToolbarHeight = 0.0f;
-	bool bToolbarHeightInitialized = false;
 };

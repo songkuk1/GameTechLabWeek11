@@ -5,6 +5,7 @@
 #include "Animation/AnimSequence.h"
 #include "Animation/BlendSpace1D.h"
 #include "Animation/Skeleton.h"
+#include "Asset/AssetManager.h"
 
 #include "Render/SkeletalMesh.h"
 #include "Component/SkeletalMeshComponent.h"
@@ -299,13 +300,51 @@ FAnimationGraphEditorTab::FAnimationGraphEditorTab(UAnimationGraph* InGraph) : F
         }
     }
 
+    if (Graph && Graph->GetSkeleton())
+    {
+        USkeletalMesh* PreviewMesh = Graph->GetSkeleton()->GetPreviewMesh();
+        FString MeshPathStr = PreviewMesh ? PreviewMesh->GetPath() : Graph->GetSkeleton()->GetPath();
+        std::filesystem::path BaseDir = PathUtils::FromUtf8(MeshPathStr).parent_path();
+        if (BaseDir.empty() || BaseDir.string().find("Assets") == std::string::npos)
+        {
+            BaseDir = std::filesystem::path("Assets") / BaseDir;
+        }
+
+        if (std::filesystem::exists(BaseDir))
+        {
+            for (const auto& Entry : std::filesystem::recursive_directory_iterator(BaseDir))
+            {
+                if (Entry.is_regular_file())
+                {
+                    const auto Ext = Entry.path().extension();
+                    if (_wcsicmp(Ext.c_str(), L".fbx") == 0)
+                    {
+                        UAssetManager::Get().LoadFbxModel(PathUtils::ToUtf8(Entry.path()), false, true, false);
+                    }
+                    else if (_wcsicmp(Ext.c_str(), L".anim") == 0)
+                    {
+                        UAssetManager::Get().LoadAnimSequence(PathUtils::ToUtf8(Entry.path()));
+                    }
+                }
+            }
+        }
+    }
+
     for (TObjectIterator<UAnimSequence> It; It; ++It)
     {
         UAnimSequence* Animation = *It;
 
-        if (Animation && Animation->GetSkeleton() == Graph->GetSkeleton())
+        if (Animation)
         {
-            AvailableAnimations.Add(Animation);
+            USkeleton* TargetSkel = Graph->GetSkeleton();
+            if (Animation->GetSkeleton() == TargetSkel || (TargetSkel && TargetSkel->IsCompatibleWith(Animation->GetSkeleton())))
+            {
+                if (Animation->GetSkeleton() != TargetSkel && TargetSkel)
+                {
+                    Animation->RetargetToSkeleton(TargetSkel);
+                }
+                AvailableAnimations.Add(Animation);
+            }
         }
     }
 
@@ -665,33 +704,10 @@ void FAnimationGraphEditorTab::DrawStateEditor()
         ImGui::EndCombo();
     }
 
-    const FString NewParameterLabel = NewBlendSpaceParameterName.IsNone() ? "None" : NewBlendSpaceParameterName.ToString();
-
-    if (ImGui::BeginCombo("BlendSpace Float Parameter", NewParameterLabel.c_str()))
+    if (NewBlendSpace)
     {
-        if (ImGui::Selectable("None", NewBlendSpaceParameterName.IsNone()))
-        {
-            NewBlendSpaceParameterName = NAME_None;
-        }
-
-        for (const FAnimGraphParameterDefinition& Parameter : Graph->GetParameters())
-        {
-            if (Parameter.Type != EAnimGraphParameterType::Float)
-            {
-                continue;
-            }
-
-            const bool bSelected = Parameter.Name == NewBlendSpaceParameterName;
-
-            const FString Name = Parameter.Name.ToString();
-
-            if (ImGui::Selectable(Name.c_str(), bSelected))
-            {
-                NewBlendSpaceParameterName = Parameter.Name;
-            }
-        }
-
-        ImGui::EndCombo();
+        const FString AxisName = NewBlendSpace->GetAxis().Name.ToString();
+        ImGui::Text("Auto Float Parameter: %s", AxisName.c_str());
     }
 
     ImGui::BeginDisabled(NewBlendSpace == nullptr);
@@ -701,7 +717,7 @@ void FAnimationGraphEditorTab::DrawStateEditor()
         const FName StateName(NewStateNameBuffer);
         const bool bWasEmpty = Graph->GetStates().IsEmpty();
 
-        if (Graph->AddBlendSpaceState(StateName, NewBlendSpace, NewBlendSpaceParameterName))
+        if (Graph->AddBlendSpaceState(StateName, NewBlendSpace))
         {
             if (bWasEmpty)
             {
@@ -726,6 +742,95 @@ void FAnimationGraphEditorTab::DrawStateEditor()
     ImGui::EndDisabled();
 
     ImGui::Separator();
+    ImGui::Text("Layered Blend (Upper/Lower Body)");
+
+    const char* LayeredBaseTypes[] = { "BlendSpace", "Sequence" };
+    ImGui::Combo("Base Type##LB", &NewLayeredBaseMode, LayeredBaseTypes, 2);
+
+    if (NewLayeredBaseMode == 0)
+    {
+        const FString BaseLabel = NewBlendSpace ? NewBlendSpace->GetPath() : "Select Base BlendSpace";
+        if (ImGui::BeginCombo("Base BlendSpace##LB", BaseLabel.c_str()))
+        {
+            for (UBlendSpace1D* BlendSpace : AvailableBlendSpaces)
+            {
+                const bool bSelected = BlendSpace == NewBlendSpace;
+                if (ImGui::Selectable(BlendSpace->GetPath().c_str(), bSelected))
+                {
+                    NewBlendSpace = BlendSpace;
+                }
+            }
+            ImGui::EndCombo();
+        }
+    }
+    else
+    {
+        const FString BaseLabel = NewSequence ? NewSequence->GetPath() : "Select Base Animation";
+        if (ImGui::BeginCombo("Base Sequence##LB", BaseLabel.c_str()))
+        {
+            for (UAnimSequence* Animation : AvailableAnimations)
+            {
+                const bool bSelected = Animation == NewSequence;
+                if (ImGui::Selectable(Animation->GetPath().c_str(), bSelected))
+                {
+                    NewSequence = Animation;
+                }
+            }
+            ImGui::EndCombo();
+        }
+    }
+
+    const FString OverlayLabel = NewOverlaySequence ? NewOverlaySequence->GetPath() : "Select Upper Animation";
+    if (ImGui::BeginCombo("Upper Sequence##LB", OverlayLabel.c_str()))
+    {
+        for (UAnimSequence* Animation : AvailableAnimations)
+        {
+            const bool bSelected = Animation == NewOverlaySequence;
+            if (ImGui::Selectable(Animation->GetPath().c_str(), bSelected))
+            {
+                NewOverlaySequence = Animation;
+            }
+        }
+        ImGui::EndCombo();
+    }
+
+    ImGui::InputText("Branch Bone##LB", NewBranchBoneBuffer, sizeof(NewBranchBoneBuffer));
+    ImGui::SliderFloat("Upper Weight##LB", &NewBlendWeight, 0.0f, 1.0f);
+    ImGui::Checkbox("Upper Looping##LB", &bNewOverlayLooping);
+
+    const bool bCanAddLayered = (NewOverlaySequence != nullptr) && ((NewLayeredBaseMode == 0 && NewBlendSpace != nullptr) || (NewLayeredBaseMode == 1 && NewSequence != nullptr));
+    ImGui::BeginDisabled(!bCanAddLayered);
+
+    if (ImGui::Button("Add Layered Blend State"))
+    {
+        const FName StateName(NewStateNameBuffer);
+        const bool bWasEmpty = Graph->GetStates().IsEmpty();
+        UBlendSpace1D* BaseBS = (NewLayeredBaseMode == 0) ? NewBlendSpace : nullptr;
+        UAnimSequence* BaseSeq = (NewLayeredBaseMode == 1) ? NewSequence : nullptr;
+
+        if (Graph->AddLayeredBlendState(StateName, BaseBS, BaseSeq, NewOverlaySequence, FName(NewBranchBoneBuffer), NewBlendWeight, bNewOverlayLooping))
+        {
+            if (bWasEmpty)
+            {
+                Graph->SetEntryState(StateName);
+            }
+
+            SelectedStateIndex = Graph->GetStates().Num() - 1;
+            std::snprintf(RenameStateBuffer, sizeof(RenameStateBuffer), "%s", StateName.ToString().c_str());
+
+            bDirty = true;
+            ErrorMessage.clear();
+            RefreshPreview();
+        }
+        else
+        {
+            ErrorMessage = "Could not add Layered Blend State. Check its name and Skeleton.";
+        }
+    }
+
+    ImGui::EndDisabled();
+
+    ImGui::Separator();
 
     if (!States.IsValidIndex(SelectedStateIndex))
     {
@@ -734,6 +839,93 @@ void FAnimationGraphEditorTab::DrawStateEditor()
     }
 
     const FAnimGraphStateDefinition State = States[SelectedStateIndex];
+
+    const char* StateTypeLabel = State.NodeType == EAnimGraphStateNodeType::SequencePlayer ? "Sequence Player"
+        : State.NodeType == EAnimGraphStateNodeType::BlendSpacePlayer ? "BlendSpace Player"
+        : "Layered Bone Blend";
+    bool bStateTypeChanged = false;
+
+    if (ImGui::BeginCombo("State Type", StateTypeLabel))
+    {
+        if (ImGui::Selectable("Sequence Player", State.NodeType == EAnimGraphStateNodeType::SequencePlayer))
+        {
+            if (State.NodeType != EAnimGraphStateNodeType::SequencePlayer)
+            {
+                UAnimSequence* ConvertSeq = State.Sequence ? State.Sequence : (NewSequence ? NewSequence : (AvailableAnimations.IsEmpty() ? nullptr : AvailableAnimations[0]));
+                if (!ConvertSeq)
+                {
+                    ErrorMessage = "No Animation Sequence is available for this Skeleton.";
+                }
+                else if (Graph->SetSequenceState(State.Name, ConvertSeq, State.PlayRate, State.bLooping))
+                {
+                    bDirty = true;
+                    ErrorMessage.clear();
+                    RefreshPreview();
+                    bStateTypeChanged = true;
+                }
+                else
+                {
+                    ErrorMessage = "Could not convert State to Sequence Player.";
+                }
+            }
+        }
+
+        if (ImGui::Selectable("BlendSpace Player", State.NodeType == EAnimGraphStateNodeType::BlendSpacePlayer))
+        {
+            if (State.NodeType != EAnimGraphStateNodeType::BlendSpacePlayer)
+            {
+                UBlendSpace1D* ConvertBS = State.BlendSpace ? State.BlendSpace : (NewBlendSpace ? NewBlendSpace : (AvailableBlendSpaces.IsEmpty() ? nullptr : AvailableBlendSpaces[0]));
+                if (!ConvertBS)
+                {
+                    ErrorMessage = "No BlendSpace is available for this Skeleton.";
+                }
+                else if (Graph->SetBlendSpaceState(State.Name, ConvertBS, State.PlayRate, State.bLooping))
+                {
+                    bDirty = true;
+                    ErrorMessage.clear();
+                    RefreshPreview();
+                    bStateTypeChanged = true;
+                }
+                else
+                {
+                    ErrorMessage = "Could not convert State to BlendSpace Player.";
+                }
+            }
+        }
+
+        if (ImGui::Selectable("Layered Bone Blend", State.NodeType == EAnimGraphStateNodeType::LayeredBoneBlend))
+        {
+            if (State.NodeType != EAnimGraphStateNodeType::LayeredBoneBlend)
+            {
+                UBlendSpace1D* BaseBS = State.BlendSpace ? State.BlendSpace : (AvailableBlendSpaces.IsEmpty() ? nullptr : AvailableBlendSpaces[0]);
+                UAnimSequence* BaseSeq = State.Sequence ? State.Sequence : (AvailableAnimations.IsEmpty() ? nullptr : AvailableAnimations[0]);
+                UAnimSequence* OverlaySeq = State.OverlaySequence ? State.OverlaySequence : (AvailableAnimations.IsEmpty() ? nullptr : AvailableAnimations[0]);
+
+                if (!OverlaySeq || (!BaseBS && !BaseSeq))
+                {
+                    ErrorMessage = "Need animations to convert to Layered Bone Blend.";
+                }
+                else if (Graph->SetLayeredBlendState(State.Name, BaseBS, BaseSeq, OverlaySeq, State.BranchBoneName.IsNone() ? FName("spine_01") : State.BranchBoneName, State.BlendWeight > 0.0f ? State.BlendWeight : 1.0f, State.bOverlayLooping, State.PlayRate, State.bLooping))
+                {
+                    bDirty = true;
+                    ErrorMessage.clear();
+                    RefreshPreview();
+                    bStateTypeChanged = true;
+                }
+                else
+                {
+                    ErrorMessage = "Could not convert State to Layered Bone Blend.";
+                }
+            }
+        }
+
+        ImGui::EndCombo();
+    }
+
+    if (bStateTypeChanged)
+    {
+        return;
+    }
 
     ImGui::Text("Selected State: %s", State.Name.ToString().c_str());
 
@@ -844,34 +1036,8 @@ void FAnimationGraphEditorTab::DrawStateEditor()
 
         const FString ParameterLabel = SelectedBlendParameterName.IsNone() ? "None" : SelectedBlendParameterName.ToString();
 
-        if (ImGui::BeginCombo("BlendSpace Parameter", ParameterLabel.c_str()))
-        {
-            if (ImGui::Selectable("None", SelectedBlendParameterName.IsNone()))
-            {
-                SelectedBlendParameterName = NAME_None;
-                bChanged = true;
-            }
-
-            for (const FAnimGraphParameterDefinition& Parameter : Graph->GetParameters())
-            {
-                if (Parameter.Type != EAnimGraphParameterType::Float)
-                {
-                    continue;
-                }
-
-                const bool bSelected = Parameter.Name == SelectedBlendParameterName;
-
-                const FString Name = Parameter.Name.ToString();
-
-                if (ImGui::Selectable(Name.c_str(), bSelected))
-                {
-                    SelectedBlendParameterName = Parameter.Name;
-                    bChanged = true;
-                }
-            }
-
-            ImGui::EndCombo();
-        }
+        const FString ParameterName = SelectedBlendSpace ? SelectedBlendSpace->GetAxis().Name.ToString() : "None";
+        ImGui::Text("Input Parameter: %s (Float)", ParameterName.c_str());
 
         if (ImGui::DragFloat("Play Rate", &PlayRate, 0.01f))
         {
@@ -885,7 +1051,7 @@ void FAnimationGraphEditorTab::DrawStateEditor()
 
         if (bChanged)
         {
-            if (Graph->SetBlendSpaceState(State.Name, SelectedBlendSpace, SelectedBlendParameterName, PlayRate, bLooping))
+            if (Graph->SetBlendSpaceState(State.Name, SelectedBlendSpace, PlayRate, bLooping))
             {
                 bDirty = true;
                 ErrorMessage.clear();
@@ -894,6 +1060,142 @@ void FAnimationGraphEditorTab::DrawStateEditor()
             else
             {
                 ErrorMessage = "Could not update BlendSpace State.";
+            }
+        }
+    }
+    else if (State.NodeType == EAnimGraphStateNodeType::LayeredBoneBlend)
+    {
+        bool bChanged = false;
+        int32 BaseMode = State.BlendSpace ? 0 : 1;
+        const char* BaseModeNames[] = { "BlendSpace", "Sequence" };
+
+        if (ImGui::Combo("Base Source Type", &BaseMode, BaseModeNames, 2))
+        {
+            if (BaseMode == 0 && !State.BlendSpace && !AvailableBlendSpaces.IsEmpty())
+            {
+                UBlendSpace1D* NewBS = AvailableBlendSpaces[0];
+                if (Graph->SetLayeredBlendState(State.Name, NewBS, nullptr, State.OverlaySequence, State.BranchBoneName, State.BlendWeight, State.bOverlayLooping, State.PlayRate, State.bLooping))
+                {
+                    bDirty = true;
+                    RefreshPreview();
+                }
+            }
+            else if (BaseMode == 1 && !State.Sequence && !AvailableAnimations.IsEmpty())
+            {
+                UAnimSequence* NewSeq = AvailableAnimations[0];
+                if (Graph->SetLayeredBlendState(State.Name, nullptr, NewSeq, State.OverlaySequence, State.BranchBoneName, State.BlendWeight, State.bOverlayLooping, State.PlayRate, State.bLooping))
+                {
+                    bDirty = true;
+                    RefreshPreview();
+                }
+            }
+        }
+
+        UBlendSpace1D* CurrentBaseBS = State.BlendSpace;
+        UAnimSequence* CurrentBaseSeq = State.Sequence;
+        UAnimSequence* CurrentOverlaySeq = State.OverlaySequence;
+        FName CurrentBranchBone = State.BranchBoneName;
+        float CurrentBlendWeight = State.BlendWeight;
+        bool bBaseLoop = State.bLooping;
+        bool bOverlayLoop = State.bOverlayLooping;
+
+        if (BaseMode == 0)
+        {
+            const FString BaseLabel = CurrentBaseBS ? CurrentBaseBS->GetPath() : "None";
+            if (ImGui::BeginCombo("Base BlendSpace", BaseLabel.c_str()))
+            {
+                for (UBlendSpace1D* BlendSpace : AvailableBlendSpaces)
+                {
+                    const bool bSelected = BlendSpace == CurrentBaseBS;
+                    if (ImGui::Selectable(BlendSpace->GetPath().c_str(), bSelected))
+                    {
+                        CurrentBaseBS = BlendSpace;
+                        CurrentBaseSeq = nullptr;
+                        bChanged = true;
+                    }
+                }
+                ImGui::EndCombo();
+            }
+
+            if (CurrentBaseBS)
+            {
+                const FString ParamName = CurrentBaseBS->GetAxis().Name.ToString();
+                ImGui::Text("Base Parameter: %s (Float)", ParamName.c_str());
+            }
+        }
+        else
+        {
+            const FString BaseLabel = CurrentBaseSeq ? CurrentBaseSeq->GetPath() : "None";
+            if (ImGui::BeginCombo("Base Sequence", BaseLabel.c_str()))
+            {
+                for (UAnimSequence* Animation : AvailableAnimations)
+                {
+                    const bool bSelected = Animation == CurrentBaseSeq;
+                    if (ImGui::Selectable(Animation->GetPath().c_str(), bSelected))
+                    {
+                        CurrentBaseSeq = Animation;
+                        CurrentBaseBS = nullptr;
+                        bChanged = true;
+                    }
+                }
+                ImGui::EndCombo();
+            }
+        }
+
+        const FString OverlayLabel = CurrentOverlaySeq ? CurrentOverlaySeq->GetPath() : "None";
+        if (ImGui::BeginCombo("Upper Sequence", OverlayLabel.c_str()))
+        {
+            for (UAnimSequence* Animation : AvailableAnimations)
+            {
+                const bool bSelected = Animation == CurrentOverlaySeq;
+                if (ImGui::Selectable(Animation->GetPath().c_str(), bSelected))
+                {
+                    CurrentOverlaySeq = Animation;
+                    bChanged = true;
+                }
+            }
+            ImGui::EndCombo();
+        }
+
+        char BoneNameBuf[64] = {};
+        std::snprintf(BoneNameBuf, sizeof(BoneNameBuf), "%s", CurrentBranchBone.ToString().c_str());
+        if (ImGui::InputText("Branch Bone", BoneNameBuf, sizeof(BoneNameBuf)))
+        {
+            CurrentBranchBone = FName(BoneNameBuf);
+            bChanged = true;
+        }
+
+        if (ImGui::SliderFloat("Blend Weight", &CurrentBlendWeight, 0.0f, 1.0f))
+        {
+            bChanged = true;
+        }
+
+        if (ImGui::DragFloat("Play Rate", &PlayRate, 0.01f))
+        {
+            bChanged = true;
+        }
+
+        if (ImGui::Checkbox("Base Looping", &bBaseLoop))
+        {
+            bChanged = true;
+        }
+
+        if (ImGui::Checkbox("Upper Looping", &bOverlayLoop))
+        {
+            bChanged = true;
+        }
+
+        if (bChanged)
+        {
+            if (Graph->SetLayeredBlendState(State.Name, CurrentBaseBS, CurrentBaseSeq, CurrentOverlaySeq, CurrentBranchBone, CurrentBlendWeight, bOverlayLoop, PlayRate, bBaseLoop))
+            {
+                bDirty = true;
+                ErrorMessage.clear();
+                RefreshPreview();
+            }
+            else
+            {
+                ErrorMessage = "Could not update Layered Blend State.";
             }
         }
     }
@@ -1879,7 +2181,7 @@ void FAnimationGraphEditorTab::DrawGraphCanvas()
 
     auto GetDefaultStatePosition = [](int32 Index)
         {
-            return ImVec2(300.0f + static_cast<float>(Index % 3) * 360.0f, 90.0f + static_cast<float>(Index / 3) * 230.0f);
+            return ImVec2(300.0f + static_cast<float>(Index % 3) * 380.0f, 90.0f + static_cast<float>(Index / 3) * 360.0f);
         };
 
     auto EnsureNodePosition = [&](ed::NodeId NodeId, const FName& StoredName, const ImVec2& DefaultPosition)
@@ -2107,23 +2409,155 @@ void FAnimationGraphEditorTab::DrawGraphCanvas()
 
             const bool bDestinationPin = PinKindValue == ed::PinKind::Input;
 
-            ImGui::SetCursorScreenPos(ImVec2(Anchor.x - 0.5f, Anchor.y - 0.5f));
+            constexpr float PinHitRadius = 8.0f;
+
+            const ImVec2 PinMin(std::max(NodeMin.x, Anchor.x - PinHitRadius), std::max(NodeMin.y, Anchor.y - PinHitRadius));
+            const ImVec2 PinMax(std::min(NodeMax.x, Anchor.x + PinHitRadius), std::min(NodeMax.y, Anchor.y + PinHitRadius));
+            const ImVec2 PinSize(PinMax.x - PinMin.x, PinMax.y - PinMin.y);
+
+            ImGui::SetCursorScreenPos(PinMin);
             ed::PushStyleVar(ed::StyleVar_SourceDirection, PinDirection);
             ed::PushStyleVar(ed::StyleVar_TargetDirection, PinDirection);
             ed::PushStyleVar(ed::StyleVar_PinArrowSize, bDestinationPin ? 10.0f : 0.0f);
             ed::PushStyleVar(ed::StyleVar_PinArrowWidth, bDestinationPin ? 8.0f : 0.0f);
 
             ed::BeginPin(PinId, PinKindValue);
-            ImGui::Dummy(ImVec2(1.0f, 1.0f));
-            ed::PinRect(Anchor, Anchor);
+            ImGui::Dummy(PinSize);
+            ed::PinRect(PinMin, PinMax);
             ed::PinPivotRect(Anchor, Anchor);
             ed::EndPin();
 
             ed::PopStyleVar(4);
         };
 
-    constexpr float StateNodeWidth = 240.0f;
-    constexpr float StateNodeHeight = 150.0f;
+    constexpr float StateNodeWidth = 260.0f;
+    constexpr float StateNodeMinimumHeight = 150.0f;
+    constexpr float StateNodeTextPadding = 12.0f;
+
+    const float StateNodeTextWrapWidth = StateNodeWidth - StateNodeTextPadding * 2.0f;
+
+    struct FStateNodeLayout
+    {
+        FString StateName;
+        FString NodeType;
+        FString AssetName;
+        FString PlayRateText;
+
+        float HeaderHeight = 34.0f;
+        float NodeHeight = 150.0f;
+
+        float NodeTypeY = 0.0f;
+        float AssetLabelY = 0.0f;
+        float AssetNameY = 0.0f;
+        float PlayRateY = 0.0f;
+        float ActiveY = 0.0f;
+
+        bool bCurrent = false;
+    };
+
+    std::vector<FStateNodeLayout> StateNodeLayouts;
+    StateNodeLayouts.reserve(States.Num());
+
+    auto MeasureWrappedText = [&](const FString& Text, float WrapWidth)
+        {
+            return ImGui::CalcTextSize(Text.c_str(), nullptr, false, WrapWidth);
+        };
+
+    const FString AssetLabel = "ASSET";
+
+    for (int32 Index = 0; Index < States.Num(); ++Index)
+    {
+        const FAnimGraphStateDefinition& State = States[Index];
+
+        FStateNodeLayout Layout;
+
+        Layout.StateName = State.Name.ToString();
+
+        if (State.NodeType == EAnimGraphStateNodeType::SequencePlayer)
+        {
+            Layout.NodeType = "Sequence Player";
+            const FString AssetPath = State.Sequence ? State.Sequence->GetPath() : "Unassigned Asset";
+            const size_t AssetNameStart = AssetPath.find_last_of("/\\");
+            Layout.AssetName = AssetNameStart == FString::npos ? AssetPath : AssetPath.substr(AssetNameStart + 1);
+
+            char PlayRateBuffer[64];
+            std::snprintf(PlayRateBuffer, sizeof(PlayRateBuffer), "Play Rate: %.2fx  |  %s", State.PlayRate, State.bLooping ? "Loop" : "Once");
+            Layout.PlayRateText = PlayRateBuffer;
+        }
+        else if (State.NodeType == EAnimGraphStateNodeType::BlendSpacePlayer)
+        {
+            Layout.NodeType = "BlendSpace Player";
+            const FString AssetPath = State.BlendSpace ? State.BlendSpace->GetPath() : "Unassigned Asset";
+            const size_t AssetNameStart = AssetPath.find_last_of("/\\");
+            Layout.AssetName = AssetNameStart == FString::npos ? AssetPath : AssetPath.substr(AssetNameStart + 1);
+
+            char PlayRateBuffer[64];
+            std::snprintf(PlayRateBuffer, sizeof(PlayRateBuffer), "Play Rate: %.2fx  |  %s", State.PlayRate, State.bLooping ? "Loop" : "Once");
+            Layout.PlayRateText = PlayRateBuffer;
+        }
+        else // LayeredBoneBlend
+        {
+            Layout.NodeType = "Layered Bone Blend";
+
+            FString BaseName = "None";
+            if (State.BlendSpace)
+            {
+                const FString P = State.BlendSpace->GetPath();
+                const size_t Slash = P.find_last_of("/\\");
+                BaseName = (Slash == FString::npos) ? P : P.substr(Slash + 1);
+            }
+            else if (State.Sequence)
+            {
+                const FString P = State.Sequence->GetPath();
+                const size_t Slash = P.find_last_of("/\\");
+                BaseName = (Slash == FString::npos) ? P : P.substr(Slash + 1);
+            }
+
+            FString OverlayName = "None";
+            if (State.OverlaySequence)
+            {
+                const FString P = State.OverlaySequence->GetPath();
+                const size_t Slash = P.find_last_of("/\\");
+                OverlayName = (Slash == FString::npos) ? P : P.substr(Slash + 1);
+            }
+
+            Layout.AssetName = "Base: " + BaseName + "\nUpper: " + OverlayName + "\nBone: " + State.BranchBoneName.ToString();
+
+            char PlayRateBuffer[64];
+            std::snprintf(PlayRateBuffer, sizeof(PlayRateBuffer), "Rate: %.2fx | W: %.1f | %s", State.PlayRate, State.BlendWeight, State.bOverlayLooping ? "Loop" : "Once");
+            Layout.PlayRateText = PlayRateBuffer;
+        }
+
+        Layout.bCurrent = bHasDebugInfo && DebugInfo.CurrentStateName == State.Name;
+
+        const ImVec2 HeaderTextSize = MeasureWrappedText(Layout.StateName, StateNodeWidth - 20.0f);
+        Layout.HeaderHeight = std::max(34.0f, HeaderTextSize.y + 16.0f);
+
+        float ContentY = Layout.HeaderHeight + 10.0f;
+
+        Layout.NodeTypeY = ContentY;
+        ContentY += MeasureWrappedText(Layout.NodeType, StateNodeTextWrapWidth).y + 6.0f;
+
+        Layout.AssetLabelY = ContentY;
+        ContentY += MeasureWrappedText(AssetLabel, StateNodeTextWrapWidth).y + 4.0f;
+
+        Layout.AssetNameY = ContentY;
+        ContentY += MeasureWrappedText(Layout.AssetName, StateNodeTextWrapWidth).y + 8.0f;
+
+        Layout.PlayRateY = ContentY;
+        ContentY += MeasureWrappedText(Layout.PlayRateText, StateNodeTextWrapWidth).y + 6.0f;
+
+        if (Layout.bCurrent)
+        {
+            Layout.ActiveY = ContentY;
+            ContentY += MeasureWrappedText("ACTIVE", StateNodeTextWrapWidth).y + 4.0f;
+        }
+
+        Layout.NodeHeight = std::max(StateNodeMinimumHeight, ContentY + 12.0f);
+
+        StateNodeLayouts.push_back(std::move(Layout));
+    }
+
     constexpr float AnyStateNodeWidth = 180.0f;
     constexpr float AnyStateNodeHeight = 58.0f;
     constexpr float EntryNodeWidth = 104.0f;
@@ -2141,7 +2575,15 @@ void FAnimationGraphEditorTab::DrawGraphCanvas()
                 return ImVec2(EntryNodeWidth, EntryNodeHeight);
             }
 
-            return ImVec2(StateNodeWidth, StateNodeHeight);
+            for (int32 Index = 0; Index < States.Num(); ++Index)
+            {
+                if (NodeId == MakeStateNodeId(States[Index].Name))
+                {
+                    return ImVec2(StateNodeWidth, StateNodeLayouts[Index].NodeHeight);
+                }
+            }
+
+            return ImVec2(StateNodeWidth, StateNodeMinimumHeight);
         };
 
     auto GetNodeCenter = [&](ed::NodeId NodeId)
@@ -2374,29 +2816,21 @@ void FAnimationGraphEditorTab::DrawGraphCanvas()
     }
 
     // State Nodes
-    constexpr float NodeWidth = 240.0f;
-    constexpr float NodeHeight = 150.0f;
-    constexpr float HeaderHeight = 34.0f;
-
     for (int32 Index = 0; Index < States.Num(); ++Index)
     {
+        const FStateNodeLayout& Layout = StateNodeLayouts[Index];
+        const bool bCurrent = Layout.bCurrent;
         const FAnimGraphStateDefinition& State = States[Index];
 
-        const bool bCurrent = bHasDebugInfo && DebugInfo.CurrentStateName == State.Name;
-
         const FString StateName = State.Name.ToString();
-        const char* NodeType = State.NodeType == EAnimGraphStateNodeType::SequencePlayer ? "Sequence Player" : "BlendSpace Player";
-
-        const FString AssetPath = State.NodeType == EAnimGraphStateNodeType::SequencePlayer
-            ? (State.Sequence ? State.Sequence->GetPath() : "Unassigned Asset")
-            : (State.BlendSpace ? State.BlendSpace->GetPath() : "Unassigned Asset");
-
-        const size_t AssetNameStart = AssetPath.find_last_of("/\\");
-        const FString AssetName = AssetNameStart == FString::npos ? AssetPath : AssetPath.substr(AssetNameStart + 1);
+        const char* NodeType = State.NodeType == EAnimGraphStateNodeType::SequencePlayer ? "Sequence Player"
+            : State.NodeType == EAnimGraphStateNodeType::BlendSpacePlayer ? "BlendSpace Player"
+            : "Layered Bone Blend";
 
         const ImU32 HeaderColor = bCurrent ? IM_COL32(48, 132, 91, 255)
             : State.NodeType == EAnimGraphStateNodeType::SequencePlayer ? IM_COL32(48, 101, 139, 255)
-            : IM_COL32(105, 76, 143, 255);
+            : State.NodeType == EAnimGraphStateNodeType::BlendSpacePlayer ? IM_COL32(105, 76, 143, 255)
+            : IM_COL32(190, 110, 40, 255);
 
         ed::PushStyleColor(ed::StyleColor_NodeBg, ImVec4(0.12f, 0.13f, 0.16f, 1.0f));
         ed::PushStyleColor(ed::StyleColor_NodeBorder, ImVec4(0.28f, 0.30f, 0.34f, 1.0f));
@@ -2406,35 +2840,29 @@ void FAnimationGraphEditorTab::DrawGraphCanvas()
         ed::BeginNode(MakeStateNodeId(State.Name));
 
         const ImVec2 NodeMin = ImGui::GetCursorScreenPos();
-        const ImVec2 NodeMax(NodeMin.x + NodeWidth, NodeMin.y + NodeHeight);
+        const ImVec2 NodeMax(NodeMin.x + StateNodeWidth, NodeMin.y + Layout.NodeHeight);
 
         ImDrawList* NodeDrawList = ImGui::GetWindowDrawList();
 
         // 노드 배경
         NodeDrawList->AddRectFilled(NodeMin, NodeMax, IM_COL32(30, 33, 39, 255), 7.0f);
-        NodeDrawList->AddRectFilled(NodeMin, ImVec2(NodeMax.x, NodeMin.y + HeaderHeight), HeaderColor, 7.0f, ImDrawFlags_RoundCornersTop);
+        NodeDrawList->AddRectFilled(NodeMin, ImVec2(NodeMax.x, NodeMin.y + Layout.HeaderHeight), HeaderColor, 7.0f, ImDrawFlags_RoundCornersTop);
         NodeDrawList->AddRect(NodeMin, NodeMax, IM_COL32(75, 80, 91, 255), 7.0f);
 
-        // 헤더 이름
-        const ImVec4 HeaderClip(NodeMin.x + 10.0f, NodeMin.y + 3.0f, NodeMax.x - 10.0f, NodeMin.y + HeaderHeight - 3.0f);
+        const ImVec4 HeaderClip(NodeMin.x + 10.0f, NodeMin.y + 3.0f, NodeMax.x - 10.0f, NodeMin.y + Layout.HeaderHeight - 3.0f);
 
-        NodeDrawList->AddText(ImGui::GetFont(), ImGui::GetFontSize(), ImVec2(NodeMin.x + 10.0f, NodeMin.y + 8.0f), IM_COL32(245, 245, 250, 255), StateName.c_str(), nullptr, 0.0f, &HeaderClip);
+        NodeDrawList->AddText(ImGui::GetFont(), ImGui::GetFontSize(), ImVec2(NodeMin.x + 10.0f, NodeMin.y + 8.0f), IM_COL32(245, 245, 250, 255), Layout.StateName.c_str(), nullptr, StateNodeWidth - 20.0f, &HeaderClip);
 
-        // 노드 본문
-        const ImVec4 BodyClip(NodeMin.x + 10.0f, NodeMin.y + 39.0f, NodeMax.x - 10.0f, NodeMax.y - 8.0f);
+        const ImVec4 BodyClip(NodeMin.x + 10.0f, NodeMin.y + Layout.HeaderHeight + 4.0f, NodeMax.x - 10.0f, NodeMax.y - 8.0f);
 
-        NodeDrawList->AddText(ImGui::GetFont(), ImGui::GetFontSize(), ImVec2(NodeMin.x + 12.0f, NodeMin.y + 43.0f), IM_COL32(170, 185, 205, 255), NodeType, nullptr, 0.0f, &BodyClip);
-        NodeDrawList->AddText(ImGui::GetFont(), ImGui::GetFontSize(), ImVec2(NodeMin.x + 12.0f, NodeMin.y + 68.0f), IM_COL32(135, 145, 160, 255), "ASSET", nullptr, 0.0f, &BodyClip);
-        NodeDrawList->AddText(ImGui::GetFont(), ImGui::GetFontSize(), ImVec2(NodeMin.x + 12.0f, NodeMin.y + 87.0f), IM_COL32(230, 232, 237, 255), AssetName.c_str(), nullptr, 0.0f, &BodyClip);
-
-        char PlayRateText[64];
-        std::snprintf(PlayRateText, sizeof(PlayRateText), "Play Rate: %.2fx  |  %s", State.PlayRate, State.bLooping ? "Loop" : "Once");
-
-        NodeDrawList->AddText(ImGui::GetFont(), ImGui::GetFontSize(), ImVec2(NodeMin.x + 12.0f, NodeMin.y + 113.0f), IM_COL32(175, 185, 198, 255), PlayRateText, nullptr, 0.0f, &BodyClip);
+        NodeDrawList->AddText(ImGui::GetFont(), ImGui::GetFontSize(), ImVec2(NodeMin.x + 12.0f, NodeMin.y + Layout.NodeTypeY), IM_COL32(170, 185, 205, 255), Layout.NodeType.c_str(), nullptr, StateNodeTextWrapWidth, &BodyClip);
+        NodeDrawList->AddText(ImGui::GetFont(), ImGui::GetFontSize(), ImVec2(NodeMin.x + 12.0f, NodeMin.y + Layout.AssetLabelY), IM_COL32(135, 145, 160, 255), "ASSET", nullptr, StateNodeTextWrapWidth, &BodyClip);
+        NodeDrawList->AddText(ImGui::GetFont(), ImGui::GetFontSize(), ImVec2(NodeMin.x + 12.0f, NodeMin.y + Layout.AssetNameY), IM_COL32(230, 232, 237, 255), Layout.AssetName.c_str(), nullptr, StateNodeTextWrapWidth, &BodyClip);
+        NodeDrawList->AddText(ImGui::GetFont(), ImGui::GetFontSize(), ImVec2(NodeMin.x + 12.0f, NodeMin.y + Layout.PlayRateY), IM_COL32(175, 185, 198, 255), Layout.PlayRateText.c_str(), nullptr, StateNodeTextWrapWidth, &BodyClip);
 
         if (bCurrent)
         {
-            NodeDrawList->AddText(ImGui::GetFont(), ImGui::GetFontSize(), ImVec2(NodeMin.x + 12.0f, NodeMin.y + 132.0f), IM_COL32(90, 225, 145, 255), "ACTIVE", nullptr, 0.0f, &BodyClip);
+            NodeDrawList->AddText(ImGui::GetFont(), ImGui::GetFontSize(), ImVec2(NodeMin.x + 12.0f, NodeMin.y + Layout.ActiveY), IM_COL32(90, 225, 145, 255), "ACTIVE", nullptr, StateNodeTextWrapWidth, &BodyClip);
         }
 
         const ed::NodeId CurrentStateNodeId = MakeStateNodeId(State.Name);
@@ -2470,7 +2898,7 @@ void FAnimationGraphEditorTab::DrawGraphCanvas()
         }
 
         ImGui::SetCursorScreenPos(NodeMin);
-        ImGui::Dummy(ImVec2(NodeWidth, NodeHeight));
+        ImGui::Dummy(ImVec2(StateNodeWidth, Layout.NodeHeight));
 
         ed::EndNode();
 
@@ -2515,106 +2943,167 @@ void FAnimationGraphEditorTab::DrawGraphCanvas()
 
         if (ed::QueryNewLink(&StartPinId, &EndPinId))
         {
-            auto ResolveGraphPin = [&](ed::PinId PinId, FName& OutState, bool& bOutAnyState)
+            auto IsEntryOutputPin = [](ed::PinId PinId)
                 {
-                    if (PinId == MakeAnyStateOutputPinId(GraphPinSideLeft) ||
-                        PinId == MakeAnyStateOutputPinId(GraphPinSideRight) ||
-                        PinId == MakeAnyStateOutputPinId(GraphPinSideTop) ||
-                        PinId == MakeAnyStateOutputPinId(GraphPinSideBottom))
+                    for (int32 Side = 0; Side < GraphPinSideCount; ++Side)
                     {
-                        OutState = NAME_None;
-                        bOutAnyState = true;
-                        return true;
-                    }
-
-                    for (const FAnimGraphStateDefinition& State : States)
-                    {
-                        if (PinId == MakeStateReceivePinId(State.Name))
+                        if (PinId == MakeEntryOutputPinId(Side))
                         {
-                            OutState = State.Name;
-                            bOutAnyState = false;
                             return true;
-                        }
-
-                        for (int32 Side = 0; Side < GraphPinSideCount; ++Side)
-                        {
-                            if (PinId == MakeStatePinId(State.Name, Side))
-                            {
-                                OutState = State.Name;
-                                bOutAnyState = false;
-                                return true;
-                            }
                         }
                     }
 
                     return false;
                 };
 
-            FName FromState = NAME_None;
-            FName ToState = NAME_None;
-            bool bAnyState = false;
-            bool bDestinationAnyState = false;
-
-            const bool bValidPins = ResolveGraphPin(StartPinId, FromState, bAnyState) &&
-                ResolveGraphPin(EndPinId, ToState, bDestinationAnyState) &&
-                !bDestinationAnyState;
-
-            if (!bValidPins)
-            {
-                ed::RejectNewItem();
-            }
-            else if (!bAnyState && FromState == ToState)
-            {
-                ed::RejectNewItem();
-                ErrorMessage = "A State cannot transition to itself.";
-            }
-            else
-            {
-                int32 ExistingTransitionIndex = -1;
-
-                const TArray<FAnimGraphTransitionDefinition>& CurrentTransitions = Graph->GetTransitions();
-
-                for (int32 Index = 0; Index < CurrentTransitions.Num(); ++Index)
+            auto ResolveEntryTarget = [&](ed::PinId PinId, FName& OutState)
                 {
-                    const FAnimGraphTransitionDefinition& Existing = CurrentTransitions[Index];
-
-                    if (Existing.bAnyState == bAnyState && Existing.FromState == FromState && Existing.ToState == ToState)
+                    for (const FAnimGraphStateDefinition& State : States)
                     {
-                        ExistingTransitionIndex = Index;
-                        break;
+                        if (PinId == MakeStateReceivePinId(State.Name))
+                        {
+                            OutState = State.Name;
+                            return true;
+                        }
                     }
-                }
 
-                if (ExistingTransitionIndex != -1)
+                    return false;
+                };
+
+            const bool bEntryStart = IsEntryOutputPin(StartPinId);
+            const bool bEntryEnd = IsEntryOutputPin(EndPinId);
+            const bool bEntryLinkAttempt = bEntryStart || bEntryEnd;
+
+            FName EntryTargetState = NAME_None;
+            const bool bValidEntryTarget = bEntryLinkAttempt && ResolveEntryTarget(EndPinId, EntryTargetState);
+
+            if (bEntryLinkAttempt)
+            {
+                if (!bValidEntryTarget)
                 {
                     ed::RejectNewItem();
-
-                    SelectedTransitionIndex = ExistingTransitionIndex;
-                    SelectedStateIndex = -1;
-                    bFocusTransitionDetails = true;
-                    bFocusStateDetails = false;
-                    ErrorMessage.clear();
+                }
+                else if (EntryTargetState == Graph->GetEntryState())
+                {
+                    ed::RejectNewItem();
                 }
                 else if (ed::AcceptNewItem())
                 {
-                    const bool bAdded = bAnyState
-                        ? Graph->AddAnyStateTransition(ToState, EAnimTransitionRule::StateFinished, NAME_None, 0, 0.2f, 0.0f)
-                        : Graph->AddTransition(FromState, ToState, EAnimTransitionRule::StateFinished, NAME_None, 0, 0.2f, 0.0f);
-
-                    if (bAdded)
+                    if (Graph->SetEntryState(EntryTargetState))
                     {
-                        SelectedTransitionIndex = Graph->GetTransitions().Num() - 1;
-                        SelectedStateIndex = -1;
-                        bFocusTransitionDetails = true;
-                        bFocusStateDetails = false;
-
                         bDirty = true;
                         bRefreshPreview = true;
                         ErrorMessage.clear();
                     }
                     else
                     {
-                        ErrorMessage = "Could not create Transition.";
+                        ErrorMessage = "Could not change Entry State.";
+                    }
+                }
+            }
+            else
+            {
+                auto ResolveGraphPin = [&](ed::PinId PinId, FName& OutState, bool& bOutAnyState)
+                    {
+                        if (PinId == MakeAnyStateOutputPinId(GraphPinSideLeft) ||
+                            PinId == MakeAnyStateOutputPinId(GraphPinSideRight) ||
+                            PinId == MakeAnyStateOutputPinId(GraphPinSideTop) ||
+                            PinId == MakeAnyStateOutputPinId(GraphPinSideBottom))
+                        {
+                            OutState = NAME_None;
+                            bOutAnyState = true;
+                            return true;
+                        }
+
+                        for (const FAnimGraphStateDefinition& State : States)
+                        {
+                            if (PinId == MakeStateReceivePinId(State.Name))
+                            {
+                                OutState = State.Name;
+                                bOutAnyState = false;
+                                return true;
+                            }
+
+                            for (int32 Side = 0; Side < GraphPinSideCount; ++Side)
+                            {
+                                if (PinId == MakeStatePinId(State.Name, Side))
+                                {
+                                    OutState = State.Name;
+                                    bOutAnyState = false;
+                                    return true;
+                                }
+                            }
+                        }
+
+                        return false;
+                    };
+
+                FName FromState = NAME_None;
+                FName ToState = NAME_None;
+                bool bAnyState = false;
+                bool bDestinationAnyState = false;
+
+                const bool bValidPins = ResolveGraphPin(StartPinId, FromState, bAnyState) &&
+                    ResolveGraphPin(EndPinId, ToState, bDestinationAnyState) &&
+                    !bDestinationAnyState;
+
+                if (!bValidPins)
+                {
+                    ed::RejectNewItem();
+                }
+                else if (!bAnyState && FromState == ToState)
+                {
+                    ed::RejectNewItem();
+                    ErrorMessage = "A State cannot transition to itself.";
+                }
+                else
+                {
+                    int32 ExistingTransitionIndex = -1;
+
+                    const TArray<FAnimGraphTransitionDefinition>& CurrentTransitions = Graph->GetTransitions();
+
+                    for (int32 Index = 0; Index < CurrentTransitions.Num(); ++Index)
+                    {
+                        const FAnimGraphTransitionDefinition& Existing = CurrentTransitions[Index];
+
+                        if (Existing.bAnyState == bAnyState && Existing.FromState == FromState && Existing.ToState == ToState)
+                        {
+                            ExistingTransitionIndex = Index;
+                            break;
+                        }
+                    }
+
+                    if (ExistingTransitionIndex != -1)
+                    {
+                        ed::RejectNewItem();
+
+                        SelectedTransitionIndex = ExistingTransitionIndex;
+                        SelectedStateIndex = -1;
+                        bFocusTransitionDetails = true;
+                        bFocusStateDetails = false;
+                        ErrorMessage.clear();
+                    }
+                    else if (ed::AcceptNewItem())
+                    {
+                        const bool bAdded = bAnyState
+                            ? Graph->AddAnyStateTransition(ToState, EAnimTransitionRule::StateFinished, NAME_None, 0, 0.2f, 0.0f)
+                            : Graph->AddTransition(FromState, ToState, EAnimTransitionRule::StateFinished, NAME_None, 0, 0.2f, 0.0f);
+
+                        if (bAdded)
+                        {
+                            SelectedTransitionIndex = Graph->GetTransitions().Num() - 1;
+                            SelectedStateIndex = -1;
+                            bFocusTransitionDetails = true;
+                            bFocusStateDetails = false;
+
+                            bDirty = true;
+                            bRefreshPreview = true;
+                            ErrorMessage.clear();
+                        }
+                        else
+                        {
+                            ErrorMessage = "Could not create Transition.";
+                        }
                     }
                 }
             }
@@ -2701,6 +3190,17 @@ void FAnimationGraphEditorTab::DrawGraphCanvas()
             if (State.BlendSpace && OpenBlendSpaceEditorCallback)
             {
                 OpenBlendSpaceEditorCallback(State.BlendSpace);
+            }
+        }
+        else if (State.NodeType == EAnimGraphStateNodeType::LayeredBoneBlend)
+        {
+            if (State.BlendSpace && OpenBlendSpaceEditorCallback)
+            {
+                OpenBlendSpaceEditorCallback(State.BlendSpace);
+            }
+            else if (State.OverlaySequence && SkeletalMesh && OpenAnimationSequenceViewerCallback)
+            {
+                OpenAnimationSequenceViewerCallback(SkeletalMesh, State.OverlaySequence);
             }
         }
 

@@ -30,10 +30,17 @@ protected:
 	UAnimDataModel* DataModel = nullptr;
 	USkeleton* Skeleton = nullptr;
 	TArray<FAnimNotifyEvent> Notifies;
+	bool bForceRootLock = false;
 public:
 	UAnimSequenceBase();
 	UAnimDataModel* GetDataModel() { return DataModel; }
 	const UAnimDataModel* GetDataModel() const { return DataModel; }
+	float GetPlayLength() const { return DataModel ? DataModel->PlayLength : 0.0f; }
+	float GetFrameRate() const { return (DataModel && DataModel->FrameRate.IsValid()) ? DataModel->FrameRate.AsDecimal() : 30.0f; }
+	int32 GetTotalFrames() const { return DataModel ? DataModel->NumberOfFrames : 0; }
+	void RetargetToSkeleton(USkeleton* InSkeleton);
+	bool IsForceRootLock() const { return bForceRootLock; }
+	void SetForceRootLock(bool bInLock) { bForceRootLock = bInLock; }
 	const TArray<FAnimNotifyEvent>& GetNotifies() const { return Notifies; }
 	TArray<FAnimNotifyEvent>& GetMutableNotifies() { return Notifies; }
 	int32 AddNotify(float TriggerTime, float Duration, const FName& NotifyName)
@@ -43,6 +50,10 @@ public:
 		NewNotify.Duration = Duration;
 		NewNotify.NotifyName = NotifyName;
 		return static_cast<int32>(Notifies.Add(std::move(NewNotify)));
+	}
+	int32 AddNotify(const FAnimNotifyEvent& NewNotify)
+	{
+		return static_cast<int32>(Notifies.Add(NewNotify));
 	}
 	bool RemoveNotify(int32 Index)
 	{

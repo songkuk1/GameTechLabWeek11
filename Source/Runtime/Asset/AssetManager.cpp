@@ -209,14 +209,84 @@ namespace
 		DataModel->NumberOfKeys = ModelAnimation.NumberOfKeys;
 		DataModel->CurveData.Curves = ModelAnimation.CurveData.Curves;
 
+		auto NormalizeBoneName = [](const FString& InName) -> FString
+		{
+			FString Out;
+			Out.reserve(InName.size());
+			for (char c : InName)
+			{
+				Out.push_back(static_cast<char>(std::tolower(static_cast<unsigned char>(c))));
+			}
+			size_t UnderscorePos = 0;
+			while ((UnderscorePos = Out.find('_', UnderscorePos)) != FString::npos)
+			{
+				size_t DigitStart = UnderscorePos + 1;
+				if (DigitStart < Out.size() && Out[DigitStart] == '0')
+				{
+					size_t NonZero = Out.find_first_not_of('0', DigitStart);
+					if (NonZero != FString::npos && std::isdigit(static_cast<unsigned char>(Out[NonZero])))
+					{
+						Out.erase(DigitStart, NonZero - DigitStart);
+					}
+				}
+				UnderscorePos++;
+			}
+			return Out;
+		};
+
+		const TArray<FModelNode>& SkeletonNodes = Skeleton->GetNodes();
+		TMap<FString, int32> NameToNodeMap;
+		TMap<FString, int32> NormNameToNodeMap;
+		for (int32 i = 0; i < SkeletonNodes.Num(); ++i)
+		{
+			NameToNodeMap.Add(SkeletonNodes[i].Name, i);
+			NormNameToNodeMap.Add(NormalizeBoneName(SkeletonNodes[i].Name), i);
+		}
+
 		for (const FModelAnimationTrack& ModelTrack : ModelAnimation.Tracks)
 		{
 			FBoneAnimationTrack BoneTrack;
 			BoneTrack.Name = ModelTrack.Name;
-			BoneTrack.NodeIndex = ModelTrack.NodeIndex;
+			const FString RawTrackName = ModelTrack.Name.ToString();
+			int32 MappedNodeIndex = ModelTrack.NodeIndex;
+
+			if (const int32* FoundIndex = NameToNodeMap.Find(RawTrackName))
+			{
+				MappedNodeIndex = *FoundIndex;
+			}
+			else if (const int32* FoundNormIndex = NormNameToNodeMap.Find(NormalizeBoneName(RawTrackName)))
+			{
+				MappedNodeIndex = *FoundNormIndex;
+			}
+			BoneTrack.NodeIndex = MappedNodeIndex;
 			BoneTrack.InternalTrack.PosKeys = ModelTrack.PosKeys;
 			BoneTrack.InternalTrack.RotKeys = ModelTrack.RotKeys;
 			BoneTrack.InternalTrack.ScaleKeys = ModelTrack.ScaleKeys;
+
+			// 스케일 불일치 보정 (예: 순수 애니메이션 FBX에서 root 스케일이 0.01인데 스켈레톤 root 스케일은 1.0인 경우)
+			if (MappedNodeIndex >= 0 && MappedNodeIndex < SkeletonNodes.Num() && !BoneTrack.InternalTrack.ScaleKeys.IsEmpty())
+			{
+				const FMatrix& NodeTransform = SkeletonNodes[MappedNodeIndex].LocalTransform;
+				const float NodeScaleX = FVector(NodeTransform.M[0][0], NodeTransform.M[0][1], NodeTransform.M[0][2]).Size();
+				const float TrackScaleX = BoneTrack.InternalTrack.ScaleKeys[0].X;
+
+				if (TrackScaleX > 0.0f && NodeScaleX > 0.0f)
+				{
+					const float Ratio = NodeScaleX / TrackScaleX;
+					if (Ratio > 50.0f && Ratio < 150.0f)
+					{
+						for (FVector& SKey : BoneTrack.InternalTrack.ScaleKeys)
+						{
+							SKey *= Ratio;
+						}
+						for (FVector& PKey : BoneTrack.InternalTrack.PosKeys)
+						{
+							PKey *= Ratio;
+						}
+					}
+				}
+			}
+
 			DataModel->BoneAnimationTracks.Add(std::move(BoneTrack));
 		}
 
@@ -295,14 +365,14 @@ void UAssetManager::ScanAssets(const fs::path& AssetRoot, const FAssetLoadProgre
 		AssetPathMap.Add(Key, Path);
 
 		// OBJ / FBX Bake 파일은 원본과 분리해서 나중에 로드한다.
-		if (Extension == ".bin")
+		if (_stricmp(Extension.c_str(), ".bin") == 0)
 		{
 			fs::path SourcePath = FilePath;
 			SourcePath.replace_extension();
 
 			const FString SourceExtension = PathUtils::ToUtf8(SourcePath.extension());
 
-			if (SourceExtension == ".obj" || SourceExtension == ".fbx")
+			if (_stricmp(SourceExtension.c_str(), ".obj") == 0 || _stricmp(SourceExtension.c_str(), ".fbx") == 0)
 			{
 				ModelBakeFiles.Add(FilePath);
 			}
@@ -312,26 +382,34 @@ void UAssetManager::ScanAssets(const fs::path& AssetRoot, const FAssetLoadProgre
 		}
 
 		// 원본 OBJ / FBX는 시작 시 자동 임포트하지 않는다.
-		if (Extension == ".obj" || Extension == ".fbx")
+		if (_stricmp(Extension.c_str(), ".obj") == 0 || _stricmp(Extension.c_str(), ".fbx") == 0)
 		{
 			ReportProgress(FilePath);
 			continue;
 		}
 
-		if (Extension == ".anim")
+		// 이미지 파일은 시작 시 일괄 로드하지 않고, 머티리얼/뷰어에서 필요로 할 때 GetAssetByPath로 자동 로드 (Lazy Loading)
+		if (_stricmp(Extension.c_str(), ".png") == 0 || _stricmp(Extension.c_str(), ".jpg") == 0 ||
+			_stricmp(Extension.c_str(), ".jpeg") == 0 || _stricmp(Extension.c_str(), ".hdr") == 0)
+		{
+			ReportProgress(FilePath);
+			continue;
+		}
+
+		if (_stricmp(Extension.c_str(), ".anim") == 0)
 		{
 			AnimationFiles.Add(FilePath);
 			ReportProgress(FilePath);
 			continue;
 		}
 
-		if (Extension == ".blendspace")
+		if (_stricmp(Extension.c_str(), ".blendspace") == 0)
 		{
 			BlendSpaceFiles.Add(FilePath);
 			continue;
 		}
 
-		if (Extension == ".animgraph")
+		if (_stricmp(Extension.c_str(), ".animgraph") == 0)
 		{
 			AnimationGraphFiles.Add(FilePath);
 			continue;
@@ -350,13 +428,13 @@ void UAssetManager::ScanAssets(const fs::path& AssetRoot, const FAssetLoadProgre
 		const FString SourcePathString = PathUtils::ToUtf8(SourcePath);
 		const FString SourceExtension = PathUtils::ToUtf8(SourcePath.extension());
 
-		if (SourceExtension == ".obj")
+		if (_stricmp(SourceExtension.c_str(), ".obj") == 0)
 		{
 			LoadObjStaticMesh(SourcePathString, false);
 		}
-		else if (SourceExtension == ".fbx")
+		else if (_stricmp(SourceExtension.c_str(), ".fbx") == 0)
 		{
-			LoadFbxModel(SourcePathString, false, true, false);
+			LoadFbxModel(SourcePathString, false, false, false);
 		}
 	}
 
@@ -390,7 +468,7 @@ void UAssetManager::ScanAssets(const fs::path& AssetRoot, const FAssetLoadProgre
 void UAssetManager::LoadAsset(const FString& Key, const FString& Path)
 {
 	FString Extension = PathUtils::ToUtf8(PathUtils::FromUtf8(Path).extension());
-	if (Extension == ".png"|| Extension == ".jpg"|| Extension == ".jpeg")
+	if (_stricmp(Extension.c_str(), ".png") == 0 || _stricmp(Extension.c_str(), ".jpg") == 0 || _stricmp(Extension.c_str(), ".jpeg") == 0)
 	{
 		if (UTexture2D* Texture = LoadTexture(Path))
 		{
@@ -472,6 +550,93 @@ void UAssetManager::CreateDefaultTextures()
 	FlatNormalTexture->SetPath("FlatNormalTexture");
 
 	AssetMap["FlatNormalTexture"] = FlatNormalTexture;
+
+	struct FColorPixel {
+		uint8 R;
+		uint8 G;
+		uint8 B;
+		uint8 A;
+	};
+
+	FColorPixel HeatMapLookUpPixels[256];
+
+	const FVector MagentaColor(160.0f / 255.0f, 32.0f / 255.0f, 240.0f / 255.0f); // 가중치 0 (보라/마젠타)
+	const FVector BlueColor(0.0f, 0.05f, 0.95f);                                 // 미세 가중치 (파랑)
+	const FVector CyanColor(0.0f, 0.95f, 0.95f);                                 // 저가중치 (하늘)
+	const FVector GreenColor(0.1f, 0.95f, 0.1f);                                 // 중간 (초록)
+	const FVector YellowColor(1.0f, 0.90f, 0.0f);                                // 중상 (노랑)
+	const FVector RedColor(1.0f, 0.05f, 0.05f);                                  // 고가중치 (빨강)
+
+	for (int32 i = 0; i < 256; ++i)
+	{
+		float t = static_cast<float>(i) / 255.0f;
+		FVector Color;
+
+		// 1. 0.0 부근의 절벽 제거: 보라 -> 파랑으로 부드럽게 Lerp 전환 (삼각형 톱니 현상 제거)
+		if (t < 0.08f)
+		{
+			float u = t / 0.08f;
+			// 3차 Hermite 커브(Smoothstep)로 가중치 0 경계의 기울기를 부드럽게 시작
+			u = u * u * (3.0f - 2.0f * u);
+			Color = FMath::Lerp(MagentaColor, BlueColor, u);
+		}
+		// 2. 파랑 -> 하늘 (0.08 ~ 0.22)
+		else if (t < 0.22f)
+		{
+			float u = (t - 0.08f) / (0.22f - 0.08f);
+			Color = FMath::Lerp(BlueColor, CyanColor, u);
+		}
+		// 3. 하늘 -> 초록 (0.22 ~ 0.40)
+		else if (t < 0.40f)
+		{
+			float u = (t - 0.22f) / (0.40f - 0.22f);
+			Color = FMath::Lerp(CyanColor, GreenColor, u);
+		}
+		// 4. 초록 -> 노랑 (0.40 ~ 0.55)
+		else if (t < 0.55f)
+		{
+			float u = (t - 0.40f) / (0.55f - 0.40f);
+			Color = FMath::Lerp(GreenColor, YellowColor, u);
+		}
+		// 5. 노랑 -> 빨강 (0.55 ~ 0.72): 트위스트 본 가중치(0.6)에서도 언리얼처럼 붉은색 도달
+		else if (t < 0.72f)
+		{
+			float u = (t - 0.55f) / (0.72f - 0.55f);
+			Color = FMath::Lerp(YellowColor, RedColor, u);
+		}
+		// 6. 0.72 ~ 1.0: 순수 레드
+		else
+		{
+			Color = RedColor;
+		}
+
+		HeatMapLookUpPixels[i].R = static_cast<uint8>(FMath::Clamp(Color.X * 255.0f + 0.5f, 0.0f, 255.0f));
+		HeatMapLookUpPixels[i].G = static_cast<uint8>(FMath::Clamp(Color.Y * 255.0f + 0.5f, 0.0f, 255.0f));
+		HeatMapLookUpPixels[i].B = static_cast<uint8>(FMath::Clamp(Color.Z * 255.0f + 0.5f, 0.0f, 255.0f));
+		HeatMapLookUpPixels[i].A = 255;
+	}
+
+	D3D11_TEXTURE2D_DESC HeatMapLookUpDesc{};
+	HeatMapLookUpDesc.Width = 256;
+	HeatMapLookUpDesc.Height = 1;
+	HeatMapLookUpDesc.MipLevels = 1;
+	HeatMapLookUpDesc.ArraySize = 1;
+	HeatMapLookUpDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	HeatMapLookUpDesc.SampleDesc.Count = 1;
+	HeatMapLookUpDesc.Usage = D3D11_USAGE_IMMUTABLE;
+	HeatMapLookUpDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+
+	TUniquePtr<FTexture2D> HeatMapLookUpResource = RenderCommand::CreateTexture2D(HeatMapLookUpDesc, HeatMapLookUpPixels);
+	if (!HeatMapLookUpResource)
+	{
+		return;
+	}
+
+	UTexture2D* HeatMapLookUpTexture = NewObject<UTexture2D>();
+	HeatMapLookUpTexture->SetResource(std::move(HeatMapLookUpResource));
+	HeatMapLookUpTexture->SetPath("HeatMapLookUpTexture");
+
+	AssetMap["HeatMapLookUpTexture"] = HeatMapLookUpTexture;
 }
 
 void UAssetManager::CreateDefaultMeshes()
@@ -708,7 +873,38 @@ void UAssetManager::LoadFbxModel(const FString& Path, bool bAllowSourceImport, b
 
 	if (ModelData.IsSkeletal)
 	{
+		const bool bHasMeshGeometry = !ModelData.Meshs.IsEmpty() && ModelData.MeshData.Vertices.Num() > 0;
 		USkeleton* Skeleton = !bForceSourceImport && CachedSkeletalMesh ? CachedSkeletalMesh->GetSkeleton() : nullptr;
+
+		// 메쉬가 없는 순수 애니메이션 FBX인 경우, 호환 스켈레톤 탐색하여 공유!
+		if (!Skeleton && !bHasMeshGeometry)
+		{
+			const FString PathLower = Path;
+			// 마네킹 경로 하위일 때만 마네킹 스켈레톤을 우선 공유
+			if (PathLower.find("Mannequin") != FString::npos || PathLower.find("UnrealCharac") != FString::npos)
+			{
+				Skeleton = GetAssetByPath<USkeleton>("Models/Mannequin/UnrealCharac/SKM_Manny_Simple_Skeleton");
+
+				if (!Skeleton)
+				{
+					std::filesystem::path ParentDir = PathUtils::FromUtf8(Path).parent_path();
+					while (!ParentDir.empty() && ParentDir != ParentDir.parent_path())
+					{
+						std::filesystem::path CandidateMeshPath = ParentDir / "SKM_Manny_Simple.FBX";
+						if (fs::exists(CandidateMeshPath))
+						{
+							LoadFbxModel(PathUtils::ToUtf8(CandidateMeshPath), true, true, false);
+							Skeleton = GetAssetByPath<USkeleton>("Models/Mannequin/UnrealCharac/SKM_Manny_Simple_Skeleton");
+							if (Skeleton)
+							{
+								break;
+							}
+						}
+						ParentDir = ParentDir.parent_path();
+					}
+				}
+			}
+		}
 
 		if (!Skeleton)
 		{
@@ -728,20 +924,23 @@ void UAssetManager::LoadFbxModel(const FString& Path, bool bAllowSourceImport, b
 
 		USkeletalMesh* SkeletalMesh = !bForceSourceImport ? CachedSkeletalMesh : nullptr;
 
-		if (!SkeletalMesh)
+		if (bHasMeshGeometry)
 		{
-			SkeletalMesh = CreateSkeletalMesh(ModelData);
 			if (!SkeletalMesh)
 			{
-				return;
-			}
+				SkeletalMesh = CreateSkeletalMesh(ModelData);
+				if (!SkeletalMesh)
+				{
+					return;
+				}
 
-			SkeletalMesh->SetSkeleton(Skeleton);
-			RegisterAsset(MeshKey, SkeletalMesh);
-		}
-		else if (SkeletalMesh->GetSkeleton() != Skeleton)
-		{
-			SkeletalMesh->SetSkeleton(Skeleton);
+				SkeletalMesh->SetSkeleton(Skeleton);
+				RegisterAsset(MeshKey, SkeletalMesh);
+			}
+			else if (SkeletalMesh->GetSkeleton() != Skeleton)
+			{
+				SkeletalMesh->SetSkeleton(Skeleton);
+			}
 		}
 
 		if (bSaveAnimationAssets)
@@ -805,6 +1004,22 @@ void UAssetManager::LoadFbxModel(const FString& Path, bool bAllowSourceImport, b
 				}
 
 				LoadAnimSequence(AnimationPathString);
+			}
+		}
+		else
+		{
+			for (const FModelAnimation& ModelAnimation : ModelData.Animations)
+			{
+				const FString AnimationKey = MeshKey + "::" + ModelAnimation.Name.ToString();
+				if (GetAssetByPath<UAnimSequence>(AnimationKey))
+				{
+					continue;
+				}
+				TArray<FModelAnimationNotify> EmptyNotifies;
+				if (UAnimSequence* EmbeddedSequence = CreateAnimationSequence(ModelAnimation, EmptyNotifies, Skeleton))
+				{
+					RegisterAsset(AnimationKey, EmbeddedSequence);
+				}
 			}
 		}
 	}
@@ -877,6 +1092,25 @@ UAnimationGraph* UAssetManager::LoadAnimationGraph(const FString& Path)
 	return Graph;
 }
 
+TArray<UAnimSequence*> UAssetManager::GetAnimSequencesForMesh(const FString& MeshKey) const
+{
+	TArray<UAnimSequence*> Result;
+	const FString Prefix = MeshKey + "::";
+	for (const auto& Pair : AssetMap)
+	{
+		if (!Pair.second || !Pair.second->IsA<UAnimSequence>())
+		{
+			continue;
+		}
+		if (Pair.first.size() >= Prefix.size() &&
+			_strnicmp(Pair.first.c_str(), Prefix.c_str(), Prefix.size()) == 0)
+		{
+			Result.Add(Cast<UAnimSequence>(Pair.second));
+		}
+	}
+	return Result;
+}
+
 UAnimSequence* UAssetManager::LoadAnimSequence(const FString& Path, USkeletalMesh** OutSkeletalMesh)
 {
 	if (OutSkeletalMesh)
@@ -899,28 +1133,45 @@ UAnimSequence* UAssetManager::LoadAnimSequence(const FString& Path, USkeletalMes
 	Get().LoadFbxModel(PathUtils::ToUtf8(SourceMeshPath), false);
 
 	USkeletalMesh* SkeletalMesh = GetAssetByPath<USkeletalMesh>(SourceMeshKey);
-	if (!SkeletalMesh || !SkeletalMesh->GetSkeleton())
+	USkeleton* TargetSkeleton = SkeletalMesh ? SkeletalMesh->GetSkeleton() : nullptr;
+
+	if (!TargetSkeleton)
 	{
-		HTR_LOG(Error, "[ANIMATION] Source Skeletal Mesh is unavailable: {}", SourceMeshKey);
+		std::filesystem::path SkeletonPath = SourceMeshPath;
+		SkeletonPath.replace_filename(std::format("{}_Skeleton", SkeletonPath.stem().generic_string()));
+		TargetSkeleton = GetAssetByPath<USkeleton>(MakeAssetKey(PathUtils::ToUtf8(SkeletonPath)));
+	}
+
+	if (!TargetSkeleton)
+	{
+		if (SourceMeshKey.find("Mannequin") != FString::npos || SourceMeshKey.find("UnrealCharac") != FString::npos)
+		{
+			TargetSkeleton = GetAssetByPath<USkeleton>("Models/Mannequin/UnrealCharac/SKM_Manny_Simple_Skeleton");
+		}
+	}
+
+	if (!TargetSkeleton)
+	{
+		HTR_LOG(Error, "[ANIMATION] Target Skeleton is unavailable for: {}", SourceMeshKey);
 		return nullptr;
 	}
 
 	if (OutSkeletalMesh)
 	{
-		*OutSkeletalMesh = SkeletalMesh;
+		*OutSkeletalMesh = SkeletalMesh ? SkeletalMesh : TargetSkeleton->GetPreviewMesh();
 	}
 
 	const FString AnimationKey = SourceMeshKey + "::" + ModelAnimation.Name.ToString();
 
 	if (UAnimSequence* Cached = GetAssetByPath<UAnimSequence>(AnimationKey))
 	{
-		if (Cached->GetSkeleton() == SkeletalMesh->GetSkeleton())
+		if (Cached->GetSkeleton() == TargetSkeleton)
 		{
 			return Cached;
 		}
 	}
 
-	UAnimSequence* Animation = CreateAnimationSequence(ModelAnimation, ModelNotifies, SkeletalMesh->GetSkeleton());
+	UAnimSequence* Animation = CreateAnimationSequence(ModelAnimation, ModelNotifies, TargetSkeleton);
 	if (!Animation)
 	{
 		return nullptr;
