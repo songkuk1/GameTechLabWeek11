@@ -46,12 +46,13 @@
 #include "Component/DecalComponent.h"
 #include "Component/SkinnedMeshComponent.h"
 #include "Engine/GameViewportClient.h"
-#include "Editor/SkeletalMeshPreviewTab.h"
-#include "Editor/AnimationSequenceViewerTab.h"
+#include "Editor/Persona/SkeletalMeshPreviewTab.h"
+#include "Editor/Persona/AnimSequencePreviewTab.h"
 #include "Editor/BlendSpaceEditorTab.h"
 #include "Editor/AnimationGraphEditorTab.h"
 #include "Animation/AnimationGraph.h"
 #include "Animation/BlendSpace1D.h"
+#include "Animation/Skeleton.h"
 
 namespace
 {
@@ -535,7 +536,14 @@ void UEditorEngine::RenderViewports()
 		Viewport.EnsureRenderTargets();
 		UWorld& ViewWorld = *Client->GetWorld();
 		PrepareWorld(ViewWorld);
-		RenderFrame(Viewport, ViewWorld, MakeSceneView(Viewport), SceneRenderSettings, TabView.OverlayClient, TabView.Gizmo);
+		FSceneRenderSettings ViewSettings = SceneRenderSettings;
+		ViewSettings.bShowBoneWeightHeatmap = TabView.bShowBoneWeightHeatmap;
+		ViewSettings.SelectedBoneIndex = TabView.SelectedBone;
+		ViewSettings.bUseProceduralHeatmap = TabView.bUseProceduralHeatmap;
+		ViewSettings.bShowHeatmapWireframe = TabView.bShowHeatmapWireframe;
+		ViewSettings.bHeatmapWireframeTinted = TabView.bHeatmapWireframeTinted;
+		RenderFrame(Viewport, ViewWorld, MakeSceneView(Viewport), ViewSettings, TabView.OverlayClient, TabView.Gizmo,
+			TabView.SelectedBone, TabView.BoneDrawMode);
 		AddRenderedWorld(&ViewWorld);
 	}
 
@@ -557,7 +565,8 @@ void UEditorEngine::RenderViewports()
 }
 
 void UEditorEngine::RenderFrame(const FViewport& Viewport, UWorld& ViewWorld, const FSceneView& View, const FSceneRenderSettings& Settings,
-	FEditorViewportClient* OverlayClient, const FGizmo* ViewGizmo)
+	FEditorViewportClient* OverlayClient, const FGizmo* ViewGizmo,
+	int32 SelectedBone, EBoneDrawMode BoneDrawMode)
 {
 	{
 		SCOPE_CYCLE_COUNTER(STAT_BuildRenderQueue);
@@ -568,7 +577,7 @@ void UEditorEngine::RenderFrame(const FViewport& Viewport, UWorld& ViewWorld, co
 	RenderFrame(View, Settings, ViewWorld, Viewport.GetRenderTargets(), RenderQueue);
 
 	// 2. 오버레이 Pass: Grid·Gizmo·UUID는 sRGB 색으로 지정되므로 인코딩 뒤 표시용 타깃에 그린다. PIE UI도 여기서 얹는다
-	RenderOverlayPass(Viewport, OverlayClient, ViewWorld, View, RenderQueue, ViewGizmo);
+	RenderOverlayPass(Viewport, OverlayClient, ViewWorld, View, RenderQueue, ViewGizmo, SelectedBone, BoneDrawMode);
 }
 
 void UEditorEngine::UpdatePIEViewCamera()
@@ -766,20 +775,52 @@ void UEditorEngine::OpenSkeletalMeshViewer(USkeletalMesh* SkeletalMesh)
 
 void UEditorEngine::OpenAnimationSequenceViewer(USkeletalMesh* SkeletalMesh, UAnimSequence* Animation)
 {
-	if (!SkeletalMesh || !Animation)
+	if (!Animation)
 	{
 		return;
 	}
+
+	if (USkeleton* TargetSkeleton = Animation->GetSkeleton())
+	{
+		if (SkeletalMesh && !TargetSkeleton->GetPreviewMesh())
+		{
+			TargetSkeleton->SetPreviewMesh(SkeletalMesh);
+		}
+
+		// 프리뷰 메시가 지정되지 않았으면 기본 마네킹/가렌 메시에서 호환 메시지 검색하여 자동 지정
+		if (!TargetSkeleton->GetPreviewMesh())
+		{
+			const char* FallbackMeshPaths[] = {
+				"Models/Mannequin/UnrealCharac/SKM_Manny_Simple.FBX",
+				"Models/Garen/source/Garen.fbx"
+			};
+			for (const char* FallbackPath : FallbackMeshPaths)
+			{
+				if (USkeletalMesh* LoadedMesh = UAssetManager::GetAssetByPath<USkeletalMesh>(FallbackPath))
+				{
+					if (LoadedMesh->GetSkeleton() && TargetSkeleton->IsCompatibleWith(LoadedMesh->GetSkeleton()) && !LoadedMesh->GetMeshData().Vertices.IsEmpty())
+					{
+						TargetSkeleton->SetPreviewMesh(LoadedMesh);
+						break;
+					}
+				}
+			}
+		}
+	}
+
+	// 1. 이미 열려 있는 애니메이션 프리뷰 탭이 있으면 애니메이션만 교체하고 포커스
 	for (const TUniquePtr<FEditorTab>& Tab : EditorUI->GetTabs())
 	{
-		if (Tab->GetEditingAsset() == Animation)
+		if (FAnimSequencePreviewTab* AnimTab = Tab->AsAnimSequencePreviewTab())
 		{
-			Tab->RequestFocus();
+			AnimTab->SetAnimSequence(Animation);
+			AnimTab->RequestFocus();
 			return;
 		}
 	}
-	FAnimationSequenceViewerTab* NewTab = EditorUI->AddTab<FAnimationSequenceViewerTab>(SkeletalMesh, Animation);
-	NewTab->RequestFocus();
+
+	// 2. 열린 탭이 없으면 새로 생성 및 포커스
+	EditorUI->AddTab<FAnimSequencePreviewTab>(Animation)->RequestFocus();
 }
 
 FWorldContext& UEditorEngine::GetEditorWorldContext()
@@ -896,7 +937,8 @@ void UEditorEngine::OpenAnimationGraphEditor(UAnimationGraph* Graph)
 	NewTab->RequestFocus();
 }
 
-void UEditorEngine::RenderOverlayPass(const FViewport& Viewport, FEditorViewportClient* OverlayClient, UWorld& ViewWorld, const FSceneView& View, FRenderQueue& RenderQueue, const FGizmo* ViewGizmo)
+void UEditorEngine::RenderOverlayPass(const FViewport& Viewport, FEditorViewportClient* OverlayClient, UWorld& ViewWorld, const FSceneView& View, FRenderQueue& RenderQueue, const FGizmo* ViewGizmo,
+	int32 SelectedBone, EBoneDrawMode BoneDrawMode)
 {
 	// 실행 중인 PIE View와 별도 PIE 창은 OverlayClient가 없어 Grid·Gizmo·Outline 같은 에디터 표시를 그리지 않는다.
 	const bool bShowEditorOverlay = OverlayClient != nullptr;
@@ -987,7 +1029,7 @@ void UEditorEngine::RenderOverlayPass(const FViewport& Viewport, FEditorViewport
 		{
 			AActor* Owner = SkinnedMesh->GetOwner();
 			if (Owner && Owner->GetWorld() == &ViewWorld)
-				SkinnedMesh->DrawDebugSkeleton(LineBatcher.get());
+				SkinnedMesh->DrawDebugSkeleton(LineBatcher.get(), SelectedBone, BoneDrawMode);
 		}
 		LineBatcher->OnRender(ViewProjection);
 		LineBatcher->SetDepthTest(true);

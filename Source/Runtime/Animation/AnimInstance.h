@@ -44,7 +44,7 @@ public:
 	virtual void NativeUpdateAnimation(float DeltaSeconds);
 	void InitializeAnimation(USkeletalMeshComponent* InOwningComponent);
 	bool InitializeAnimationGraph(UAnimationGraph* InGraph);
-	void UpdateAnimation(float DeltaSeconds);
+	virtual void UpdateAnimation(float DeltaSeconds);
 	void EvaluateAnimation(FPoseContext& Output);
 	USkeletalMeshComponent* GetOwningComponent() const { return OwningComponent; }
 	AActor* GetOwningActor() const;

@@ -37,6 +37,15 @@ struct FViewConstants
 };
 static_assert(sizeof(FViewConstants) == 80, "HLSL b0 레이아웃(matrix + float3 + float)과 같아야 한다");
 
+struct FSkinWeightConstants
+{
+	int32 SelectedBoneIndex = -1;
+	uint32 bShowBoneWeight = 0;
+	uint32 bUseProceduralHeatmap = 0;
+	uint32 bWireframePass = 0;
+};
+static_assert(sizeof(FSkinWeightConstants) == 16, "HLSL b7 레이아웃과 16바이트 정렬이 일치해야 합니다");
+
 inline FMatrix MakeNormalMatrix(const FMatrix& World) { return World.Inverse().GetTransposed(); }
 
 inline void WriteObjectSlot(uint8* SlotBase, uint32 Slot, const FMatrix& World, const FMatrix& NormalMatrix, uint32 ObjectMask)
@@ -81,6 +90,13 @@ public:
 	void SetViewMode(const FViewRenderMode& Mode);
 	void SetLighting(const FLightingConstants& GlobalLights,
 		const TArray<FPointLightInfo>& PointLights, const TArray<FSpotLightInfo>& SpotLights);
+	void SetBoneWeightHeatmap(bool bEnable, int32 InBoneIndex, bool bProcedural = false)
+	{
+		bShowBoneWeightHeatmap = bEnable;
+		HeatmapBoneIndex = InBoneIndex;
+		bUseProceduralHeatmap = bProcedural;
+	}
+	void SetHeatmapWireframeTinted(bool bTinted) { bHeatmapWireframeTinted = bTinted; }
 
 	// Adapter가 계산한 ViewProjection을 직접 받아 View별 렌더 큐를 그린다.
 	void RenderAll(FRenderQueue& InQueue, const FMatrix& ViewProjection, const FVector& CameraPosition);
@@ -89,6 +105,7 @@ public:
 
 	// 준비된 불투명 목록을 그린다. 반투명은 RenderTranslucent 호출 전까지 보관한다.
 	void RenderOpaque();
+	void RenderBoneWeightWireframeOverlay();
 
 	// Gather 전에 World가 불러 가려진 물체를 거른다.
 	FGPUOcclusion& GetGPUOcclusion() { return GPUOcclusion; }
@@ -148,6 +165,12 @@ private:
 	TUniquePtr<FConstantBuffer> PerObjectCB;
 	TUniquePtr<FConstantBuffer> ViewCB;
 	TUniquePtr<FConstantBuffer> LightingCB;
+	TUniquePtr<FConstantBuffer> SkinWeightCB;
+	bool bShowBoneWeightHeatmap = false;
+	int32 HeatmapBoneIndex = -1;
+	bool bUseProceduralHeatmap = false;
+	bool bHeatmapWireframePass = false;
+	bool bHeatmapWireframeTinted = true;
 
 	// 모든 패킷의 World 행렬을 256바이트 칸에 한 번에 올린 버퍼. D3D11.1 오프셋 바인딩을 못 쓰면 PerObjectCB로 돌아간다.
 	TUniquePtr<FConstantBuffer> PerObjectSlotCB;

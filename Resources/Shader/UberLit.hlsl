@@ -47,6 +47,10 @@
 #define SHADOW_FILTER_PCF    2
 #define SHADOW_FILTER_PCSS   3
 
+#ifndef BONE_WEIGHT_HEATMAP
+#define BONE_WEIGHT_HEATMAP 0
+#endif
+
 struct FAmbientLightInfo
 {
     float3 Color;
@@ -121,7 +125,6 @@ struct FPSInput
     float3 Normal : NORMAL;
     float2 UV : TEXCOORD0;
     float3 WorldPosition : TEXCOORD1;
-    float BoneWeight : TEXCOORD4;
 #if USE_NORMAL_MAP
     float3 Tangent : TANGENT;
     int BitangentSign : BITANGENT_SIGN;
@@ -129,6 +132,9 @@ struct FPSInput
 #if GOURAUD
     float3 DiffuseLight : TEXCOORD2;
     float3 SpecularLight : TEXCOORD3;
+#endif
+#if BONE_WEIGHT_HEATMAP
+    float BoneWeight : TEXCOORD4;
 #endif
 };
 
@@ -212,6 +218,14 @@ cbuffer ShadowFilterConstants : register(b6)
     float ShadowFilterPadding;
 };
 
+cbuffer SkinWeightConstants : register(b7)
+{
+    int SelectedBoneIndex;
+    uint bShowBoneWeight;
+    uint bUseProceduralHeatmap;
+    uint bWireframePass;
+};
+
 StructuredBuffer<FPointLightInfo> StructuredPointLights : register(t8);
 StructuredBuffer<FSpotLightInfo> StructuredSpotLights : register(t9);
 StructuredBuffer<uint> PointTileList : register(t10);
@@ -233,6 +247,7 @@ Texture2DArray<float> ShadowTextureArray : register(t2);
 Texture2D<float> DirectionalLightShadowmapAtlas : register(t3);
 Texture2D DecalTexture : register(t4);
 Texture2D <float4> DecalNormalTexture:register(t5);
+Texture2D HeatMapTexture : register(t6);
 
 SamplerState AlbedoSampler : register(s0);
 SamplerState ShadowPointSampler : register(s1);
@@ -983,26 +998,6 @@ FPSInput mainVS(FVSInput Input)
     Output.WorldPosition = WorldPosition.xyz;
     Output.Normal = mul(Local.Normal, (float3x3) NormalMatrix);
     Output.UV = Input.UV;
-    float HeatmapWeight = Input.Color.r;
-
-#if USE_SKINNING
-if ((ObjectMask & 0x8u) != 0u)
-{
-    HeatmapWeight = 0.0f;
-
-    const uint SelectedBoneIndex = (ObjectMask >> 16u) & 0xFFFFu;
-
-    for (int i = 0; i < Input.BoneInfluenceCount; ++i)
-    {
-        if (Input.BoneIndices[i] == (int)SelectedBoneIndex)
-        {
-            HeatmapWeight += Input.BoneWeights[i];
-        }
-    }
-}
-#endif
-
-    Output.BoneWeight = saturate(HeatmapWeight);
 #if USE_NORMAL_MAP
     Output.Tangent = mul(Local.Tangent, (float3x3) World);
     Output.BitangentSign = Input.Tangent.w;
@@ -1014,12 +1009,119 @@ if ((ObjectMask & 0x8u) != 0u)
     ComputeLighting(N, Output.WorldPosition, V, Shininess, Output.DiffuseLight, Output.SpecularLight);
     
 #endif
+#if BONE_WEIGHT_HEATMAP
+    float AccumWeight = 0.0f;
+#if USE_SKINNING
+    if (SelectedBoneIndex >= 0)
+    {
+        [unroll]
+        for (int i = 0; i < 4; ++i)
+        {
+            if (Input.BoneIndices[i] == SelectedBoneIndex)
+            {
+                AccumWeight += Input.BoneWeights[i];
+            }
+        }
+    }
+#endif
+    Output.BoneWeight = AccumWeight;
+#endif
     return Output;
+}
+
+float3 CalculateProceduralHeatmap(float t)
+{
+    const float3 MagentaColor = float3(160.0f / 255.0f, 32.0f / 255.0f, 240.0f / 255.0f); // 가중치 0 (보라/마젠타)
+    const float3 BlueColor    = float3(0.0f, 0.05f, 0.95f);                                 // 미세 가중치 (파랑)
+    const float3 CyanColor    = float3(0.0f, 0.95f, 0.95f);                                 // 저가중치 (하늘)
+    const float3 GreenColor   = float3(0.1f, 0.95f, 0.1f);                                  // 중간 (초록)
+    const float3 YellowColor  = float3(1.0f, 0.90f, 0.0f);                                  // 중상 (노랑)
+    const float3 RedColor     = float3(1.0f, 0.05f, 0.05f);                                 // 고가중치 (빨강)
+
+    // 1. 0.0 부근의 절벽 제거: 보라 -> 파랑으로 부드럽게 Lerp 전환 (삼각형 톱니 현상 제거)
+    if (t < 0.08f)
+    {
+        float u = t / 0.08f;
+        u = u * u * (3.0f - 2.0f * u);
+        return lerp(MagentaColor, BlueColor, u);
+    }
+    // 2. 파랑 -> 하늘 (0.08 ~ 0.22)
+    else if (t < 0.22f)
+    {
+        float u = (t - 0.08f) / (0.22f - 0.08f);
+        return lerp(BlueColor, CyanColor, u);
+    }
+    // 3. 하늘 -> 초록 (0.22 ~ 0.40)
+    else if (t < 0.40f)
+    {
+        float u = (t - 0.22f) / (0.40f - 0.22f);
+        return lerp(CyanColor, GreenColor, u);
+    }
+    // 4. 초록 -> 노랑 (0.40 ~ 0.55)
+    else if (t < 0.55f)
+    {
+        float u = (t - 0.40f) / (0.55f - 0.40f);
+        return lerp(GreenColor, YellowColor, u);
+    }
+    // 5. 노랑 -> 빨강 (0.55 ~ 0.72): 트위스트 본 가중치(0.6)에서도 언리얼처럼 붉은색 도달
+    else if (t < 0.72f)
+    {
+        float u = (t - 0.55f) / (0.72f - 0.55f);
+        return lerp(YellowColor, RedColor, u);
+    }
+    // 6. 0.72 ~ 1.0: 순수 레드
+    else
+    {
+        return RedColor;
+    }
 }
 
 FPSOutput mainPS(FPSInput Input)
 {
     FPSOutput Output;
+    
+#if BONE_WEIGHT_HEATMAP
+    float Weight = saturate(Input.BoneWeight);
+    float3 HeatColor;
+    if (bUseProceduralHeatmap)
+    {
+        HeatColor = CalculateProceduralHeatmap(Weight);
+    }
+    else
+    {
+        // 텍스처 256 텍셀의 중심[0.5/256, 255.5/256]에 정확히 매핑하여 Wrap 모드 샘플러의 경계 아티팩트 방지
+        float HalfTexel = 0.5f / 256.0f;
+        float U = lerp(HalfTexel, 1.0f - HalfTexel, Weight);
+        HeatColor = HeatMapTexture.Sample(AlbedoSampler, float2(U, 0.5f)).rgb;
+    }
+
+    if (bWireframePass != 0u)
+    {
+        float3 WireColor;
+        if (bWireframePass == 2u)
+        {
+            WireColor = float3(1.0f, 1.0f, 1.0f);
+        }
+        else
+        {
+            WireColor = saturate(HeatColor * 1.35f + float3(0.08f, 0.08f, 0.08f));
+        }
+        Output.Color = float4(WireColor, 1.0f);
+        Output.Normal = float4(0.0f, 0.0f, 1.0f, 0.0f);
+        Output.ObjectMask = 0;
+        return Output;
+    }
+    
+    float3 HeatmapN = normalize(Input.Normal);
+    float3 HeatmapL = normalize(CameraPosition - Input.WorldPosition);
+    float HalfLambert = dot(HeatmapN, HeatmapL) * 0.5f + 0.5f;
+    float LightingFactor = HalfLambert * 0.7f + 0.3f;
+    
+    Output.Color = float4(HeatColor * LightingFactor, 1.0f);
+    Output.Normal = float4(HeatmapN, 0.0f);
+    Output.ObjectMask = 0;
+    return Output;
+#endif
     
     float4 FinalColor = float4(0.0f, 0.0f, 0.0f, 1.0f);
 
@@ -1055,20 +1157,6 @@ FPSOutput mainPS(FPSInput Input)
     // 픽셀 조명과 노멀 시각화를 위한 데칼 요철 합성
     WorldNormal = ApplyDecalNormal(Normal, WorldNormal, int2(Input.Position.xy));
 #endif
-    if ((ObjectMask & 0x8u) != 0u)
-    {
-        const float Weight = saturate(Input.BoneWeight);
-
-        float3 HeatColor = Weight < 0.5f
-        ? lerp(float3(0.0f, 0.0f, 1.0f), float3(0.0f, 1.0f, 0.0f), Weight * 2.0f)
-        : lerp(float3(0.0f, 1.0f, 0.0f), float3(1.0f, 0.0f, 0.0f), (Weight - 0.5f) * 2.0f);
-
-        Output.Color = float4(HeatColor, 1.0f);
-        Output.Normal = float4(normalize(WorldNormal), 0.0f);
-        Output.ObjectMask = ObjectMask & 0x7u;
-
-        return Output;
-    }
 #if VIEWMODE == VIEWMODE_UNLIT
     FinalColor = float4(Albedo, Alpha);
 #elif VIEWMODE == VIEWMODE_WORLDNORMAL

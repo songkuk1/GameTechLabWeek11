@@ -295,14 +295,14 @@ void UAssetManager::ScanAssets(const fs::path& AssetRoot, const FAssetLoadProgre
 		AssetPathMap.Add(Key, Path);
 
 		// OBJ / FBX Bake 파일은 원본과 분리해서 나중에 로드한다.
-		if (Extension == ".bin")
+		if (_stricmp(Extension.c_str(), ".bin") == 0)
 		{
 			fs::path SourcePath = FilePath;
 			SourcePath.replace_extension();
 
 			const FString SourceExtension = PathUtils::ToUtf8(SourcePath.extension());
 
-			if (SourceExtension == ".obj" || SourceExtension == ".fbx")
+			if (_stricmp(SourceExtension.c_str(), ".obj") == 0 || _stricmp(SourceExtension.c_str(), ".fbx") == 0)
 			{
 				ModelBakeFiles.Add(FilePath);
 			}
@@ -312,7 +312,7 @@ void UAssetManager::ScanAssets(const fs::path& AssetRoot, const FAssetLoadProgre
 		}
 
 		// 원본 OBJ / FBX는 시작 시 자동 임포트하지 않는다.
-		if (Extension == ".obj" || Extension == ".fbx")
+		if (_stricmp(Extension.c_str(), ".obj") == 0 || _stricmp(Extension.c_str(), ".fbx") == 0)
 		{
 			ReportProgress(FilePath);
 			continue;
@@ -326,20 +326,20 @@ void UAssetManager::ScanAssets(const fs::path& AssetRoot, const FAssetLoadProgre
 			continue;
 		}
 
-		if (Extension == ".anim")
+		if (_stricmp(Extension.c_str(), ".anim") == 0)
 		{
 			AnimationFiles.Add(FilePath);
 			ReportProgress(FilePath);
 			continue;
 		}
 
-		if (Extension == ".blendspace")
+		if (_stricmp(Extension.c_str(), ".blendspace") == 0)
 		{
 			BlendSpaceFiles.Add(FilePath);
 			continue;
 		}
 
-		if (Extension == ".animgraph")
+		if (_stricmp(Extension.c_str(), ".animgraph") == 0)
 		{
 			AnimationGraphFiles.Add(FilePath);
 			continue;
@@ -358,11 +358,11 @@ void UAssetManager::ScanAssets(const fs::path& AssetRoot, const FAssetLoadProgre
 		const FString SourcePathString = PathUtils::ToUtf8(SourcePath);
 		const FString SourceExtension = PathUtils::ToUtf8(SourcePath.extension());
 
-		if (SourceExtension == ".obj")
+		if (_stricmp(SourceExtension.c_str(), ".obj") == 0)
 		{
 			LoadObjStaticMesh(SourcePathString, false);
 		}
-		else if (SourceExtension == ".fbx")
+		else if (_stricmp(SourceExtension.c_str(), ".fbx") == 0)
 		{
 			LoadFbxModel(SourcePathString, false, false, false);
 		}
@@ -398,7 +398,7 @@ void UAssetManager::ScanAssets(const fs::path& AssetRoot, const FAssetLoadProgre
 void UAssetManager::LoadAsset(const FString& Key, const FString& Path)
 {
 	FString Extension = PathUtils::ToUtf8(PathUtils::FromUtf8(Path).extension());
-	if (Extension == ".png"|| Extension == ".jpg"|| Extension == ".jpeg")
+	if (_stricmp(Extension.c_str(), ".png") == 0 || _stricmp(Extension.c_str(), ".jpg") == 0 || _stricmp(Extension.c_str(), ".jpeg") == 0)
 	{
 		if (UTexture2D* Texture = LoadTexture(Path))
 		{
@@ -480,6 +480,93 @@ void UAssetManager::CreateDefaultTextures()
 	FlatNormalTexture->SetPath("FlatNormalTexture");
 
 	AssetMap["FlatNormalTexture"] = FlatNormalTexture;
+
+	struct FColorPixel {
+		uint8 R;
+		uint8 G;
+		uint8 B;
+		uint8 A;
+	};
+
+	FColorPixel HeatMapLookUpPixels[256];
+
+	const FVector MagentaColor(160.0f / 255.0f, 32.0f / 255.0f, 240.0f / 255.0f); // 가중치 0 (보라/마젠타)
+	const FVector BlueColor(0.0f, 0.05f, 0.95f);                                 // 미세 가중치 (파랑)
+	const FVector CyanColor(0.0f, 0.95f, 0.95f);                                 // 저가중치 (하늘)
+	const FVector GreenColor(0.1f, 0.95f, 0.1f);                                 // 중간 (초록)
+	const FVector YellowColor(1.0f, 0.90f, 0.0f);                                // 중상 (노랑)
+	const FVector RedColor(1.0f, 0.05f, 0.05f);                                  // 고가중치 (빨강)
+
+	for (int32 i = 0; i < 256; ++i)
+	{
+		float t = static_cast<float>(i) / 255.0f;
+		FVector Color;
+
+		// 1. 0.0 부근의 절벽 제거: 보라 -> 파랑으로 부드럽게 Lerp 전환 (삼각형 톱니 현상 제거)
+		if (t < 0.08f)
+		{
+			float u = t / 0.08f;
+			// 3차 Hermite 커브(Smoothstep)로 가중치 0 경계의 기울기를 부드럽게 시작
+			u = u * u * (3.0f - 2.0f * u);
+			Color = FMath::Lerp(MagentaColor, BlueColor, u);
+		}
+		// 2. 파랑 -> 하늘 (0.08 ~ 0.22)
+		else if (t < 0.22f)
+		{
+			float u = (t - 0.08f) / (0.22f - 0.08f);
+			Color = FMath::Lerp(BlueColor, CyanColor, u);
+		}
+		// 3. 하늘 -> 초록 (0.22 ~ 0.40)
+		else if (t < 0.40f)
+		{
+			float u = (t - 0.22f) / (0.40f - 0.22f);
+			Color = FMath::Lerp(CyanColor, GreenColor, u);
+		}
+		// 4. 초록 -> 노랑 (0.40 ~ 0.55)
+		else if (t < 0.55f)
+		{
+			float u = (t - 0.40f) / (0.55f - 0.40f);
+			Color = FMath::Lerp(GreenColor, YellowColor, u);
+		}
+		// 5. 노랑 -> 빨강 (0.55 ~ 0.72): 트위스트 본 가중치(0.6)에서도 언리얼처럼 붉은색 도달
+		else if (t < 0.72f)
+		{
+			float u = (t - 0.55f) / (0.72f - 0.55f);
+			Color = FMath::Lerp(YellowColor, RedColor, u);
+		}
+		// 6. 0.72 ~ 1.0: 순수 레드
+		else
+		{
+			Color = RedColor;
+		}
+
+		HeatMapLookUpPixels[i].R = static_cast<uint8>(FMath::Clamp(Color.X * 255.0f + 0.5f, 0.0f, 255.0f));
+		HeatMapLookUpPixels[i].G = static_cast<uint8>(FMath::Clamp(Color.Y * 255.0f + 0.5f, 0.0f, 255.0f));
+		HeatMapLookUpPixels[i].B = static_cast<uint8>(FMath::Clamp(Color.Z * 255.0f + 0.5f, 0.0f, 255.0f));
+		HeatMapLookUpPixels[i].A = 255;
+	}
+
+	D3D11_TEXTURE2D_DESC HeatMapLookUpDesc{};
+	HeatMapLookUpDesc.Width = 256;
+	HeatMapLookUpDesc.Height = 1;
+	HeatMapLookUpDesc.MipLevels = 1;
+	HeatMapLookUpDesc.ArraySize = 1;
+	HeatMapLookUpDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	HeatMapLookUpDesc.SampleDesc.Count = 1;
+	HeatMapLookUpDesc.Usage = D3D11_USAGE_IMMUTABLE;
+	HeatMapLookUpDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+
+	TUniquePtr<FTexture2D> HeatMapLookUpResource = RenderCommand::CreateTexture2D(HeatMapLookUpDesc, HeatMapLookUpPixels);
+	if (!HeatMapLookUpResource)
+	{
+		return;
+	}
+
+	UTexture2D* HeatMapLookUpTexture = NewObject<UTexture2D>();
+	HeatMapLookUpTexture->SetResource(std::move(HeatMapLookUpResource));
+	HeatMapLookUpTexture->SetPath("HeatMapLookUpTexture");
+
+	AssetMap["HeatMapLookUpTexture"] = HeatMapLookUpTexture;
 }
 
 void UAssetManager::CreateDefaultMeshes()

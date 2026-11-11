@@ -39,6 +39,7 @@ public:
     UAnimInstance* GetAnimInstance() const { return AnimInstance; }
     UAnimInstance* GetOrCreateAnimInstance();
     void SetAnimInstanceClass(UClass* InAnimInstanceClass);
+    void SetAnimInstance(UAnimInstance* InAnimInstance);
 
     void SetAnimationRootNode(FAnimNode_Base* InRootNode);
     bool SetAnimationGraph(UAnimationGraph* InGraph);

@@ -1595,6 +1595,124 @@ namespace ImGui
         return bPressed;
     }
 
+    bool NeoNotify(const char* id, FrameIndexType* frame, const char* label, bool selected, FrameIndexType minFrame, FrameIndexType maxFrame, bool* outHovered, bool* outRightClicked)
+    {
+        IM_ASSERT(inSequencer && "Not in active sequencer!");
+        auto& context = sequencerData[currentSequencer];
+        IM_ASSERT(!context.TimelineStack.empty() && "Not in timeline!");
+
+        ImGuiWindow* window = GetCurrentWindow();
+        const float Left = context.TopBarStartCursor.x + context.ValuesWidth;
+        const float Origin = Left + GetStyle().FramePadding.x;
+        const float PosX = Origin + getKeyframePositionX(*frame, context);
+
+        const float TimelineY = context.ValuesCursor.y;
+        const float TimelineH = currentTimelineHeight;
+        const float CenterY = TimelineY + TimelineH * 0.5f;
+
+        const float DiamondR = 7.0f;
+        const ImVec2 TextSize = CalcTextSize(label ? label : "");
+        const float TextPadLeft = 4.0f;
+        const float TextPadRight = 6.0f;
+        const float PillHeight = 16.0f;
+        const float PillTop = CenterY - PillHeight * 0.5f;
+        const float PillBottom = CenterY + PillHeight * 0.5f;
+
+        const float PillLeft = PosX;
+        const float PillRight = PosX + DiamondR + TextSize.x + TextPadLeft + TextPadRight;
+
+        ImRect Bounds(ImVec2(PosX - DiamondR - 1.0f, PillTop), ImVec2(PillRight, PillBottom));
+        const ImRect Lane(ImVec2(Left, TimelineY), ImVec2(context.TopBarStartCursor.x + context.Size.x, TimelineY + TimelineH));
+
+        if (Bounds.Max.x < Lane.Min.x || Bounds.Min.x > Lane.Max.x)
+        {
+            return false;
+        }
+
+        const ImGuiID NotifyID = window->GetID(id);
+        if (!ItemAdd(Bounds, NotifyID))
+        {
+            return false;
+        }
+
+        bool bHovered = false;
+        bool bHeld = false;
+        const bool bPressed = ButtonBehavior(Bounds, NotifyID, &bHovered, &bHeld, ImGuiButtonFlags_PressedOnClick);
+
+        static ImGuiID DragNotifyID = 0;
+        static FrameIndexType DragStartFrame = 0;
+        static float DragMouseX = 0.0f;
+
+        if (bPressed)
+        {
+            DragNotifyID = NotifyID;
+            DragStartFrame = *frame;
+            DragMouseX = GetIO().MousePos.x;
+        }
+
+        if (bHovered || (bHeld && DragNotifyID == NotifyID))
+        {
+            SetMouseCursor(ImGuiMouseCursor_ResizeEW);
+        }
+
+        if (bHeld && DragNotifyID == NotifyID && IsMouseDragging(ImGuiMouseButton_Left, 1.0f))
+        {
+            const double FrameWidth = ImMax(getPerFrameWidth(context), 0.001f);
+            const double DeltaFrames = std::round((GetIO().MousePos.x - DragMouseX) / FrameWidth);
+            *frame = static_cast<FrameIndexType>(ImClamp(static_cast<double>(DragStartFrame) + DeltaFrames, static_cast<double>(minFrame), static_cast<double>(maxFrame)));
+        }
+
+        if (outHovered)
+        {
+            *outHovered = bHovered;
+        }
+        if (outRightClicked)
+        {
+            *outRightClicked = bHovered && IsMouseClicked(ImGuiMouseButton_Right);
+        }
+
+        ImDrawList* DL = window->DrawList;
+
+        // 1. Pill Background
+        ImRect PillRect(ImVec2(PillLeft, PillTop), ImVec2(PillRight, PillBottom));
+        PillRect.ClipWith(Lane);
+
+        if (PillRect.GetWidth() > 0.0f)
+        {
+            ImU32 PillBgColor = selected ? IM_COL32(35, 145, 235, 255)
+                                         : (bHovered ? IM_COL32(30, 130, 215, 255) : IM_COL32(20, 115, 195, 255));
+            DL->AddRectFilled(PillRect.Min, PillRect.Max, PillBgColor, 3.0f);
+
+            if (selected)
+            {
+                DL->AddRect(PillRect.Min, PillRect.Max, IM_COL32(255, 220, 80, 255), 3.0f, 0, 1.5f);
+            }
+            else if (bHovered)
+            {
+                DL->AddRect(PillRect.Min, PillRect.Max, IM_COL32(220, 240, 255, 200), 3.0f, 0, 1.0f);
+            }
+
+            const ImVec2 TextPos(PillLeft + DiamondR + TextPadLeft, CenterY - TextSize.y * 0.5f);
+            DL->AddText(TextPos, IM_COL32(255, 255, 255, 255), label ? label : "");
+        }
+
+        // 2. Diamond Marker
+        const ImVec2 PTop(PosX, CenterY - DiamondR);
+        const ImVec2 PRight(PosX + DiamondR, CenterY);
+        const ImVec2 PBottom(PosX, CenterY + DiamondR);
+        const ImVec2 PLeft(PosX - DiamondR, CenterY);
+
+        ImU32 DiamondColor = selected ? IM_COL32(180, 170, 255, 255)
+                                      : (bHovered ? IM_COL32(155, 155, 245, 255) : IM_COL32(130, 135, 225, 255));
+        DL->AddQuadFilled(PTop, PRight, PBottom, PLeft, DiamondColor);
+
+        ImU32 DiamondBorder = selected ? IM_COL32(255, 230, 100, 255)
+                                       : (bHovered ? IM_COL32(230, 235, 255, 255) : IM_COL32(90, 100, 180, 255));
+        DL->AddQuad(PTop, PRight, PBottom, PLeft, DiamondBorder, 1.0f);
+
+        return bPressed;
+    }
+
     float NeoGetFrameWidth()
     {
         IM_ASSERT(inSequencer && "Not in active sequencer!");

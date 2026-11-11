@@ -168,6 +168,7 @@ namespace ImGui {
     IMGUI_API bool NeoBeginTrackDropTarget();
     IMGUI_API bool NeoBeginTimelineDropTarget();
     IMGUI_API bool NeoSection(const char* id, FrameIndexType* from, FrameIndexType* to, const char* label, bool selected, FrameIndexType minFrame, FrameIndexType maxFrame);
+    IMGUI_API bool NeoNotify(const char* id, FrameIndexType* frame, const char* label, bool selected, FrameIndexType minFrame, FrameIndexType maxFrame, bool* outHovered = nullptr, bool* outRightClicked = nullptr);
 
     // Like PlotLines() but as a timeline ! Use with NeoGetViewRange() to prepare the data.
     IMGUI_API void NeoTimelinePlot(const char* id, const float* data, int values_count, float scale_min = 0, float scale_max = FLT_MAX, ImVec2 graph_size = ImVec2(0, 30), ...);

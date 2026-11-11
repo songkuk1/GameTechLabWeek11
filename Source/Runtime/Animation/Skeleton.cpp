@@ -2,6 +2,7 @@
 #include "Animation/Skeleton.h"
 
 #include "Core/PathUtils.h"
+#include "Containers/Set.h"
 #include "Json/Dom/JsonValue.h"
 
 #include <cmath>
@@ -205,4 +206,45 @@ const TArray<FModelNode>& USkeleton::GetNodes() const
 const TArray<FModelBone>& USkeleton::GetBones() const
 {
 	return Bones;
+}
+
+bool USkeleton::IsCompatibleWith(const USkeleton* Other) const
+{
+	if (!Other) return false;
+	if (this == Other) return true;
+
+	const TArray<FModelBone>& MyBones = Bones;
+	const TArray<FModelBone>& OtherBones = Other->Bones;
+	if (MyBones.IsEmpty() || OtherBones.IsEmpty())
+	{
+		return false;
+	}
+
+	// 본 이름들을 수집하여 매칭 검사 (메시 노드 제외, 순수 본만 비교)
+	TSet<FString> OtherBoneNames;
+	for (const FModelBone& Bone : OtherBones)
+	{
+		if (Bone.NodeIndex >= 0 && Bone.NodeIndex < Other->Nodes.Num())
+		{
+			OtherBoneNames.Add(Other->Nodes[Bone.NodeIndex].Name);
+		}
+	}
+
+	int32 MatchCount = 0;
+	for (const FModelBone& Bone : MyBones)
+	{
+		if (Bone.NodeIndex >= 0 && Bone.NodeIndex < Nodes.Num())
+		{
+			if (OtherBoneNames.Contains(Nodes[Bone.NodeIndex].Name))
+			{
+				++MatchCount;
+			}
+		}
+	}
+
+	const int32 MinBones = std::min(MyBones.Num(), OtherBones.Num());
+	if (MinBones == 0) return false;
+
+	// 최소 본 수의 50% 이상 일치하거나 8개 이상의 본이 일치하면 호환 스켈레톤으로 판정
+	return (MatchCount >= std::max(1, MinBones / 2)) || (MatchCount >= 8);
 }

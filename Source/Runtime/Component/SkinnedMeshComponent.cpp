@@ -210,8 +210,47 @@ FMatrix USkinnedMeshComponent::GetBoneComponentMatrix(const int32 BoneIndex) con
 	return NodeGlobalTransforms[Bones[BoneIndex].NodeIndex];
 }
 
-void USkinnedMeshComponent::DrawDebugSkeleton(FLineBatcher* LineBatcher, const int32 SelectedBone) const
+FMatrix USkinnedMeshComponent::GetBoneLocalMatrix(const int32 BoneIndex) const
 {
+	USkeleton* Skeleton = SkeletalMesh ? SkeletalMesh->GetSkeleton() : nullptr;
+	if (!Skeleton) return FMatrix::Identity;
+	const TArray<FModelBone>& Bones = Skeleton->GetBones();
+	if (BoneIndex < 0 || BoneIndex >= Bones.Num()) return FMatrix::Identity;
+	const int32 NodeIndex = Bones[BoneIndex].NodeIndex;
+	if (NodeIndex < 0 || NodeIndex >= LocalPose.Num()) return FMatrix::Identity;
+	return LocalPose[NodeIndex];
+}
+
+void USkinnedMeshComponent::SetBoneLocalMatrix(const int32 BoneIndex, const FMatrix& LocalMatrix)
+{
+	USkeleton* Skeleton = SkeletalMesh ? SkeletalMesh->GetSkeleton() : nullptr;
+	if (!Skeleton) return;
+	const TArray<FModelBone>& Bones = Skeleton->GetBones();
+	const TArray<FModelNode>& Nodes = Skeleton->GetNodes();
+	if (BoneIndex < 0 || BoneIndex >= Bones.Num() || LocalPose.Num() != Nodes.Num()) return;
+
+	LocalPose[Bones[BoneIndex].NodeIndex] = LocalMatrix;
+	UpdateBoneMatrices();
+}
+
+void USkinnedMeshComponent::ResetBone(const int32 BoneIndex)
+{
+	USkeleton* Skeleton = SkeletalMesh ? SkeletalMesh->GetSkeleton() : nullptr;
+	if (!Skeleton) return;
+	const TArray<FModelBone>& Bones = Skeleton->GetBones();
+	const TArray<FModelNode>& Nodes = Skeleton->GetNodes();
+	if (BoneIndex < 0 || BoneIndex >= Bones.Num() || LocalPose.Num() != Nodes.Num()) return;
+
+	const int32 NodeIndex = Bones[BoneIndex].NodeIndex;
+	LocalPose[NodeIndex] = Nodes[NodeIndex].LocalTransform;
+	UpdateBoneMatrices();
+}
+
+void USkinnedMeshComponent::DrawDebugSkeleton(FLineBatcher* LineBatcher, const int32 SelectedBone, const EBoneDrawMode DrawMode) const
+{
+	if (DrawMode == EBoneDrawMode::None)
+		return;
+
 	USkeleton* Skeleton = SkeletalMesh ? SkeletalMesh->GetSkeleton() : nullptr;
 	if (!LineBatcher || !Skeleton)
 		return;
@@ -219,6 +258,27 @@ void USkinnedMeshComponent::DrawDebugSkeleton(FLineBatcher* LineBatcher, const i
 	const TArray<FModelBone>& Bones = Skeleton->GetBones();
 	if (NodeGlobalTransforms.Num() != Nodes.Num())
 		return;
+
+	auto ShouldDrawBone = [&](int32 BoneIndex) -> bool
+	{
+		switch (DrawMode)
+		{
+		case EBoneDrawMode::AllHierarchy:
+			return true;
+		case EBoneDrawMode::SelectedOnly:
+			return SelectedBone >= 0 && BoneIndex == SelectedBone;
+		case EBoneDrawMode::SelectedAndParents:
+			if (SelectedBone < 0) return false;
+			for (int32 P = SelectedBone; P >= 0 && P < Bones.Num(); P = Bones[P].ParentBoneIndex)
+			{
+				if (P == BoneIndex) return true;
+			}
+			return false;
+		case EBoneDrawMode::None:
+		default:
+			return false;
+		}
+	};
 
 	// 노드마다 본 번호를 매겨, 부모가 본이 아닌 노드(씬 루트·메시 노드)로는 선을 긋지 않는다
 	TArray<int32> NodeToBone;
@@ -243,6 +303,9 @@ void USkinnedMeshComponent::DrawDebugSkeleton(FLineBatcher* LineBatcher, const i
 	const FVector4 SelectedColor(1.0f, 0.85f, 0.2f, 1.0f);
 	for (int32 BoneIndex = 0; BoneIndex < Bones.Num(); BoneIndex++)
 	{
+		if (!ShouldDrawBone(BoneIndex))
+			continue;
+
 		const int32 NodeIndex = Bones[BoneIndex].NodeIndex;
 		const FMatrix World = JointWorld(NodeIndex);
 		const FVector Joint(World.M[3][0], World.M[3][1], World.M[3][2]);
@@ -251,9 +314,13 @@ void USkinnedMeshComponent::DrawDebugSkeleton(FLineBatcher* LineBatcher, const i
 		const int32 ParentNodeIndex = Nodes[NodeIndex].ParentNodeIndex;
 		if (ParentNodeIndex != -1 && NodeToBone[ParentNodeIndex] != -1)
 		{
-			const FMatrix ParentWorld = JointWorld(ParentNodeIndex);
-			const FVector ParentJoint(ParentWorld.M[3][0], ParentWorld.M[3][1], ParentWorld.M[3][2]);
-			DrawBoneShape(LineBatcher, ParentJoint, Joint, BoneRadius, Color);
+			const int32 ParentBoneIndex = NodeToBone[ParentNodeIndex];
+			if (DrawMode == EBoneDrawMode::SelectedOnly || ShouldDrawBone(ParentBoneIndex))
+			{
+				const FMatrix ParentWorld = JointWorld(ParentNodeIndex);
+				const FVector ParentJoint(ParentWorld.M[3][0], ParentWorld.M[3][1], ParentWorld.M[3][2]);
+				DrawBoneShape(LineBatcher, ParentJoint, Joint, BoneRadius, Color);
+			}
 		}
 
 		DrawJointSphere(LineBatcher, Joint, JointRadius, Color);

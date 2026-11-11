@@ -114,7 +114,7 @@ void FContentDrawerPanel::OnRender()
 				if (TypeError)
 					continue;
 
-				if (!bIsDirectory && (Path.extension() == ".bin" || Path.extension() == ".animnotify" || Path.extension() == ".pose"))
+				if (!bIsDirectory && (_wcsicmp(Path.extension().c_str(), L".bin") == 0 || _wcsicmp(Path.extension().c_str(), L".animnotify") == 0 || _wcsicmp(Path.extension().c_str(), L".pose") == 0))
 					continue;
 
 				ImGui::TableNextColumn();
@@ -180,7 +180,7 @@ void FContentDrawerPanel::OnRender()
 
 					ImGui::EndDragDropSource();
 				}
-				if (!bIsDirectory && Path.extension() == ".sequence" && ImGui::BeginDragDropSource())
+				if (!bIsDirectory && _wcsicmp(Path.extension().c_str(), L".sequence") == 0 && ImGui::BeginDragDropSource())
 				{
 					ImGui::SetDragDropPayload(EditorDragDrop::Sequence, PathString.c_str(), PathString.size() + 1);
 					ImGui::TextUnformatted(FilenameString.c_str());
@@ -193,15 +193,15 @@ void FContentDrawerPanel::OnRender()
 					{
 						CurrentPath /= Path.filename(); // 하위 폴더로 이동
 					}
-					else if (Path.extension() == ".lua")
+					else if (_wcsicmp(Path.extension().c_str(), L".lua") == 0)
 					{
 						FLuaScriptEditor::EditScript(PathString);
 					}
-					else if (Path.extension() == ".sequence" && OpenLevelSequence)
+					else if (_wcsicmp(Path.extension().c_str(), L".sequence") == 0 && OpenLevelSequence)
 					{
 						OpenLevelSequence(PathString);
 					}
-					else if (Path.extension() == ".fbx")
+					else if (_wcsicmp(Path.extension().c_str(), L".fbx") == 0)
 					{
 						CreateAssetError.clear();
 
@@ -234,15 +234,33 @@ void FContentDrawerPanel::OnRender()
 						}
 						else
 						{
-							CreateAssetError = "FBX loading failed. Check the Output Log.";
+							// 애니메이션 전용 FBX인지 확인
+							UAnimSequence* FoundAnim = nullptr;
+							const FString AnimationPrefix = MeshKey + "::";
+							for (TObjectIterator<UAnimSequence> It; It; ++It)
+							{
+								if (It->GetPath().find(AnimationPrefix) == 0)
+								{
+									FoundAnim = *It;
+									break;
+								}
+							}
+							if (FoundAnim && OpenAnimationSequenceViewer)
+							{
+								OpenAnimationSequenceViewer(nullptr, FoundAnim);
+							}
+							else
+							{
+								CreateAssetError = "FBX loading failed. Check the Output Log.";
+							}
 						}
 					}
-					else if (Path.extension() == ".anim")
+					else if (_wcsicmp(Path.extension().c_str(), L".anim") == 0)
 					{
 						USkeletalMesh* SkeletalMesh = nullptr;
 						UAnimSequence* Animation = UAssetManager::LoadAnimSequence(PathString, &SkeletalMesh);
 
-						if (Animation && SkeletalMesh && OpenAnimationSequenceViewer)
+						if (Animation && OpenAnimationSequenceViewer)
 						{
 							OpenAnimationSequenceViewer(SkeletalMesh, Animation);
 						}
@@ -251,7 +269,7 @@ void FContentDrawerPanel::OnRender()
 							CreateAssetError = "Could not open Animation Sequence Viewer. Check the animation asset and its source FBX.";
 						}
 					}
-					else if (Path.extension() == ".blendspace")
+					else if (_wcsicmp(Path.extension().c_str(), L".blendspace") == 0)
 					{
 						UBlendSpace1D* BlendSpace = UAssetManager::LoadBlendSpace(PathString);
 						if (BlendSpace && OpenBlendSpace)
@@ -263,7 +281,7 @@ void FContentDrawerPanel::OnRender()
 							CreateAssetError = "Could not open BlendSpace.";
 						}
 					}
-					else if (Path.extension() == ".animgraph")
+					else if (_wcsicmp(Path.extension().c_str(), L".animgraph") == 0)
 					{
 						UAnimationGraph* Graph = UAssetManager::LoadAnimationGraph(PathString);
 
@@ -568,7 +586,7 @@ void FContentDrawerPanel::ImportModel(bool bImportFbx)
 
 	if (bImportFbx)
 	{
-		if (RelativePath.extension() != ".fbx")
+		if (_wcsicmp(RelativePath.extension().c_str(), L".fbx") != 0)
 		{
 			CreateAssetError = "Please select an FBX file.";
 			return;
@@ -591,7 +609,7 @@ void FContentDrawerPanel::ImportModel(bool bImportFbx)
 	}
 	else
 	{
-		if (RelativePath.extension() != ".obj")
+		if (_wcsicmp(RelativePath.extension().c_str(), L".obj") != 0)
 		{
 			CreateAssetError = "Please select an OBJ file.";
 			return;

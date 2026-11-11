@@ -5,6 +5,8 @@
 
 #include <filesystem>
 
+class USkeletalMesh;
+
 class USkeleton : public UAsset
 {
 	DECLARE_CLASS(USkeleton, UAsset)
@@ -21,9 +23,16 @@ public:
 
 	const TArray<FModelBone>& GetBones() const;
 
+	bool IsCompatibleWith(const USkeleton* Other) const;
+
+	void SetPreviewMesh(USkeletalMesh* InMesh) { PreviewMesh = InMesh; }
+	USkeletalMesh* GetPreviewMesh() const { return PreviewMesh; }
+
 private:
 	TArray<FModelNode> Nodes;
 	TArray<FModelBone> Bones;
 	std::filesystem::path DefaultPosePath;
 	std::filesystem::path PosePath;
+
+	USkeletalMesh* PreviewMesh = nullptr;
 };

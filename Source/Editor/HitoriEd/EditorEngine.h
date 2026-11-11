@@ -64,7 +64,8 @@ public:
 	// Viewport 하나를 자기 렌더 타깃에 그린다. 씬을 그린 뒤 오버레이(Grid·Gizmo·UUID)와 PIE UI를 얹는다.
 	// OverlayClient가 있으면 에디터 표시를 그리고, ViewGizmo는 대상이 이 월드에 있을 때만 그린다.
 	void RenderFrame(const FViewport& Viewport, UWorld& ViewWorld, const FSceneView& View, const FSceneRenderSettings& Settings,
-		FEditorViewportClient* OverlayClient, const FGizmo* ViewGizmo = nullptr);
+		FEditorViewportClient* OverlayClient, const FGizmo* ViewGizmo = nullptr,
+		int32 SelectedBone = -1, EBoneDrawMode BoneDrawMode = EBoneDrawMode::AllHierarchy);
 	// 네 View 결과와 ImGui를 메인 Swapchain 백버퍼에 합성한다. Present는 FEngineLoop가 한다.
 	void PresentFrame();
 	void DeleteActor(AActor* Actor);
@@ -85,6 +86,9 @@ public:
 	bool IsPlaying() const { return PlayWorld != nullptr; }
 
 	FWorldContext& GetEditorWorldContext();
+
+	void OpenSkeletalMeshViewer(USkeletalMesh* SkeletalMesh);
+	void OpenAnimationSequenceViewer(USkeletalMesh* SkeletalMesh, UAnimSequence* Animation);
 
 	////FEditorDelegates::PrePIEEnded / EndPIE.Broadcast()
 	//void TeardownPlaySession(const FWorldContext& PIEContext);            // 액터 EndPlay, 월드 정리(CleanupWorld)
@@ -117,10 +121,9 @@ private:
 	FSceneView MakeSceneView(const FViewport& Viewport) const;
 	FSceneRenderSettings MakeSceneRenderSettings() const;
 
-	void OpenSkeletalMeshViewer(USkeletalMesh* SkeletalMesh);
-	void OpenAnimationSequenceViewer(USkeletalMesh* SkeletalMesh, UAnimSequence* Animation);
 	//Overlay Pass
-	void RenderOverlayPass(const FViewport& Viewport, FEditorViewportClient* OverlayClient, UWorld& ViewWorld, const FSceneView& View, FRenderQueue& RenderQueue, const FGizmo* ViewGizmo);
+	void RenderOverlayPass(const FViewport& Viewport, FEditorViewportClient* OverlayClient, UWorld& ViewWorld, const FSceneView& View, FRenderQueue& RenderQueue, const FGizmo* ViewGizmo,
+		int32 SelectedBone = -1, EBoneDrawMode BoneDrawMode = EBoneDrawMode::AllHierarchy);
 
 	FWorldContext* GetPIEWorldContext(int32 WorldPIEInstance = 0);
 	UWorld* GetActiveWorld() const { return PlayWorld ? PlayWorld : EditorWorld; }

@@ -1,6 +1,7 @@
 #pragma once
 #include "EnginePCH.h"
 #include "Editor/EditorUI/EditorPanel.h"
+#include "Engine/EngineTypes.h"
 
 class FViewport;
 struct FViewportInput;
@@ -17,6 +18,12 @@ struct FEditorTabView
 	FEditorViewportClient* OverlayClient = nullptr;
 	// 탭이 따로 쓰는 Gizmo. 대상이 이 뷰의 월드에 있을 때만 그린다
 	const FGizmo* Gizmo = nullptr;
+	int32 SelectedBone = -1;
+	EBoneDrawMode BoneDrawMode = EBoneDrawMode::AllHierarchy;
+	bool bShowBoneWeightHeatmap = false;
+	bool bUseProceduralHeatmap = false;
+	bool bShowHeatmapWireframe = true;
+	bool bHeatmapWireframeTinted = true;
 };
 
 struct FEditorTabSettings
@@ -57,6 +64,7 @@ public:
 	void RenderPanels();
 
 	const char* GetTitle() const { return Settings.Title.c_str(); }
+	void SetTitle(FString InTitle) { Settings.Title = std::move(InTitle); }
 	bool CanClose() const { return Settings.bClosable; }
 	const TArray<TUniquePtr<IEditorPanel>>& GetPanels() const { return Panels; }
 	//탭의 DockSpace 이름으로 ImGui ID를 계산해서 DockSpaceId에 넣어 두는 함수
@@ -73,6 +81,7 @@ public:
 	void RequestFocus() { bFocusRequested = true; }
 	// 같은 에셋을 두 번 열면 새 탭 대신 기존 탭을 띄우는 데 쓴다
 	virtual const UObject* GetEditingAsset() const { return nullptr; }
+	virtual class FAnimSequencePreviewTab* AsAnimSequencePreviewTab() { return nullptr; }
 	virtual UWorld* GetWorld() const { return nullptr; }
 
 	//엔진이 넘겨준 입력을 탭 안으로 전달

@@ -2,6 +2,7 @@
 
 #include "Component/MeshComponent.h"
 #include "Render/SkeletalMesh.h"
+#include "Engine/EngineTypes.h"
 
 class FLineBatcher;
 
@@ -47,8 +48,11 @@ public:
 	void SetBoneComponentMatrix(int32 BoneIndex, const FMatrix& ComponentMatrix);
 	// 포즈를 에셋의 기본 자세로 되돌린다
 	void ResetPose();
+	void ResetBone(int32 BoneIndex);
+	FMatrix GetBoneLocalMatrix(int32 BoneIndex) const;
+	void SetBoneLocalMatrix(int32 BoneIndex, const FMatrix& LocalMatrix);
 	// 현재 포즈의 본을 선으로 그린다. 부모 관절에서 자식 관절로 잇고, 관절마다 짧은 XYZ 축을 표시한다
-	void DrawDebugSkeleton(FLineBatcher* LineBatcher, int32 SelectedBone = -1) const;
+	void DrawDebugSkeleton(FLineBatcher* LineBatcher, int32 SelectedBone = -1, EBoneDrawMode DrawMode = EBoneDrawMode::AllHierarchy) const;
 
 	void SetBoneWeightHeatmapEnabled(bool bEnabled);
 	bool IsBoneWeightHeatmapEnabled() const { return bBoneWeightHeatmapEnabled; }

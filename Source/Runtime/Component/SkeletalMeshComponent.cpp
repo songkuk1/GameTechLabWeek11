@@ -297,6 +297,28 @@ void USkeletalMeshComponent::SetAnimInstanceClass(UClass* InAnimInstanceClass)
     EvaluateAnimationPose();
 }
 
+void USkeletalMeshComponent::SetAnimInstance(UAnimInstance* InAnimInstance)
+{
+    if (AnimInstance == InAnimInstance)
+    {
+        return;
+    }
+    delete AnimInstance;
+    AnimInstance = InAnimInstance;
+    if (AnimInstance)
+    {
+        AnimInstance->InitializeAnimation(this);
+        bPlayingAnimation = true;
+        EvaluateAnimationPose();
+    }
+    else
+    {
+        bPlayingAnimation = false;
+        ResetPose();
+        UpdateBoneMatrices();
+    }
+}
+
 void USkeletalMeshComponent::SetAnimationRootNode(FAnimNode_Base* InRootNode)
 {
     if (!InRootNode)
