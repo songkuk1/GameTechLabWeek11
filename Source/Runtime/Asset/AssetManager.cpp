@@ -1167,6 +1167,13 @@ UAnimSequence* UAssetManager::LoadAnimSequence(const FString& Path, USkeletalMes
 	{
 		if (Cached->GetSkeleton() == TargetSkeleton)
 		{
+			Cached->GetMutableNotifies().Reset();
+
+			for (const FModelAnimationNotify& Notify : ModelNotifies)
+			{
+				Cached->AddNotify(Notify.TriggerTime, Notify.Duration, Notify.NotifyName);
+			}
+
 			return Cached;
 		}
 	}

@@ -78,6 +78,18 @@ void AEnemyActor::Tick(float DeltaTime)
         return;
     }
 
+    if (ScriptComponent)
+    {
+        sol::table ScriptState = ScriptComponent->GetLuaTable();
+
+        if (ScriptState["bIsDead"].get_or(false))
+        {
+            return;
+        }
+    }
+
+    LookAtPlayer();
+
     LookAtPlayer();
 }
 

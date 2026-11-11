@@ -191,6 +191,16 @@ function Tick(deltaTime)
         AnimationComponent:SetAnimationFloat("Speed", state.AnimationSpeed)
     end
 
+    if CurrentState == "Hit" then
+        StopMoving()
+
+        if AnimationComponent:IsCurrentAnimationStateFinished() and not AnimationComponent:IsAnimationBlending() then
+            AnimationComponent:RequestAnimationState("Locomotion")
+        end
+
+        return
+    end
+
     if CurrentState == "Jab" then
         StopMoving()
 
