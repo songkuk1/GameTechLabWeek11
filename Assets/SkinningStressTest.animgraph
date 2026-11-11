@@ -1,0 +1,24 @@
+{
+    "Version": 1,
+    "AnimationGraph": {
+        "Properties": {},
+        "Skeleton": "Models/UAL1_Standard/UAL1_Standard_Skeleton",
+        "EntryState": "Walk",
+        "Parameters": [],
+        "States": [
+            {
+                "Name": "Walk",
+                "NodeType": 0,
+                "Sequence": "Models/UAL1_Standard/UAL1_Standard.fbx::Armature|Walk_Loop",
+                "BlendSpace": null,
+                "BlendParameterName": "None",
+                "PlayRate": 1.0,
+                "Looping": true
+            }
+        ],
+        "Transitions": [],
+        "EditorNodePositions": [
+            { "NodeName": "Walk", "X": 0.0, "Y": 0.0 }
+        ]
+    }
+}
