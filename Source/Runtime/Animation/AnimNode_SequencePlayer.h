@@ -13,6 +13,9 @@ struct FAnimNode_SequencePlayer : public FAnimNode_Base, public IAnimPlaybackCon
 	bool bHasUpdated = false;
 	bool bAllowRootMotion = true;
 	bool bExtractRootMotion = false;
+	// 루트 모션이 켜져 있으면 이 플레이어가 루트 모션을 액터에 주지 않더라도(bAllowRootMotion == false)
+	// 포즈의 루트 이동은 지운다 (루트 락). 무브먼트 컴포넌트가 움직이는 로코모션에서 메시가 캡슐보다 앞서 나가지 않게 한다.
+	bool bLockRoot = false;
 	float CurrentRootMotionScale = 1.0f;
 	void SetSequence(UAnimSequence* InSequence);
 	void SetAllowRootMotion(bool bInAllow) { bAllowRootMotion = bInAllow; }
