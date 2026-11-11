@@ -163,7 +163,7 @@
                                     "Location": {
                                         "X": 0.0,
                                         "Y": 0.0,
-                                        "Z": 0.0
+                                        "Z": -0.00034809112548828125
                                     },
                                     "Rotation": {
                                         "Pitch": 0.0,
@@ -217,8 +217,8 @@
                                 },
                                 "bDoCollisionTest": true,
                                 "bEnableCameraLag": true,
-                                "bEnableCameraRotationLag": true,
-                                "bUsePawnControlRotation": false
+                                "bEnableCameraRotationLag": false,
+                                "bUsePawnControlRotation": true
                             }
                         },
                         {
@@ -265,7 +265,14 @@
                             "Name": "UCharacterMovementComponent",
                             "Parent": "",
                             "Properties": {
+                                "Gravity": 20.0,
                                 "RotationRate": 360.0,
+                                "Velocity": {
+                                    "X": 0.0,
+                                    "Y": 0.0,
+                                    "Z": 0.0
+                                },
+                                "bConstrainToPlane": false,
                                 "bOrientRotationToMovement": true
                             }
                         },
@@ -539,154 +546,6 @@
                     "RootComponent": "DefaultSceneRoot"
                 },
                 {
-                    "Class": "AStaticMeshActor",
-                    "Components": [
-                        {
-                            "Class": "USceneComponent",
-                            "Name": "DefaultSceneRoot",
-                            "Parent": "",
-                            "Properties": {
-                                "Transform": {
-                                    "Location": {
-                                        "X": 4.0,
-                                        "Y": 0.0,
-                                        "Z": 1.0
-                                    },
-                                    "Rotation": {
-                                        "Pitch": 0.0,
-                                        "Roll": 0.0,
-                                        "Yaw": 0.0
-                                    },
-                                    "Scale": {
-                                        "X": 1.0,
-                                        "Y": 1.0,
-                                        "Z": 1.0
-                                    }
-                                }
-                            }
-                        },
-                        {
-                            "Class": "UStaticMeshComponent",
-                            "Name": "UStaticMeshComponent",
-                            "OverrideMaterials": [
-                                {
-                                    "Base": "DefaultMaterial",
-                                    "Instance": {
-                                        "BaseColor": {
-                                            "A": 1.0,
-                                            "B": 0.10000000149011612,
-                                            "G": 0.11999999731779099,
-                                            "R": 0.9200000166893005
-                                        },
-                                        "BlendState": "Opaque",
-                                        "DecalColorBlendMode": "Alpha",
-                                        "MaterialDomain": "Surface",
-                                        "Properties": {},
-                                        "SamplerState": "LinearClamp",
-                                        "Shininess": 16.0,
-                                        "SpecularColor": {
-                                            "A": 1.0,
-                                            "B": 0.10000000149011612,
-                                            "G": 0.10000000149011612,
-                                            "R": 0.10000000149011612
-                                        },
-                                        "Textures": [
-                                            "WhiteTexture",
-                                            ""
-                                        ],
-                                        "UVScrollSpeed": [
-                                            0.0,
-                                            0.0
-                                        ],
-                                        "bAffectBaseColor": true,
-                                        "bAffectNormal": true,
-                                        "bFlipNormalGreen": false
-                                    }
-                                }
-                            ],
-                            "Parent": "DefaultSceneRoot",
-                            "Properties": {
-                                "ShowBeginOverlapLog": false,
-                                "ShowEndOverlapLog": false,
-                                "ShowHitLog": false,
-                                "StaticMesh": "Cube",
-                                "Transform": {
-                                    "Location": {
-                                        "X": 0.0,
-                                        "Y": 0.0,
-                                        "Z": 0.0
-                                    },
-                                    "Rotation": {
-                                        "Pitch": 0.0,
-                                        "Roll": 0.0,
-                                        "Yaw": 0.0
-                                    },
-                                    "Scale": {
-                                        "X": 0.6499999761581421,
-                                        "Y": 0.6499999761581421,
-                                        "Z": 1.0
-                                    }
-                                },
-                                "bBlockComponet": false,
-                                "bCastShadow": true,
-                                "bGenerateOverlapEvents": false,
-                                "bReceiveShadow": true,
-                                "bReceivesDecals": true,
-                                "bVisible": true
-                            }
-                        },
-                        {
-                            "Class": "UBoxComponent",
-                            "Name": "HitTriggerCollision",
-                            "Parent": "DefaultSceneRoot",
-                            "Properties": {
-                                "BoxExtent": {
-                                    "X": 0.6499999761581421,
-                                    "Y": 0.6499999761581421,
-                                    "Z": 1.0
-                                },
-                                "ShapeColor": {
-                                    "A": 255,
-                                    "B": 0,
-                                    "G": 0,
-                                    "R": 0
-                                },
-                                "ShowBeginOverlapLog": false,
-                                "ShowEndOverlapLog": false,
-                                "ShowHitLog": false,
-                                "Transform": {
-                                    "Location": {
-                                        "X": 0.0,
-                                        "Y": 0.0,
-                                        "Z": 0.0
-                                    },
-                                    "Rotation": {
-                                        "Pitch": 0.0,
-                                        "Roll": 0.0,
-                                        "Yaw": 0.0
-                                    },
-                                    "Scale": {
-                                        "X": 1.0,
-                                        "Y": 1.0,
-                                        "Z": 1.0
-                                    }
-                                },
-                                "bBlockComponet": false,
-                                "bCastShadow": false,
-                                "bDrawOnlyIfSelected": false,
-                                "bGenerateOverlapEvents": true,
-                                "bIsGameHidden": true,
-                                "bReceiveShadow": false,
-                                "bReceivesDecals": true,
-                                "bVisible": true
-                            }
-                        }
-                    ],
-                    "Name": "HitTrigger",
-                    "Properties": {},
-                    "RootComponent": "DefaultSceneRoot"
-                },
-                {
                     "Class": "ADirectionalLightActor",
                     "Components": [
                         {
@@ -951,6 +810,249 @@
                     "Name": "AnimationTestAmbientLight",
                     "Properties": {},
                     "RootComponent": "UAmbientLightComponent"
+                },
+                {
+                    "Class": "AEnemyActor",
+                    "Components": [
+                        {
+                            "Class": "USceneComponent",
+                            "Name": "DefaultSceneRoot",
+                            "Parent": "",
+                            "Properties": {
+                                "Transform": {
+                                    "Location": {
+                                        "X": -4.103391647338867,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                }
+                            }
+                        },
+                        {
+                            "Class": "UScriptComponent",
+                            "Name": "UScriptComponent",
+                            "Parent": "",
+                            "Properties": {
+                                "ScriptPath": "Assets/Scripts/Actors/AnimationTestEnemy.lua"
+                            }
+                        },
+                        {
+                            "Class": "UCharacterMovementComponent",
+                            "Name": "UCharacterMovementComponent",
+                            "Parent": "",
+                            "Properties": {
+                                "Gravity": 9.8100004196167,
+                                "RotationRate": 540.0,
+                                "Velocity": {
+                                    "X": 0.0,
+                                    "Y": 0.0,
+                                    "Z": 0.0
+                                },
+                                "bConstrainToPlane": false,
+                                "bOrientRotationToMovement": true
+                            }
+                        },
+                        {
+                            "Class": "UStaticMeshComponent",
+                            "Name": "UStaticMeshComponent",
+                            "OverrideMaterials": [],
+                            "Parent": "DefaultSceneRoot",
+                            "Properties": {
+                                "ShowBeginOverlapLog": false,
+                                "ShowEndOverlapLog": false,
+                                "ShowHitLog": false,
+                                "StaticMesh": "Cube",
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bBlockComponet": false,
+                                "bCastShadow": true,
+                                "bGenerateOverlapEvents": true,
+                                "bReceiveShadow": true,
+                                "bReceivesDecals": true,
+                                "bVisible": false
+                            }
+                        },
+                        {
+                            "Class": "UBoxComponent",
+                            "Name": "EnemyCollision",
+                            "Parent": "DefaultSceneRoot",
+                            "Properties": {
+                                "BoxExtent": {
+                                    "X": 0.4000000059604645,
+                                    "Y": 0.4000000059604645,
+                                    "Z": 0.8999999761581421
+                                },
+                                "ShapeColor": {
+                                    "A": 255,
+                                    "B": 0,
+                                    "G": 0,
+                                    "R": 0
+                                },
+                                "ShowBeginOverlapLog": false,
+                                "ShowEndOverlapLog": false,
+                                "ShowHitLog": false,
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 1.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bBlockComponet": true,
+                                "bCastShadow": false,
+                                "bDrawOnlyIfSelected": false,
+                                "bGenerateOverlapEvents": false,
+                                "bIsGameHidden": true,
+                                "bReceiveShadow": false,
+                                "bReceivesDecals": true,
+                                "bVisible": true
+                            }
+                        },
+                        {
+                            "Class": "USkeletalMeshComponent",
+                            "Name": "USkeletalMeshComponent_0",
+                            "OverrideMaterials": [
+                                {
+                                    "Base": "DefaultMaterial",
+                                    "Instance": {
+                                        "BaseColor": {
+                                            "A": 1.0,
+                                            "B": 0.042311523109674454,
+                                            "G": 0.40197819471359253,
+                                            "R": 0.7990983128547668
+                                        },
+                                        "BlendState": "Opaque",
+                                        "DecalColorBlendMode": "Alpha",
+                                        "MaterialDomain": "Surface",
+                                        "Properties": {},
+                                        "SamplerState": "LinearClamp",
+                                        "Shininess": 25.0,
+                                        "SpecularColor": {
+                                            "A": 1.0,
+                                            "B": 0.042311523109674454,
+                                            "G": 0.40197819471359253,
+                                            "R": 0.7990983128547668
+                                        },
+                                        "Textures": [
+                                            "WhiteTexture",
+                                            ""
+                                        ],
+                                        "UVScrollSpeed": [
+                                            0.0,
+                                            0.0
+                                        ],
+                                        "bAffectBaseColor": true,
+                                        "bAffectNormal": true,
+                                        "bFlipNormalGreen": false
+                                    }
+                                },
+                                {
+                                    "Base": "DefaultMaterial",
+                                    "Instance": {
+                                        "BaseColor": {
+                                            "A": 1.0,
+                                            "B": 0.7083759903907776,
+                                            "G": 0.132868230342865,
+                                            "R": 0.40197500586509705
+                                        },
+                                        "BlendState": "Opaque",
+                                        "DecalColorBlendMode": "Alpha",
+                                        "MaterialDomain": "Surface",
+                                        "Properties": {},
+                                        "SamplerState": "LinearClamp",
+                                        "Shininess": 25.0,
+                                        "SpecularColor": {
+                                            "A": 1.0,
+                                            "B": 0.7083759903907776,
+                                            "G": 0.132868230342865,
+                                            "R": 0.40197500586509705
+                                        },
+                                        "Textures": [
+                                            "WhiteTexture",
+                                            ""
+                                        ],
+                                        "UVScrollSpeed": [
+                                            0.0,
+                                            0.0
+                                        ],
+                                        "bAffectBaseColor": true,
+                                        "bAffectNormal": true,
+                                        "bFlipNormalGreen": false
+                                    }
+                                }
+                            ],
+                            "Parent": "DefaultSceneRoot",
+                            "Properties": {
+                                "ShowBeginOverlapLog": false,
+                                "ShowEndOverlapLog": false,
+                                "ShowHitLog": false,
+                                "SkeletalMesh": "Models/UAL1_Standard/UAL1_Standard.fbx",
+                                "Transform": {
+                                    "Location": {
+                                        "X": 0.0,
+                                        "Y": 0.0,
+                                        "Z": 0.0
+                                    },
+                                    "Rotation": {
+                                        "Pitch": 0.0,
+                                        "Roll": 0.0,
+                                        "Yaw": 0.0
+                                    },
+                                    "Scale": {
+                                        "X": 1.0,
+                                        "Y": 1.0,
+                                        "Z": 1.0
+                                    }
+                                },
+                                "bBlockComponet": false,
+                                "bCastShadow": true,
+                                "bGenerateOverlapEvents": true,
+                                "bReceiveShadow": true,
+                                "bReceivesDecals": true,
+                                "bVisible": true
+                            }
+                        }
+                    ],
+                    "Name": "AEnemyActor_0",
+                    "Properties": {
+                        "bAutoPossessPlayer": false
+                    },
+                    "RootComponent": "DefaultSceneRoot"
                 }
             ],
             "Properties": {}

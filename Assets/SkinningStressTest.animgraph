@@ -1,24 +1,37 @@
 {
-    "Version": 1,
     "AnimationGraph": {
-        "Properties": {},
-        "Skeleton": "Models/UAL1_Standard/UAL1_Standard_Skeleton",
-        "EntryState": "Walk",
-        "Parameters": [],
-        "States": [
+        "EditorNodePositions": [
             {
-                "Name": "Walk",
-                "NodeType": 0,
-                "Sequence": "Models/UAL1_Standard/UAL1_Standard.fbx::Armature|Walk_Loop",
-                "BlendSpace": null,
-                "BlendParameterName": "None",
-                "PlayRate": 1.0,
-                "Looping": true
+                "NodeName": "Walk",
+                "X": -80.0,
+                "Y": 176.0
+            },
+            {
+                "NodeName": "__EditorEntryPoint__",
+                "X": -264.0,
+                "Y": 78.0
             }
         ],
-        "Transitions": [],
-        "EditorNodePositions": [
-            { "NodeName": "Walk", "X": 0.0, "Y": 0.0 }
-        ]
-    }
+        "EntryState": "Walk",
+        "Parameters": [],
+        "Properties": {},
+        "Skeleton": "Models/UAL1_Standard/UAL1_Standard_Skeleton",
+        "States": [
+            {
+                "BlendParameterName": "None",
+                "BlendSpace": null,
+                "BlendWeight": 1.0,
+                "BranchBoneName": "spine_1",
+                "Looping": true,
+                "Name": "Walk",
+                "NodeType": 0,
+                "OverlayLooping": false,
+                "OverlaySequence": null,
+                "PlayRate": 1.0,
+                "Sequence": "Models/UAL1_Standard/UAL1_Standard.fbx::Armature|Walk_Loop"
+            }
+        ],
+        "Transitions": []
+    },
+    "Version": 1
 }

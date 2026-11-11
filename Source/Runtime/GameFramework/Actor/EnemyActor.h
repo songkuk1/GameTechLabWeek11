@@ -6,7 +6,7 @@
 #include "EnemyActor.generated.h"
 
 class UScriptComponent;
-class USphereComponent;
+class UBoxComponent;
 
 UCLASS()
 class AEnemyActor : public APawn
@@ -22,7 +22,7 @@ public:
 
     void LookAtPlayer();
     void Jump(float JumpSpeed);
-
+    void MoveToward(const FVector& Direction, float InSpeed);
     void EnemyProjectileAtPlayer();
 
     UCharacterMovementComponent* GetCharacterMovementComponent();
@@ -35,7 +35,7 @@ private:
     UScriptComponent* ScriptComponent = nullptr;
     UStaticMeshComponent* StaticMeshComponent = nullptr;
     UCharacterMovementComponent* CharacterMovementComponent = nullptr;
-    USphereComponent* SphereComponent = nullptr;
+    UBoxComponent* BoxComponent = nullptr;
     APawn* Player = nullptr;
 
     float JumpSpeed = 7.0f;

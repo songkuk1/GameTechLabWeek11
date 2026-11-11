@@ -45,6 +45,11 @@
                 "NodeName": "Straight",
                 "X": 248.0,
                 "Y": 592.0
+            },
+            {
+                "NodeName": "Roll",
+                "X": -896.0,
+                "Y": 99.0
             }
         ],
         "EntryState": "Locomotion",
@@ -86,65 +91,106 @@
             {
                 "BlendParameterName": "Speed",
                 "BlendSpace": "NewBlendSpace1D.blendspace",
+                "BlendWeight": 1.0,
+                "BranchBoneName": "spine_1",
                 "Looping": true,
                 "Name": "Locomotion",
                 "NodeType": 1,
+                "OverlayLooping": false,
+                "OverlaySequence": null,
                 "PlayRate": 1.0,
                 "Sequence": null
             },
             {
                 "BlendParameterName": "None",
                 "BlendSpace": null,
+                "BlendWeight": 1.0,
+                "BranchBoneName": "spine_1",
                 "Looping": false,
                 "Name": "JumpStart",
                 "NodeType": 0,
+                "OverlayLooping": false,
+                "OverlaySequence": null,
                 "PlayRate": 1.0,
                 "Sequence": "Models/UAL1_Standard/UAL1_Standard.fbx::Armature|Jump_Start"
             },
             {
                 "BlendParameterName": "None",
                 "BlendSpace": null,
+                "BlendWeight": 1.0,
+                "BranchBoneName": "spine_1",
                 "Looping": true,
                 "Name": "JumpLoop",
                 "NodeType": 0,
+                "OverlayLooping": false,
+                "OverlaySequence": null,
                 "PlayRate": 1.0,
                 "Sequence": "Models/UAL1_Standard/UAL1_Standard.fbx::Armature|Jump_Loop"
             },
             {
                 "BlendParameterName": "None",
                 "BlendSpace": null,
+                "BlendWeight": 1.0,
+                "BranchBoneName": "spine_1",
                 "Looping": false,
                 "Name": "JumpLand",
                 "NodeType": 0,
+                "OverlayLooping": false,
+                "OverlaySequence": null,
                 "PlayRate": 1.0,
                 "Sequence": "Models/UAL1_Standard/UAL1_Standard.fbx::Armature|Jump_Land"
             },
             {
                 "BlendParameterName": "None",
                 "BlendSpace": null,
+                "BlendWeight": 1.0,
+                "BranchBoneName": "spine_1",
                 "Looping": false,
                 "Name": "Jab",
                 "NodeType": 0,
+                "OverlayLooping": false,
+                "OverlaySequence": null,
                 "PlayRate": 1.0,
                 "Sequence": "Models/UAL1_Standard/UAL1_Standard.fbx::Armature|Punch_Jab"
             },
             {
                 "BlendParameterName": "None",
                 "BlendSpace": null,
+                "BlendWeight": 1.0,
+                "BranchBoneName": "spine_1",
                 "Looping": false,
                 "Name": "Hit",
                 "NodeType": 0,
+                "OverlayLooping": false,
+                "OverlaySequence": null,
                 "PlayRate": 1.0,
                 "Sequence": "Models/UAL1_Standard/UAL1_Standard.fbx::Armature|Hit_Chest"
             },
             {
                 "BlendParameterName": "None",
                 "BlendSpace": null,
+                "BlendWeight": 1.0,
+                "BranchBoneName": "spine_1",
                 "Looping": false,
                 "Name": "Straight",
                 "NodeType": 0,
+                "OverlayLooping": false,
+                "OverlaySequence": null,
                 "PlayRate": 1.0,
                 "Sequence": "Models/UAL1_Standard/UAL1_Standard.fbx::Armature|Punch_Cross"
+            },
+            {
+                "BlendParameterName": "None",
+                "BlendSpace": null,
+                "BlendWeight": 1.0,
+                "BranchBoneName": "spine_1",
+                "Looping": false,
+                "Name": "Roll",
+                "NodeType": 0,
+                "OverlayLooping": false,
+                "OverlaySequence": null,
+                "PlayRate": 2.0,
+                "Sequence": "Models/UAL1_Standard/UAL1_Standard.fbx::Armature|Roll"
             }
         ],
         "Transitions": [
@@ -253,6 +299,26 @@
                 "BlendDuration": 0.20000000298023224,
                 "FloatThreshold": 0.0,
                 "FromState": "Straight",
+                "ParameterName": "None",
+                "Priority": 0,
+                "Rule": 3,
+                "ToState": "Locomotion"
+            },
+            {
+                "AnyState": false,
+                "BlendDuration": 0.11999999731779099,
+                "FloatThreshold": 0.0,
+                "FromState": "Locomotion",
+                "ParameterName": "None",
+                "Priority": 15,
+                "Rule": 0,
+                "ToState": "Roll"
+            },
+            {
+                "AnyState": false,
+                "BlendDuration": 0.14000000059604645,
+                "FloatThreshold": 0.0,
+                "FromState": "Roll",
                 "ParameterName": "None",
                 "Priority": 0,
                 "Rule": 3,

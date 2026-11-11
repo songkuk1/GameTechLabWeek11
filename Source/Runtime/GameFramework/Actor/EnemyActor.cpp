@@ -5,7 +5,7 @@
 #include "Asset/AssetManager.h"
 #include "Component/ScriptComponent.h"
 #include "Component/ProjectileMovementComponent.h"
-#include "Component/SphereComponent.h"
+#include "Component/BoxComponent.h"
 
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/Pawn.h"
@@ -17,16 +17,16 @@ AEnemyActor::AEnemyActor()
 {
     PrimaryActorTick.bCanEverTick = true;
     ScriptComponent = CreateDefaultSubobject<UScriptComponent>("UScriptComponent");
-    ScriptComponent->SetScriptPath("Assets/Scripts/Actors/EnemyActor.lua");
+    ScriptComponent->SetScriptPath("Assets/Scripts/Actors/AnimationTestEnemy.lua");
 
     CharacterMovementComponent = CreateDefaultSubobject<UCharacterMovementComponent>("UCharacterMovementComponent");
 
     StaticMeshComponent = CreateDefaultSubobject<UStaticMeshComponent>("UStaticMeshComponent");
     StaticMeshComponent->SetupAttachment(GetRootComponent());
 
-    SphereComponent = CreateDefaultSubobject<USphereComponent>("EnemyCollision");
-    SphereComponent->SetupAttachment(GetRootComponent());
-    CharacterMovementComponent->SetCollisionComponent(SphereComponent);
+    BoxComponent = CreateDefaultSubobject<UBoxComponent>("EnemyCollision");
+    BoxComponent->SetupAttachment(GetRootComponent());
+    CharacterMovementComponent->SetCollisionComponent(BoxComponent);
 }
 
 void AEnemyActor::BeginPlay()
@@ -100,6 +100,17 @@ void AEnemyActor::Jump(float JumpSpeed)
     CharacterMovementComponent->Jump(JumpSpeed);
 }
 
+void AEnemyActor::MoveToward(const FVector& Direction, float InSpeed)
+{
+    if (!CharacterMovementComponent)
+    {
+        return;
+    }
+
+    CharacterMovementComponent->SetMoveSpeed(InSpeed);
+    CharacterMovementComponent->SetMoveInput(Direction);
+}
+
 void AEnemyActor::EnemyProjectileAtPlayer()
 {
     if (!Player)
@@ -142,8 +153,8 @@ void AEnemyActor::EnemyProjectileAtPlayer()
 
     UProjectileMovementComponent* EnemyProjectileMovement = 
         Cast<UProjectileMovementComponent>(Projectile->AddComponent(UProjectileMovementComponent::StaticClass(), FName("EnemyProjectileMovement")));
-    USphereComponent* EnemyProjectileCollision = 
-        Cast<USphereComponent>(Projectile->AddComponent(USphereComponent::StaticClass(), FName("EnemyProjectileCollision")));
+    UBoxComponent* EnemyProjectileCollision = 
+        Cast<UBoxComponent>(Projectile->AddComponent(UBoxComponent::StaticClass(), FName("EnemyProjectileCollision")));
     UScriptComponent* EnemyProjectileScript = 
         Cast<UScriptComponent>(Projectile->AddComponent(UScriptComponent::StaticClass(), FName("EnemyProjectileScript")));
     EnemyProjectileScript->SetScriptPath("Assets/Scripts/Actors/EnemyProjectileActor.lua");

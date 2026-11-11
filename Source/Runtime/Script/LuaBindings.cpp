@@ -510,6 +510,35 @@ void FLuaBindings::RegisterLuaBindings(sol::state& Lua, FLuaCoroutineScheduler* 
 			PC->SetControlRotation(NewRotation);
 		}
 	});
+	GamePlayStatics.set_function("ApplyMeleeDamage", [](AActor* TargetActor, AActor* DamageSource, float Damage)
+		{
+			APlayerActor* TargetPlayer = Cast<APlayerActor>(TargetActor);
+			if (!TargetPlayer || !DamageSource || Damage <= 0.0f)
+			{
+				return false;
+			}
+
+			UScriptComponent* PlayerScript = Cast<UScriptComponent>(TargetPlayer->FindComponentByName(FName("UScriptComponent")));
+			if (!PlayerScript)
+			{
+				return false;
+			}
+
+			sol::table PlayerState = PlayerScript->GetLuaTable();
+			const bool bIsInvulnerable = PlayerState["bIsInvulnerable"].get_or(false);
+			const float HitCooldown = PlayerState["HitCooldown"].get_or(0.0f);
+
+			if (bIsInvulnerable || HitCooldown > 0.0f)
+			{
+				return false;
+			}
+
+			PlayerState["HitCooldown"] = 0.45f;
+			PlayerState["PendingMeleeDamage"] = Damage;
+			PlayerState["PendingMeleeSource"] = DamageSource;
+
+			return true;
+		});
 
 	sol::table UI = Lua.create_named_table("UI");
 	UI.set_function("CreateWidgetTree", &FLuaBindings::CreateWidgetTree);
@@ -559,6 +588,7 @@ void FLuaBindings::RegisterLuaBindings(sol::state& Lua, FLuaCoroutineScheduler* 
 		"PlayHitSquash", &AEnemyActor::PlayHitSquash,
 		"PlaySlamCameraShake", &AEnemyActor::PlaySlamCameraShake,
 		"Jump", &AEnemyActor::Jump,
+		"MoveToward", &AEnemyActor::MoveToward,
 		"IsGrounded", &AEnemyActor::IsGrounded
 	);
 
