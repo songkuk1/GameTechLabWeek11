@@ -2,14 +2,14 @@
 
 #include "GameFramework/Actor.h"
 #include "Component/ParticleSubUVComponent.h"
+#include "ParticleActor.generated.h"
 
 // Todo: subuv
+UCLASS()
 class AParticleActor : public AActor
 {
-	DECLARE_CLASS(AParticleActor, AActor)
+	GENERATED_BODY()
 
-	REFLECT_START(ClassName)
-		REFLECT_END()
 
 public:
 	AParticleActor();

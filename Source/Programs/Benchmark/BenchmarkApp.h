@@ -12,6 +12,7 @@
 #include "Editor/Settings/SettingsPanel.h"
 #include "Render/Renderer.h"
 #include "Render/LineBatcher.h"
+#include "BenchmarkApp.generated.h"
 
 class FImGuiRenderer;
 class FOutlinerPanel;
@@ -20,9 +21,10 @@ class FEditorControlsPanel;
 class FOutputLogPanel;
 class UPrimitiveComponent;
 
+UCLASS()
 class UBenchmarkEngine : public UEngine
 {
-	DECLARE_CLASS(UBenchmarkEngine, UEngine)
+	GENERATED_BODY()
 
 public:
 	FEngineConfig GetConfig() const override;

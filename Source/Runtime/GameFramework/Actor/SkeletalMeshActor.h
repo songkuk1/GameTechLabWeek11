@@ -2,10 +2,12 @@
 
 #include "GameFramework/Actor.h"
 #include "Component/SkeletalMeshComponent.h"
+#include "SkeletalMeshActor.generated.h"
 
+UCLASS()
 class ASkeletalMeshActor :public AActor
 {
-	DECLARE_CLASS(ASkeletalMeshActor, AActor)
+	GENERATED_BODY()
 public:
 	ASkeletalMeshActor();
 	virtual ~ASkeletalMeshActor() = default;

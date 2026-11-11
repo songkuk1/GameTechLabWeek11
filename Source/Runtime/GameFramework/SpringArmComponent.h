@@ -1,23 +1,12 @@
 #pragma once
 
 #include "Component/SceneComponent.h"
+#include "SpringArmComponent.generated.h"
 
+UCLASS()
 class USpringArmComponent : public USceneComponent
 {
-	DECLARE_CLASS(USpringArmComponent, USceneComponent)
-	REFLECT_START(ClassName)
-		PROPERTY(TargetArmLength)
-		PROPERTY(SocketOffset)
-		PROPERTY(TargetOffset)
-		PROPERTY(ProbeSize)
-		PROPERTY(bDoCollisionTest)
-		PROPERTY(bUsePawnControlRotation)
-		PROPERTY(bEnableCameraLag)
-		PROPERTY(bEnableCameraRotationLag)
-		PROPERTY(CameraLagSpeed)
-		PROPERTY(CameraRotationLagSpeed)
-		PROPERTY(CameraLagMaxDistance)
-	REFLECT_END()
+	GENERATED_BODY()
 
 public:
 	USpringArmComponent();
@@ -34,22 +23,33 @@ public:
 
 private:
 	// Camera
+	UPROPERTY(EditAnywhere)
 	float TargetArmLength = 4.0f;
+	UPROPERTY(EditAnywhere)
 	FVector SocketOffset = FVector::ZeroVector;
+	UPROPERTY(EditAnywhere)
 	FVector TargetOffset = FVector::ZeroVector;
 
 	// Camera Collision
+	UPROPERTY(EditAnywhere)
 	float ProbeSize = 0.15f;
+	UPROPERTY(EditAnywhere)
 	bool bDoCollisionTest = true;
 
 	// Camera Settings
+	UPROPERTY(EditAnywhere)
 	bool bUsePawnControlRotation = true;
 
 	// Lag
+	UPROPERTY(EditAnywhere)
 	bool bEnableCameraLag = false;
+	UPROPERTY(EditAnywhere)
 	bool bEnableCameraRotationLag = false;
+	UPROPERTY(EditAnywhere)
 	float CameraLagSpeed = 10.0f;
+	UPROPERTY(EditAnywhere)
 	float CameraRotationLagSpeed = 10.0f;
+	UPROPERTY(EditAnywhere)
 	float CameraLagMaxDistance = 0.0f;
 
 	// 런타임 상태

@@ -1,19 +1,21 @@
 #pragma once
 #include "ActorComponent.h"
 #include "SceneComponent.h"
+#include "MovementComponent.generated.h"
 
+UCLASS()
 class UMovementComponent : public UActorComponent
 {
-	DECLARE_CLASS(UMovementComponent, UActorComponent)
-	REFLECT_START(ClassName)
-		REFLECT_END()
+	GENERATED_BODY()
 
 protected:
 	USceneComponent* UpdatedComponent = nullptr;
 
 public:
+	UPROPERTY(EditAnywhere)
 	FVector Velocity;
-	
+
+	UPROPERTY(EditAnywhere)
 	float Gravity = 9.81f;
 
 	// ActorComponent  Interface
@@ -32,6 +34,7 @@ public:
 	virtual void StopMovementImmediately();
 
 protected:
+	UPROPERTY(EditAnywhere)
 	bool bConstrainToPlane = false;
 	FVector PlaneConstraintNormal = FVector::ZeroVector;
 	FVector PlaneConstraintOrigin = FVector::ZeroVector;

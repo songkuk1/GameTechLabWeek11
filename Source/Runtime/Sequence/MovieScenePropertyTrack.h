@@ -3,12 +3,14 @@
 #include "UObject/Object.h"
 #include "UObject/Class.h"
 #include "Containers/Array.h"
+#include "MovieScenePropertyTrack.generated.h"
 
 class UMovieSceneSection;
 
+UCLASS()
 class UMovieScenePropertyTrack : public UObject
 {
-	DECLARE_CLASS(UMovieScenePropertyTrack, UObject)
+	GENERATED_BODY()
 
 public:
 	virtual ~UMovieScenePropertyTrack();

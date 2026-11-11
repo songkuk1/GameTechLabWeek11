@@ -25,6 +25,7 @@ void FAnimNode_SequencePlayer::SetSequence(UAnimSequence* InSequence)
     CurrentTime = 0.0f;
     bHasUpdated = false;
     bExtractRootMotion = false;
+    bLockRoot = false;
     CurrentRootMotionScale = 1.0f;
 }
 
@@ -78,7 +79,11 @@ void FAnimNode_SequencePlayer::SetPlayRate(float InPlayRate)
 
 void FAnimNode_SequencePlayer::Update(const FAnimationUpdateContext& Context)
 {
-    bExtractRootMotion = bAllowRootMotion && Context.AnimInstance && Context.AnimInstance->IsRootMotionEnabled();
+    const bool bRootMotionEnabled = Context.AnimInstance && Context.AnimInstance->IsRootMotionEnabled();
+    bExtractRootMotion = bAllowRootMotion && bRootMotionEnabled;
+    // 루트 모션을 액터에 주는 것(추출)과 포즈에서 루트를 고정하는 것(락)을 나눈다.
+    // 블렌드스페이스 안의 플레이어처럼 추출이 꺼진 플레이어도 루트 모션 모드에서는 루트를 고정한다.
+    bLockRoot = bRootMotionEnabled;
     CurrentRootMotionScale = (bAllowRootMotion && Context.AnimInstance) ? Context.AnimInstance->GetRootMotionScale() : 1.0f;
     if (!Sequence || !Sequence->GetDataModel())
     {
@@ -208,7 +213,7 @@ void FAnimNode_SequencePlayer::Evaluate(FPoseContext& Output)
 
         if (Sequence->GetRootBoneTransform(0.0f, RootPosition, RootRotation, RootScale))
         {
-            if (bExtractRootMotion)
+            if (bExtractRootMotion || bLockRoot)
             {
                 Output.Pose[RootNodeIndex] = MakeAnimationMatrix(RootPosition, RootRotation, RootScale);
             }

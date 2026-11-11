@@ -3,10 +3,12 @@
 #include "GameFramework/Actor.h"
 #include "Component/BillboardComponent.h"
 #include "Component/SpotLightComponent.h"
+#include "SpotLightActor.generated.h"
 
+UCLASS()
 class ASpotLightActor final : public AActor
 {
-	DECLARE_CLASS(ASpotLightActor, AActor)
+	GENERATED_BODY()
 
 public:
 	ASpotLightActor();

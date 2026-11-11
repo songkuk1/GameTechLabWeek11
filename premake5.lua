@@ -171,6 +171,22 @@ project "Lua"
     filter {}
 
 
+-- 헤더 툴 (UE의 UnrealHeaderTool 역할). 엔진 코드에 의존하지 않고 std만 쓴다.
+-- HitoriEngine / HitoriEditor가 빌드 전에 이 exe로 *.generated.h를 만든다.
+HeaderTool = '"%{wks.location}/Build/Bin/' .. outputdir .. '/HitoriHeaderTool.exe"'
+GeneratedDir = "%{wks.location}/Intermediate/Generated"
+
+project "HitoriHeaderTool"
+    location "Source/Programs/HitoriHeaderTool"
+    kind     "ConsoleApp"
+    CommonSettings()
+
+    files
+    {
+        "Source/Programs/HitoriHeaderTool/**.h",
+        "Source/Programs/HitoriHeaderTool/**.cpp",
+    }
+
 -- 런타임. 에디터를 모른다. include 경로에 Source/Editor가 없는 것이 그 방벽이다.
 -- location이 소스 루트와 같아야 "모든 파일 표시"에서 폴더가 보인다.
 project "HitoriEngine"
@@ -191,6 +207,7 @@ project "HitoriEngine"
     includedirs
     {
         "Source/Runtime",
+        "Intermediate/Generated/Runtime",   -- HitoriHeaderTool이 만든 *.generated.h
         "%{IncludeDir.stb}",
         "%{IncludeDir.json}",
         "%{IncludeDir.Lua}",
@@ -210,6 +227,9 @@ project "HitoriEngine"
         "zlib-md.lib",
         "bcrypt",
     }
+
+    dependson { "HitoriHeaderTool" }
+    prebuildcommands { HeaderTool .. ' Runtime "' .. GeneratedDir .. '/Runtime" "%{wks.location}/Source/Runtime"' }
 
     -- Debug 계열: Debug용 라이브러리 폴더
     filter "configurations:Debug or Benchmark_Debug or Game_Debug"
@@ -245,11 +265,18 @@ project "HitoriEditor"
         "Source/Editor/**.rc",   -- 창·exe 아이콘
     }
 
+    removefiles { "Source/Programs/HitoriHeaderTool/**" }
+
+    dependson { "HitoriHeaderTool" }
+    prebuildcommands { HeaderTool .. ' Editor "' .. GeneratedDir .. '/Editor" "%{wks.location}/Source/Editor" "%{wks.location}/Source/Programs/ObjViewer" "%{wks.location}/Source/Programs/Benchmark"' }
+
 	includedirs
 	{
 		"Source",             -- "Editor/OutputLog/ConsolePanel.h"처럼 Source 기준 include를 쓴다
 		"Source/Runtime",
 		"Source/Programs",
+		"Intermediate/Generated/Runtime",   -- 엔진 헤더가 include하는 generated.h
+		"Intermediate/Generated/Editor",
 		"%{IncludeDir.ImGui}",
 		"%{IncludeDir.ImGui}/backends",
 		"%{IncludeDir.stb}",

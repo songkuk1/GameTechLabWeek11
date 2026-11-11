@@ -3,11 +3,13 @@
 #include "GameFramework/Actor.h"
 #include "Component/BillboardComponent.h"
 #include "Component/ExponentialHeightFogComponent.h"
+#include "ExponentialHeightFogActor.generated.h"
 
 
+UCLASS()
 class AExponentialHeightFogActor final : public AActor
 {
-	DECLARE_CLASS(AExponentialHeightFogActor, AActor)
+	GENERATED_BODY()
 
 
 

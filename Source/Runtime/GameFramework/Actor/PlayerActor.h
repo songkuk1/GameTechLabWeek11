@@ -3,6 +3,7 @@
 #include "GameFramework/Pawn.h"
 #include "Component/StaticMeshComponent.h"
 #include "Component/CharacterMovementComponent.h"
+#include "PlayerActor.generated.h"
 
 class UCameraComponent;
 class USpringArmComponent;
@@ -10,12 +11,11 @@ class UScriptComponent;
 class USphereComponent;
 class UBoxComponent;
 
+UCLASS()
 class APlayerActor : public APawn
 {
-    DECLARE_CLASS(APlayerActor, APawn)
+    GENERATED_BODY()
 
-    REFLECT_START(ClassName)
-        REFLECT_END()
 
 public:
     APlayerActor();

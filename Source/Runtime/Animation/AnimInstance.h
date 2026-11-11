@@ -8,6 +8,7 @@
 #include "Containers/Map.h"
 #include "Containers/Array.h"
 #include <type_traits>
+#include "AnimInstance.generated.h"
 
 class USkeletalMeshComponent;
 class AActor;
@@ -35,9 +36,10 @@ struct FActiveAnimNotifyState
 	FName NotifyName;
 };
 
+UCLASS()
 class UAnimInstance : public UObject
 {
-	DECLARE_CLASS(UAnimInstance, UObject)
+	GENERATED_BODY()
 public:
 	UAnimInstance();
 	virtual ~UAnimInstance() override;

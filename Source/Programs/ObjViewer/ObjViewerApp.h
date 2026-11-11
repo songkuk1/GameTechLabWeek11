@@ -3,10 +3,12 @@
 #include "Render/RenderPacket.h"
 
 #include "Engine/Engine.h"
+#include "ObjViewerApp.generated.h"
 
+UCLASS()
 class UObjViewerEngine : public UEngine
 {
-	DECLARE_CLASS(UObjViewerEngine, UEngine)
+	GENERATED_BODY()
 
 public:
 	FEngineConfig GetConfig() const override;

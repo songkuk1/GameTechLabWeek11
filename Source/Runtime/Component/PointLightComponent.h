@@ -1,17 +1,15 @@
 #pragma once
 
 #include "LightComponent.h"
+#include "PointLightComponent.generated.h"
 
 struct FShadowInfo;
 class FLineBatcher;
 
+UCLASS()
 class UPointLightComponent : public ULightComponent
 {
-	DECLARE_CLASS(UPointLightComponent, ULightComponent)
-	REFLECT_START(UPointLightComponent)
-		PROPERTY(AttenuationRadius)
-		PROPERTY(LightSourceRadius)
-	REFLECT_END()
+	GENERATED_BODY()
 
 public:
 	UPointLightComponent() = default;
@@ -31,6 +29,8 @@ public:
 	virtual bool ShouldAlwaysDrawDebug() const { return false; }
 
 protected:
+	UPROPERTY(EditAnywhere)
 	float AttenuationRadius = 10.0f;
+	UPROPERTY(EditAnywhere)
 	float LightSourceRadius = 0.03f;
 };

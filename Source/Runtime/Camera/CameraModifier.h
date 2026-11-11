@@ -2,13 +2,15 @@
 
 #include "UObject/Object.h"
 #include "UObject/Class.h"
+#include "CameraModifier.generated.h"
 
 struct FMinimalViewInfo;
 class APlayerCameraManager;
 
+UCLASS()
 class UCameraModifier : public UObject
 {
-	DECLARE_CLASS(UCameraModifier, UObject)
+	GENERATED_BODY()
 	/*REFLECT_START(ClassName)
 		REFLECT_END()*/
 public:

@@ -3,13 +3,15 @@
 #include "UObject/Object.h"
 #include "UObject/Class.h"
 #include "Containers/Array.h"
+#include "Level.generated.h"
 
 class UWorld;
 class AActor;
 
+UCLASS()
 class ULevel : public UObject
 {
-    DECLARE_CLASS(ULevel, UObject)
+    GENERATED_BODY()
 
 public:
     ULevel() = default;

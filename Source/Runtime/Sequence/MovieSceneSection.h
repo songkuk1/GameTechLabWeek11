@@ -3,10 +3,12 @@
 #include "UObject/Object.h"
 #include "UObject/Class.h"
 #include "FloatRange.h"
+#include "MovieSceneSection.generated.h"
 
+UCLASS()
 class UMovieSceneSection : public UObject
 {
-	DECLARE_CLASS(UMovieSceneSection, UObject)
+	GENERATED_BODY()
 
 public:
 	virtual ~UMovieSceneSection() = default;

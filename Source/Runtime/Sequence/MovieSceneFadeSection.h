@@ -2,10 +2,12 @@
 
 #include "MovieSceneSection.h"
 #include "MovieSceneFloatChannel.h"
+#include "MovieSceneFadeSection.generated.h"
 
+UCLASS()
 class UMovieSceneFadeSection : public UMovieSceneSection
 {
-	DECLARE_CLASS(UMovieSceneFadeSection, UMovieSceneSection)
+	GENERATED_BODY()
 
 public:
 	UMovieSceneFadeSection();

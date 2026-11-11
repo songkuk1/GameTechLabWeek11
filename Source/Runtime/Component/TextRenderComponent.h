@@ -2,16 +2,13 @@
 
 #include "BillboardComponent.h"
 #include "Text/Font.h"
+#include "TextRenderComponent.generated.h"
 
+UCLASS()
 class UTextRenderComponent : public UPrimitiveComponent
 {
-	DECLARE_CLASS(UTextRenderComponent, UPrimitiveComponent)
+	GENERATED_BODY()
 
-	REFLECT_START(ClassName)
-		PROPERTY(Text)
-		PROPERTY(TextSize)
-		PROPERTY(Font)
-		REFLECT_END()
 
 public:
 	UTextRenderComponent();
@@ -38,8 +35,11 @@ public:
 private:
 	bool RebuildPickingMesh() const;
 
+	UPROPERTY(EditAnywhere)
 	FString Text = "Text";
+	UPROPERTY(EditAnywhere)
 	UFont* Font = nullptr;
+	UPROPERTY(EditAnywhere)
 	float TextSize = 1.0f;
 
 	mutable FModelMeshData PickingMesh;

@@ -1,15 +1,17 @@
 #pragma once
 
 #include "GameFramework/Actor.h"
+#include "Bullet.generated.h"
 
 class USphereComponent;
 class UStaticMeshComponent;
 class UProjectileMovementComponent;
 class UScriptComponent;
 
+UCLASS()
 class ABullet : public AActor
 {
-	DECLARE_CLASS(ABullet, AActor)
+	GENERATED_BODY()
 
 public:
 	ABullet();

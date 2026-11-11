@@ -2,14 +2,16 @@
 
 #include "GameFramework/Actor.h"
 #include "Core/ResourcePaths.h"
+#include "DecalActor.generated.h"
 
 class UDecalComponent;
 class UBillboardComponent;
 
 // 데칼 컴포넌트 및 에디터 표식 조립
+UCLASS()
 class ADecalActor : public AActor
 {
-    DECLARE_CLASS(ADecalActor, AActor)
+    GENERATED_BODY()
 
 public:
     ADecalActor();

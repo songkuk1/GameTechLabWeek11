@@ -2,10 +2,12 @@
 
 #include "GameFramework/Actor.h"
 #include "Component/StaticMeshComponent.h"
+#include "StaticMeshActor.generated.h"
 
+UCLASS()
 class AStaticMeshActor :public AActor
 {
-	DECLARE_CLASS(AStaticMeshActor, AActor)
+	GENERATED_BODY()
 public:
 	AStaticMeshActor();
 	virtual ~AStaticMeshActor() = default;

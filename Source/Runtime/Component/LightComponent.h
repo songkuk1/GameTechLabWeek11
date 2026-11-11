@@ -1,14 +1,12 @@
 #pragma once
 
 #include "LightComponentBase.h"
+#include "LightComponent.generated.h"
 
+UCLASS()
 class ULightComponent : public ULightComponentBase
 {
-	DECLARE_CLASS(ULightComponent, ULightComponentBase)
-	REFLECT_START(ULightComponent)
-		PROPERTY(ShadowBias)
-		PROPERTY_FLAGS(ShadowResolution, CPF_EditAnywhere | CPF_Pow2Combo)
-		REFLECT_END()
+	GENERATED_BODY()
 
 public:
 	ULightComponent() = default;
@@ -59,7 +57,9 @@ protected:
 
 	float OrthoWidth = 16.0f;
 
+	UPROPERTY(EditAnywhere)
 	float ShadowBias = 0.001f;
 
+	UPROPERTY(EditAnywhere, Pow2Combo)
 	uint32 ShadowResolution = 1024;	// 섀도우 기본 해상도 1024로 설정
 };

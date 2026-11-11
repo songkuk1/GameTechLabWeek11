@@ -2,13 +2,15 @@
 
 #include "UObject/Object.h"
 #include "UObject/Class.h"
+#include "CameraShakeBase.generated.h"
 
 class UCameraShakePattern;
 struct FMinimalViewInfo;
 
+UCLASS()
 class UCameraShakeBase : public UObject
 {
-	DECLARE_CLASS(UCameraShakeBase, UObject)
+	GENERATED_BODY()
 	/*REFLECT_START(ClassName)
 		REFLECT_END()*/
 public:

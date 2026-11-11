@@ -1,10 +1,12 @@
 #pragma once
 
 #include "MovieScenePropertyTrack.h"
+#include "MovieScene3DTransformTrack.generated.h"
 
+UCLASS()
 class UMovieScene3DTransformTrack : public UMovieScenePropertyTrack
 {
-	DECLARE_CLASS(UMovieScene3DTransformTrack, UMovieScenePropertyTrack)
+	GENERATED_BODY()
 
 protected:
 	UMovieSceneSection* CreateNewSection() override;

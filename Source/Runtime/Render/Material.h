@@ -6,6 +6,7 @@
 #include "Render/Texture2D.h"
 #include "Math/Color.h"
 #include "Render/ColorBlendMode.h"
+#include "Material.generated.h"
 
 class FShader;
 
@@ -42,9 +43,10 @@ struct FBillboardMaterialParams
 };
 static_assert(sizeof(FBillboardMaterialParams) == 16);
 
+UCLASS()
 class UMaterial : public UMaterialInterface
 {
-	DECLARE_CLASS(UMaterial, UMaterialInterface)
+	GENERATED_BODY()
 
 public:
 	UMaterial() :SortID(NextSortID++) {};

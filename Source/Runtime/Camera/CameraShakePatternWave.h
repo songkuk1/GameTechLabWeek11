@@ -3,6 +3,7 @@
 #include "CameraShakePattern.h"
 #include "UObject/Class.h"
 #include <random>
+#include "CameraShakePatternWave.generated.h"
 
 struct FWaveOscillator
 {
@@ -40,9 +41,10 @@ struct FWaveOscillator
 };
 
 
+UCLASS()
 class UCameraShakePatternWave : public UCameraShakePattern
 {
-	DECLARE_CLASS(UCameraShakePatternWave, UCameraShakePattern)
+	GENERATED_BODY()
 	/*REFLECT_START(ClassName)
 		REFLECT_END()*/
 public:

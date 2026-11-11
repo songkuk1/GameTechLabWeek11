@@ -1,6 +1,7 @@
 #pragma once
 
 #include "BillboardComponent.h"
+#include "ParticleSubUVComponent.generated.h"
 
 // ParticleSubUVShader의 b1
 struct FSubUVConstants
@@ -30,15 +31,11 @@ struct FParticle
 
 // 가장 단순한 SubUV 파티클입니다.
 // Atlas 전체를 Col x Row로 나누고 CurrentFrame 하나만 변경합니다.
+UCLASS()
 class UParticleSubUVComponent : public UBillboardComponent
 {
-	DECLARE_CLASS(UParticleSubUVComponent, UBillboardComponent)
+	GENERATED_BODY()
 
-	REFLECT_START(ClassName)
-		PROPERTY(ColSize)
-		PROPERTY(RowSize)
-		PROPERTY(FrameRate)
-	REFLECT_END()
 
 public:
 	UParticleSubUVComponent();
@@ -91,8 +88,11 @@ private:
 
 	TArray<FSubUVConstants> Constants;
 
+	UPROPERTY(EditAnywhere)
 	uint32 ColSize;
+	UPROPERTY(EditAnywhere)
 	uint32 RowSize;
+	UPROPERTY(EditAnywhere)
 	float FrameRate;
 
 	// Todo: Reserve particles

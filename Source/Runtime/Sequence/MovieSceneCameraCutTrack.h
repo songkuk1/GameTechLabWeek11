@@ -1,10 +1,12 @@
 #pragma once
 
 #include "MovieScenePropertyTrack.h"
+#include "MovieSceneCameraCutTrack.generated.h"
 
+UCLASS()
 class UMovieSceneCameraCutTrack : public UMovieScenePropertyTrack
 {
-	DECLARE_CLASS(UMovieSceneCameraCutTrack, UMovieScenePropertyTrack)
+	GENERATED_BODY()
 
 protected:
 	virtual UMovieSceneSection* CreateNewSection() override;

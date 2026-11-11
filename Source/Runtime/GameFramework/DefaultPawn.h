@@ -1,17 +1,14 @@
 #pragma once
 
 #include "Pawn.h"
+#include "DefaultPawn.generated.h"
 
 class UCameraComponent;
 
+UCLASS()
 class ADefaultPawn : public APawn
 {
-	DECLARE_CLASS(ADefaultPawn, APawn)
-	REFLECT_START(ClassName)
-		PROPERTY(MoveSpeed)
-		PROPERTY(MouseSensitivity)
-		PROPERTY(WheelSpeed)
-		REFLECT_END()
+	GENERATED_BODY()
 
 public:
 	ADefaultPawn();
@@ -20,7 +17,10 @@ public:
 
 private:
 	UCameraComponent* CameraComponent = nullptr;
+	UPROPERTY(EditAnywhere)
 	float MoveSpeed = 10.0f;
+	UPROPERTY(EditAnywhere)
 	float MouseSensitivity = 0.05f;
+	UPROPERTY(EditAnywhere)
 	float WheelSpeed = 0.1f;
 };

@@ -6,6 +6,7 @@
 #include "Math/Vector.h"
 #include "Math/Quat.h"
 #include "Animation/AnimationCurve.h"
+#include "AnimDataModel.generated.h"
 
 // 애니메이션 키 데이터
 struct FRawAnimSequenceTrack
@@ -41,9 +42,10 @@ public:
 };
 
 // 실제 애니메이션 데이터 모델
+UCLASS()
 class UAnimDataModel : public UObject, public IAnimationDataModel
 {
-	DECLARE_CLASS(UAnimDataModel, UObject)
+	GENERATED_BODY()
 public:
 	TArray<FBoneAnimationTrack> BoneAnimationTracks;
 	float PlayLength = 0.0f;

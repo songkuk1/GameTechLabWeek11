@@ -1,36 +1,25 @@
 #pragma once
 #include "MovementComponent.h"
+#include "ProjectileMovementComponent.generated.h"
 
+UCLASS()
 class UProjectileMovementComponent : public UMovementComponent
 {
-	DECLARE_CLASS(UProjectileMovementComponent, UMovementComponent)
+	GENERATED_BODY()
 
-		REFLECT_START(ClassName)
-			PROPERTY(InintialSpeed)
-			PROPERTY(MaxSpeed)
-			PROPERTY(ProjectileGravityScale)
-			PROPERTY(bRotationFollowsVelocity)
-			PROPERTY(bShouldBounce)
-			PROPERTY(Bounciness)
-			PROPERTY(Friction)
-			PROPERTY(BounceVelocityStopSimulatingThreshold)
-			PROPERTY(bSimulationEnabled)
-			PROPERTY(bSweepCollision)
-			PROPERTY(bIsHomingProjectile)
-			PROPERTY(HomingAccelerationMagnitude)
-			PROPERTY(Velocity)
-			PROPERTY(Gravity)
-			PROPERTY(bConstrainToPlane)
-		REFLECT_END()
 
 public:
 	UProjectileMovementComponent();
 
 	// Projectile
+	UPROPERTY(EditAnywhere)
 	float InintialSpeed = 0.0f;
+	UPROPERTY(EditAnywhere)
 	float MaxSpeed = 0.0f;
+	UPROPERTY(EditAnywhere)
 	float ProjectileGravityScale = 1.0f;
 
+	UPROPERTY(EditAnywhere)
 	bool bRotationFollowsVelocity;
 	bool bInitialVelocityInLocalSpace;
 
@@ -40,19 +29,27 @@ public:
 	bool bIsSliding = false;
 
 	// Bounce
+	UPROPERTY(EditAnywhere)
 	bool bShouldBounce = false;
+	UPROPERTY(EditAnywhere)
 	float Bounciness;
+	UPROPERTY(EditAnywhere)
 	float Friction;	
+	UPROPERTY(EditAnywhere)
 	float BounceVelocityStopSimulatingThreshold = 0.5f;
 
 	// Simulation
+	UPROPERTY(EditAnywhere)
 	bool bSimulationEnabled;
+	UPROPERTY(EditAnywhere)
 	bool bSweepCollision;
 	float MaxSimulationTimeStep = 0.0166f; // Min : 0.0166, Max : 0.50 in Unreal 
 	int32 MaxSimulationIterations = 5; // Min : 1, Max : 25 in Unreal
 
 	// Homing
+	UPROPERTY(EditAnywhere)
 	bool bIsHomingProjectile = false;
+	UPROPERTY(EditAnywhere)
 	float HomingAccelerationMagnitude;
 	USceneComponent* HomingTargetComponent = nullptr;
 

@@ -1,10 +1,12 @@
 #pragma once
 
 #include "MovieScenePropertyTrack.h"
+#include "MovieSceneFadeTrack.generated.h"
 
+UCLASS()
 class UMovieSceneFadeTrack : public UMovieScenePropertyTrack
 {
-	DECLARE_CLASS(UMovieSceneFadeTrack, UMovieScenePropertyTrack)
+	GENERATED_BODY()
 
 protected:
 	UMovieSceneSection* CreateNewSection() override;

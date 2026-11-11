@@ -2,6 +2,7 @@
 
 #include "UObject/Object.h"
 #include "UObject/Class.h"
+#include "CameraShakePattern.generated.h"
 
 // 패턴이 한 프레임에 만든 흔들림. 카메라 로컬 공간 기준 (X 앞, Y 오른쪽, Z 위)
 struct FCameraShakeUpdateResult
@@ -11,9 +12,10 @@ struct FCameraShakeUpdateResult
 	float FOV = 0.f;
 };
 
+UCLASS()
 class UCameraShakePattern : public UObject
 {
-	DECLARE_CLASS(UCameraShakePattern, UObject)
+	GENERATED_BODY()
 public:
 	UCameraShakePattern();
 	virtual ~UCameraShakePattern();

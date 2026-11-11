@@ -4,6 +4,7 @@
 #include "Render/Buffer.h"
 #include "Render/StaticMeshData.h"
 #include "Render/MeshRenderData.h"
+#include "Mesh.generated.h"
 
 class FPrimitiveSceneProxy;
 
@@ -14,9 +15,10 @@ struct FStaticMeshLODResource
 	TUniquePtr<FIndexBuffer> IndexBuffer;
 };
 
+UCLASS()
 class UStaticMesh : public UAsset
 {
-	DECLARE_CLASS(UStaticMesh, UAsset)
+	GENERATED_BODY()
 public:
     UStaticMesh() : SortID(NextSortID++) {}
 	virtual ~UStaticMesh() override;

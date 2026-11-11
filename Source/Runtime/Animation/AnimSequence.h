@@ -2,6 +2,7 @@
 
 #include "Animation/AnimationAsset.h"
 #include "Animation/AnimDataModel.h"
+#include "AnimSequence.generated.h"
 
 class USkeleton;
 
@@ -20,13 +21,12 @@ enum class EAnimNotifyEventType : uint8
 	End
 };
 
+UCLASS()
 class UAnimSequenceBase : public UAnimationAsset
 {
-	DECLARE_CLASS(UAnimSequenceBase, UAnimationAsset)
-	REFLECT_START(UAnimSequenceBase)
-		PROPERTY(DataModel)
-	REFLECT_END()
+	GENERATED_BODY()
 protected:
+	UPROPERTY(EditAnywhere)
 	UAnimDataModel* DataModel = nullptr;
 	USkeleton* Skeleton = nullptr;
 	TArray<FAnimNotifyEvent> Notifies;
@@ -72,7 +72,8 @@ public:
 	bool ExtractRootMotion(float StartTime, float DeltaTime, bool bLooping, FVector& OutTranslation, FQuat& OutRotation) const;
 };
 
+UCLASS()
 class UAnimSequence : public UAnimSequenceBase
 {
-	DECLARE_CLASS(UAnimSequence, UAnimSequenceBase)
+	GENERATED_BODY()
 };

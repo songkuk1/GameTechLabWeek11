@@ -4,18 +4,14 @@
 #include "Math/Color.h"
 #include "Render/LightInfo.h"
 #include "Render/ColorWorkflow.h"
+#include "LightComponentBase.generated.h"
 
 class FLightSceneProxy;
 
+UCLASS()
 class ULightComponentBase : public USceneComponent
 {
-	DECLARE_CLASS(ULightComponentBase, USceneComponent)
-	REFLECT_START(ULightComponentBase)
-		PROPERTY(LightColor)
-		PROPERTY(Intensity)
-		PROPERTY(bVisible)
-		PROPERTY(bCastShadows)
-	REFLECT_END()
+	GENERATED_BODY()
 
 public:
 	ULightComponentBase() = default;
@@ -48,9 +44,13 @@ public:
 	virtual void OnTransformDirty() override;
 
 protected:
+	UPROPERTY(EditAnywhere)
 	FColor LightColor = FColor(255, 255, 255);
+	UPROPERTY(EditAnywhere)
 	float Intensity = 1.0f;
+	UPROPERTY(EditAnywhere)
 	bool bVisible = true;
+	UPROPERTY(EditAnywhere)
 	bool bCastShadows = true;
 
 private:

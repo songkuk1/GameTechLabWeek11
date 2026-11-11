@@ -2,16 +2,15 @@
 
 #include "ShapeComponent.h"
 #include "Collision/CollisionShape.h"
+#include "BoxComponent.generated.h"
 
 struct FBox;
 
+UCLASS()
 class UBoxComponent :public UShapeComponent
 {
-	DECLARE_CLASS(UBoxComponent, UShapeComponent)
+	GENERATED_BODY()
 
-	REFLECT_START(ClassName)
-		PROPERTY(BoxExtent)
-	REFLECT_END()
 
 public:
 	UBoxComponent();
@@ -34,5 +33,6 @@ public:
 
 private:
 	//반길이
+	UPROPERTY(EditAnywhere)
 	FVector BoxExtent = FVector(0.5f, 0.5f, 0.5f);
 };

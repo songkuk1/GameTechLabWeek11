@@ -5,15 +5,17 @@
 #include "Containers/Map.h"
 #include "Math/Transform.h"
 #include "MovieSceneCompletionMode.h"
+#include "MovieSceneSequencePlayer.generated.h"
 
 class AActor;
 class UMovieSceneSequence;
 class UMovieScene;
 class UWorld;
 
+UCLASS()
 class UMovieSceneSequencePlayer : public UObject
 {
-	DECLARE_CLASS(UMovieSceneSequencePlayer, UObject)
+	GENERATED_BODY()
 
 public:
 	virtual ~UMovieSceneSequencePlayer() = default;

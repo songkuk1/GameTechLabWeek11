@@ -1,10 +1,12 @@
 #pragma once
 
 #include "MovieSceneSequence.h"
+#include "LevelSequence.generated.h"
 
+UCLASS()
 class ULevelSequence : public UMovieSceneSequence
 {
-	DECLARE_CLASS(ULevelSequence, UMovieSceneSequence)
+	GENERATED_BODY()
 
 public:
 	void Initialize(UMovieScene* InScene);
