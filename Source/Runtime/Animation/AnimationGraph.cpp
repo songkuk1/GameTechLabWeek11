@@ -83,16 +83,20 @@ bool UAnimationGraph::AddSequenceState(const FName& StateName, UAnimSequence* Se
     return true;
 }
 
-bool UAnimationGraph::AddBlendSpaceState(const FName& StateName, UBlendSpace1D* BlendSpace, const FName& BlendParameterName, float PlayRate, bool bLooping)
+bool UAnimationGraph::AddBlendSpaceState(const FName& StateName, UBlendSpace1D* BlendSpace, float PlayRate, bool bLooping)
 {
     if (StateName.IsNone() || FindStateIndex(StateName) != -1 || !Skeleton || !BlendSpace || BlendSpace->GetSkeleton() != Skeleton || !BlendSpace->IsBlendSpaceDataValid() || !std::isfinite(PlayRate))
     {
         return false;
     }
-    if (!BlendParameterName.IsNone() && !HasParameterType(BlendParameterName, EAnimGraphParameterType::Float))
+
+    const FName BlendParameterName = BlendSpace->GetAxis().Name;
+
+    if (!EnsureFloatParameter(BlendParameterName))
     {
         return false;
     }
+
     FAnimGraphStateDefinition State;
     State.Name = StateName;
     State.NodeType = EAnimGraphStateNodeType::BlendSpacePlayer;
@@ -101,6 +105,7 @@ bool UAnimationGraph::AddBlendSpaceState(const FName& StateName, UBlendSpace1D* 
     State.PlayRate = PlayRate;
     State.bLooping = bLooping;
     States.Add(std::move(State));
+
     return true;
 }
 
@@ -457,7 +462,7 @@ bool UAnimationGraph::SetSequenceState(const FName& StateName, UAnimSequence* Se
     return true;
 }
 
-bool UAnimationGraph::SetBlendSpaceState(const FName& StateName, UBlendSpace1D* BlendSpace, const FName& BlendParameterName, float PlayRate, bool bLooping)
+bool UAnimationGraph::SetBlendSpaceState(const FName& StateName, UBlendSpace1D* BlendSpace, float PlayRate, bool bLooping)
 {
     const int32 Index = FindStateIndex(StateName);
 
@@ -466,7 +471,9 @@ bool UAnimationGraph::SetBlendSpaceState(const FName& StateName, UBlendSpace1D* 
         return false;
     }
 
-    if (!BlendParameterName.IsNone() && !HasParameterType(BlendParameterName, EAnimGraphParameterType::Float))
+    const FName BlendParameterName = BlendSpace->GetAxis().Name;
+
+    if (!EnsureFloatParameter(BlendParameterName))
     {
         return false;
     }
@@ -793,4 +800,21 @@ bool UAnimationGraph::IsTransitionDefinitionValid( const FAnimGraphTransitionDef
         return false;
     }
     return true;
+}
+
+bool UAnimationGraph::EnsureFloatParameter(const FName& Name)
+{
+    if (Name.IsNone())
+    {
+        return false;
+    }
+
+    const int32 Index = FindParameterIndex(Name);
+
+    if (Index != -1)
+    {
+        return Parameters[Index].Type == EAnimGraphParameterType::Float;
+    }
+
+    return AddFloatParameter(Name, 0.0f);
 }
