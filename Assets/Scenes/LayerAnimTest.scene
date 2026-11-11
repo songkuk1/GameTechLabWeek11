@@ -561,7 +561,7 @@
                                 "bGenerateOverlapEvents": true,
                                 "bIsGameHidden": false,
                                 "bReceiveShadow": false,
-                                "bReceivesDecals": true,
+                                "bReceivesDecals": false,
                                 "bVisible": true
                             }
                         },
@@ -665,7 +665,7 @@
                                 "bCastShadow": true,
                                 "bGenerateOverlapEvents": true,
                                 "bReceiveShadow": true,
-                                "bReceivesDecals": true,
+                                "bReceivesDecals": false,
                                 "bVisible": true
                             }
                         },
@@ -748,7 +748,14 @@
                             "Name": "CharacterMovement",
                             "Parent": "",
                             "Properties": {
+                                "Gravity": 9.8100004196167,
                                 "RotationRate": 360.0,
+                                "Velocity": {
+                                    "X": 0.0,
+                                    "Y": 0.0,
+                                    "Z": 0.0
+                                },
+                                "bConstrainToPlane": false,
                                 "bOrientRotationToMovement": true
                             }
                         },
@@ -768,7 +775,7 @@
                         "HitKnockbackDistance": 2.5,
                         "JumpPower": 6.0,
                         "MouseSensitivity": 0.20000000298023224,
-                        "RunSpeed": 4.8,
+                        "RunSpeed": 4.800000190734863,
                         "WalkSpeed": 2.0,
                         "bAutoPossessPlayer": true,
                         "bEnableRootMotion": false
@@ -876,7 +883,7 @@
                                 "bCastShadow": true,
                                 "bGenerateOverlapEvents": true,
                                 "bReceiveShadow": true,
-                                "bReceivesDecals": true,
+                                "bReceivesDecals": false,
                                 "bVisible": true
                             }
                         },
@@ -1106,7 +1113,7 @@
                                 "bCastShadow": true,
                                 "bGenerateOverlapEvents": true,
                                 "bReceiveShadow": true,
-                                "bReceivesDecals": true,
+                                "bReceivesDecals": false,
                                 "bVisible": true
                             }
                         },
