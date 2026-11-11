@@ -341,6 +341,7 @@ void UAssetManager::ScanAssets(const fs::path& AssetRoot, const FAssetLoadProgre
 	int32 Completed = 0;
 
 	TArray<fs::path> ModelBakeFiles;
+	TArray<fs::path> SourceFbxFiles;
 	TArray<fs::path> AnimationFiles;
 	TArray<fs::path> BlendSpaceFiles;
 	TArray<fs::path> AnimationGraphFiles;
@@ -381,9 +382,22 @@ void UAssetManager::ScanAssets(const fs::path& AssetRoot, const FAssetLoadProgre
 			continue;
 		}
 
-		// 원본 OBJ / FBX는 시작 시 자동 임포트하지 않는다.
-		if (_stricmp(Extension.c_str(), ".obj") == 0 || _stricmp(Extension.c_str(), ".fbx") == 0)
+		// 원본 OBJ는 시작 시 자동 임포트하지 않는다.
+		if (_stricmp(Extension.c_str(), ".obj") == 0)
 		{
+			ReportProgress(FilePath);
+			continue;
+		}
+
+		// 원본 FBX는 베이크(.bin)가 없으면 시작 시 바로 임포트한다. 베이크가 있으면 아래 베이크 로드에서 처리한다.
+		if (_stricmp(Extension.c_str(), ".fbx") == 0)
+		{
+			fs::path BakePath = FilePath;
+			BakePath += ".bin";
+			if (!fs::exists(BakePath))
+			{
+				SourceFbxFiles.Add(FilePath);
+			}
 			ReportProgress(FilePath);
 			continue;
 		}
@@ -436,6 +450,12 @@ void UAssetManager::ScanAssets(const fs::path& AssetRoot, const FAssetLoadProgre
 		{
 			LoadFbxModel(SourcePathString, false, false, false);
 		}
+	}
+
+	// 1-1. 베이크가 없는 원본 FBX 임포트 (메쉬 FBX의 스켈레톤이 먼저 로드된 뒤에 처리)
+	for (const fs::path& FilePath : SourceFbxFiles)
+	{
+		LoadFbxModel(PathUtils::ToUtf8(FilePath), true, false, false);
 	}
 
 	for (const fs::path& FilePath : AnimationFiles)
