@@ -98,9 +98,6 @@ private:
     FAnimGraphTransitionDefinition EditableTransition;
     FAnimGraphTransitionDefinition NewTransition;
 
-    // BlendSpace Parameter Binding
-    FName NewBlendSpaceParameterName = NAME_None;
-
     std::function<void(USkeletalMesh*, UAnimSequence*)> OpenAnimationSequenceViewerCallback;
     std::function<void(UBlendSpace1D*)> OpenBlendSpaceEditorCallback;
 };
