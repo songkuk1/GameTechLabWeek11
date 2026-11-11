@@ -332,14 +332,15 @@ function Tick(deltaTime)
     owner:Move(MoveInput)
 end
 
-function OnAnimNotifyState(NotifyName, EventType, deltaTime)
-    if NotifyName == "AttackHit" then
-        if EventType == "Begin" and not state.bIsDead then
-            ApplyPlayerAttackDamage()
-        end
-        return
-    end
+function OnAnimNotify(NotifyName)
+    Log("[AnimationTest] AnimNotify: " .. NotifyName)
 
+    if NotifyName == "AttackHit" and not state.bIsDead then
+        ApplyPlayerAttackDamage()
+    end
+end
+
+function OnAnimNotifyState(NotifyName, EventType, deltaTime)
     if NotifyName ~= "ComboWindow" then
         return
     end

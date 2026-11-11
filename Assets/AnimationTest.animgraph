@@ -2,64 +2,64 @@
     "AnimationGraph": {
         "EditorNodePositions": [
             {
-                "NodeName": "Locomotion",
-                "X": -312.0,
-                "Y": 106.0
-            },
-            {
-                "NodeName": "JumpStart",
-                "X": 592.0,
-                "Y": -171.0
-            },
-            {
-                "NodeName": "JumpLoop",
-                "X": 1240.0,
-                "Y": -16.0
-            },
-            {
-                "NodeName": "JumpLand",
-                "X": 584.0,
-                "Y": 90.0
-            },
-            {
-                "NodeName": "Jab",
-                "X": 256.0,
-                "Y": 261.0
-            },
-            {
-                "NodeName": "Hit",
-                "X": -288.0,
-                "Y": 389.0
-            },
-            {
-                "NodeName": "None",
-                "X": -240.0,
-                "Y": 867.0
-            },
-            {
                 "NodeName": "__EditorEntryPoint__",
-                "X": -260.0,
-                "Y": -4.0
+                "X": 412.0,
+                "Y": -100.0
             },
             {
-                "NodeName": "Straight",
-                "X": 248.0,
-                "Y": 592.0
-            },
-            {
-                "NodeName": "Roll",
-                "X": -896.0,
-                "Y": 99.0
+                "NodeName": "Locomotion",
+                "X": 334.0,
+                "Y": 0.0
             },
             {
                 "NodeName": "Death",
-                "X": -528.0,
-                "Y": 1078.0
+                "X": -288.0,
+                "Y": 720.0
+            },
+            {
+                "NodeName": "JumpLoop",
+                "X": 1228.0,
+                "Y": 453.0
+            },
+            {
+                "NodeName": "None",
+                "X": -150.0,
+                "Y": 416.0
+            },
+            {
+                "NodeName": "Hit",
+                "X": 144.0,
+                "Y": 594.0
+            },
+            {
+                "NodeName": "Jab",
+                "X": 844.0,
+                "Y": -211.0
+            },
+            {
+                "NodeName": "Straight",
+                "X": 1388.0,
+                "Y": 32.0
+            },
+            {
+                "NodeName": "Roll",
+                "X": -192.0,
+                "Y": 15.0
+            },
+            {
+                "NodeName": "JumpStart",
+                "X": 814.0,
+                "Y": 242.0
+            },
+            {
+                "NodeName": "JumpLand",
+                "X": 794.0,
+                "Y": 640.0
             },
             {
                 "NodeName": "Dance",
-                "X": -32.0,
-                "Y": 1058.0
+                "X": -580.0,
+                "Y": 338.0
             }
         ],
         "EntryState": "Locomotion",
@@ -99,6 +99,24 @@
                 "FloatDefault": 0.0,
                 "Name": "bIsRolling",
                 "Type": 0
+            },
+            {
+                "BoolDefault": false,
+                "FloatDefault": 0.0,
+                "Name": "bComboRequested",
+                "Type": 0
+            },
+            {
+                "BoolDefault": false,
+                "FloatDefault": 0.0,
+                "Name": "bIsDead",
+                "Type": 0
+            },
+            {
+                "BoolDefault": false,
+                "FloatDefault": 0.0,
+                "Name": "bPlayerDead",
+                "Type": 0
             }
         ],
         "Properties": {},
@@ -116,6 +134,45 @@
                 "OverlaySequence": null,
                 "PlayRate": 1.0,
                 "Sequence": null
+            },
+            {
+                "BlendParameterName": "None",
+                "BlendSpace": null,
+                "BlendWeight": 1.0,
+                "BranchBoneName": "spine_1",
+                "Looping": false,
+                "Name": "Jab",
+                "NodeType": 0,
+                "OverlayLooping": false,
+                "OverlaySequence": null,
+                "PlayRate": 1.0,
+                "Sequence": "Models/UAL1_Standard/UAL1_Standard.fbx::Armature|Punch_Jab"
+            },
+            {
+                "BlendParameterName": "None",
+                "BlendSpace": null,
+                "BlendWeight": 1.0,
+                "BranchBoneName": "spine_1",
+                "Looping": false,
+                "Name": "Straight",
+                "NodeType": 0,
+                "OverlayLooping": false,
+                "OverlaySequence": null,
+                "PlayRate": 1.0,
+                "Sequence": "Models/UAL1_Standard/UAL1_Standard.fbx::Armature|Punch_Cross"
+            },
+            {
+                "BlendParameterName": "None",
+                "BlendSpace": null,
+                "BlendWeight": 1.0,
+                "BranchBoneName": "spine_1",
+                "Looping": false,
+                "Name": "Roll",
+                "NodeType": 0,
+                "OverlayLooping": false,
+                "OverlaySequence": null,
+                "PlayRate": 2.0,
+                "Sequence": "Models/UAL1_Standard/UAL1_Standard.fbx::Armature|Roll"
             },
             {
                 "BlendParameterName": "None",
@@ -162,19 +219,6 @@
                 "BlendWeight": 1.0,
                 "BranchBoneName": "spine_1",
                 "Looping": false,
-                "Name": "Jab",
-                "NodeType": 0,
-                "OverlayLooping": false,
-                "OverlaySequence": null,
-                "PlayRate": 1.0,
-                "Sequence": "Models/UAL1_Standard/UAL1_Standard.fbx::Armature|Punch_Jab"
-            },
-            {
-                "BlendParameterName": "None",
-                "BlendSpace": null,
-                "BlendWeight": 1.0,
-                "BranchBoneName": "spine_1",
-                "Looping": false,
                 "Name": "Hit",
                 "NodeType": 0,
                 "OverlayLooping": false,
@@ -188,38 +232,12 @@
                 "BlendWeight": 1.0,
                 "BranchBoneName": "spine_1",
                 "Looping": false,
-                "Name": "Straight",
-                "NodeType": 0,
-                "OverlayLooping": false,
-                "OverlaySequence": null,
-                "PlayRate": 1.0,
-                "Sequence": "Models/UAL1_Standard/UAL1_Standard.fbx::Armature|Punch_Cross"
-            },
-            {
-                "BlendParameterName": "None",
-                "BlendSpace": null,
-                "BlendWeight": 1.0,
-                "BranchBoneName": "spine_1",
-                "Looping": false,
-                "Name": "Roll",
-                "NodeType": 0,
-                "OverlayLooping": false,
-                "OverlaySequence": null,
-                "PlayRate": 2.0,
-                "Sequence": "Models/UAL1_Standard/UAL1_Standard.fbx::Armature|Roll"
-            },
-            {
-                "BlendParameterName": "None",
-                "BlendSpace": null,
-                "BlendWeight": 1.0,
-                "BranchBoneName": "spine_1",
-                "Looping": false,
                 "Name": "Death",
                 "NodeType": 0,
                 "OverlayLooping": false,
                 "OverlaySequence": null,
                 "PlayRate": 1.0,
-                "Sequence": "Models/Mannequin/UnrealCharac/Hit/MM_Death_Front_01.FBX::Unreal Take"
+                "Sequence": "Models/UAL1_Standard/UAL1_Standard.fbx::Armature|Death01"
             },
             {
                 "BlendParameterName": "None",
@@ -237,58 +255,8 @@
         ],
         "Transitions": [
             {
-                "AnyState": true,
-                "BlendDuration": 0.10000000149011612,
-                "FloatThreshold": 0.0,
-                "FromState": "None",
-                "ParameterName": "bIsHit",
-                "Priority": 100,
-                "Rule": 1,
-                "ToState": "Hit"
-            },
-            {
-                "AnyState": false,
-                "BlendDuration": 0.11999999731779099,
-                "FloatThreshold": 0.0,
-                "FromState": "Locomotion",
-                "ParameterName": "bIsJumping",
-                "Priority": 30,
-                "Rule": 1,
-                "ToState": "JumpStart"
-            },
-            {
                 "AnyState": false,
                 "BlendDuration": 0.10000000149011612,
-                "FloatThreshold": 0.0,
-                "FromState": "JumpStart",
-                "ParameterName": "None",
-                "Priority": 0,
-                "Rule": 3,
-                "ToState": "JumpLoop"
-            },
-            {
-                "AnyState": false,
-                "BlendDuration": 0.11999999731779099,
-                "FloatThreshold": 0.0,
-                "FromState": "JumpLoop",
-                "ParameterName": "bIsLanded",
-                "Priority": 20,
-                "Rule": 1,
-                "ToState": "JumpLand"
-            },
-            {
-                "AnyState": false,
-                "BlendDuration": 0.15000000596046448,
-                "FloatThreshold": 0.0,
-                "FromState": "JumpLand",
-                "ParameterName": "None",
-                "Priority": 0,
-                "Rule": 3,
-                "ToState": "Locomotion"
-            },
-            {
-                "AnyState": false,
-                "BlendDuration": 0.11999999731779099,
                 "FloatThreshold": 0.0,
                 "FromState": "Locomotion",
                 "ParameterName": "bIsAttacking",
@@ -298,6 +266,36 @@
             },
             {
                 "AnyState": false,
+                "BlendDuration": 0.07999999821186066,
+                "FloatThreshold": 0.0,
+                "FromState": "Locomotion",
+                "ParameterName": "bIsRolling",
+                "Priority": 15,
+                "Rule": 1,
+                "ToState": "Roll"
+            },
+            {
+                "AnyState": false,
+                "BlendDuration": 0.10000000149011612,
+                "FloatThreshold": 0.0,
+                "FromState": "Locomotion",
+                "ParameterName": "bIsJumping",
+                "Priority": 30,
+                "Rule": 1,
+                "ToState": "JumpStart"
+            },
+            {
+                "AnyState": false,
+                "BlendDuration": 0.07999999821186066,
+                "FloatThreshold": 0.0,
+                "FromState": "Jab",
+                "ParameterName": "bComboRequested",
+                "Priority": 20,
+                "Rule": 1,
+                "ToState": "Straight"
+            },
+            {
+                "AnyState": false,
                 "BlendDuration": 0.15000000596046448,
                 "FloatThreshold": 0.0,
                 "FromState": "Jab",
@@ -308,37 +306,7 @@
             },
             {
                 "AnyState": false,
-                "BlendDuration": 0.10000000149011612,
-                "FloatThreshold": 0.0,
-                "FromState": "Hit",
-                "ParameterName": "None",
-                "Priority": 0,
-                "Rule": 3,
-                "ToState": "Locomotion"
-            },
-            {
-                "AnyState": false,
-                "BlendDuration": 0.11999999731779099,
-                "FloatThreshold": 0.0,
-                "FromState": "JumpStart",
-                "ParameterName": "None",
-                "Priority": 0,
-                "Rule": 3,
-                "ToState": "JumpLand"
-            },
-            {
-                "AnyState": false,
-                "BlendDuration": 0.20000000298023224,
-                "FloatThreshold": 0.0,
-                "FromState": "Jab",
-                "ParameterName": "None",
-                "Priority": 0,
-                "Rule": 0,
-                "ToState": "Straight"
-            },
-            {
-                "AnyState": false,
-                "BlendDuration": 0.20000000298023224,
+                "BlendDuration": 0.15000000596046448,
                 "FloatThreshold": 0.0,
                 "FromState": "Straight",
                 "ParameterName": "None",
@@ -350,16 +318,6 @@
                 "AnyState": false,
                 "BlendDuration": 0.11999999731779099,
                 "FloatThreshold": 0.0,
-                "FromState": "Locomotion",
-                "ParameterName": "bIsRolling",
-                "Priority": 15,
-                "Rule": 1,
-                "ToState": "Roll"
-            },
-            {
-                "AnyState": false,
-                "BlendDuration": 0.14000000059604645,
-                "FloatThreshold": 0.0,
                 "FromState": "Roll",
                 "ParameterName": "None",
                 "Priority": 0,
@@ -367,13 +325,73 @@
                 "ToState": "Locomotion"
             },
             {
-                "AnyState": true,
+                "AnyState": false,
                 "BlendDuration": 0.20000000298023224,
                 "FloatThreshold": 0.0,
-                "FromState": "None",
+                "FromState": "JumpStart",
                 "ParameterName": "None",
                 "Priority": 0,
                 "Rule": 3,
+                "ToState": "JumpLoop"
+            },
+            {
+                "AnyState": false,
+                "BlendDuration": 0.07999999821186066,
+                "FloatThreshold": 0.0,
+                "FromState": "JumpStart",
+                "ParameterName": "bIsLanded",
+                "Priority": 25,
+                "Rule": 1,
+                "ToState": "JumpLand"
+            },
+            {
+                "AnyState": false,
+                "BlendDuration": 0.07999999821186066,
+                "FloatThreshold": 0.0,
+                "FromState": "JumpLoop",
+                "ParameterName": "bIsLanded",
+                "Priority": 25,
+                "Rule": 1,
+                "ToState": "JumpLand"
+            },
+            {
+                "AnyState": false,
+                "BlendDuration": 0.20000000298023224,
+                "FloatThreshold": 0.0,
+                "FromState": "JumpLand",
+                "ParameterName": "None",
+                "Priority": 0,
+                "Rule": 3,
+                "ToState": "Locomotion"
+            },
+            {
+                "AnyState": true,
+                "BlendDuration": 0.05000000074505806,
+                "FloatThreshold": 0.0,
+                "FromState": "None",
+                "ParameterName": "bIsHit",
+                "Priority": 100,
+                "Rule": 1,
+                "ToState": "Hit"
+            },
+            {
+                "AnyState": false,
+                "BlendDuration": 0.11999999731779099,
+                "FloatThreshold": 0.0,
+                "FromState": "Hit",
+                "ParameterName": "None",
+                "Priority": 0,
+                "Rule": 3,
+                "ToState": "Locomotion"
+            },
+            {
+                "AnyState": true,
+                "BlendDuration": 0.15000000596046448,
+                "FloatThreshold": 0.0,
+                "FromState": "None",
+                "ParameterName": "bIsDead",
+                "Priority": 200,
+                "Rule": 1,
                 "ToState": "Death"
             },
             {
@@ -381,9 +399,9 @@
                 "BlendDuration": 0.20000000298023224,
                 "FloatThreshold": 0.0,
                 "FromState": "None",
-                "ParameterName": "None",
-                "Priority": 0,
-                "Rule": 3,
+                "ParameterName": "bPlayerDead",
+                "Priority": 150,
+                "Rule": 1,
                 "ToState": "Dance"
             }
         ]
