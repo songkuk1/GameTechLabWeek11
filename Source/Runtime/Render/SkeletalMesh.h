@@ -3,13 +3,15 @@
 #include "Asset/Asset.h"
 #include "Asset/ModelData.h"
 #include "Render/Buffer.h"
+#include "SkeletalMesh.generated.h"
 
 class USkeleton;
 class UMaterial;
 
+UCLASS()
 class USkeletalMesh : public UAsset
 {
-	DECLARE_CLASS(USkeletalMesh, UAsset)
+	GENERATED_BODY()
 
 public:
 	void Initialize(const FModelMeshData& InMeshData, const TArray<FModelVertexInfluences>& InVertexInfluencesList, const TArray<FModelMesh>& InMeshs);

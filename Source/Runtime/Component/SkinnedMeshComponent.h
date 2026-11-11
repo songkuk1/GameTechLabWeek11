@@ -2,6 +2,7 @@
 
 #include "Component/MeshComponent.h"
 #include "Render/SkeletalMesh.h"
+#include "SkinnedMeshComponent.generated.h"
 
 class FLineBatcher;
 
@@ -11,13 +12,11 @@ enum class ESkinningMode : uint8
 	GPU
 };
 
+UCLASS()
 class USkinnedMeshComponent : public UMeshComponent
 {
-	DECLARE_CLASS(USkinnedMeshComponent, UMeshComponent)
+	GENERATED_BODY()
 
-	REFLECT_START(USkinnedMeshComponent)
-		PROPERTY(SkeletalMesh)
-	REFLECT_END()
 
 public:
 	virtual ~USkinnedMeshComponent();
@@ -59,6 +58,7 @@ public:
 	static void SetSkinningMode(ESkinningMode InMode);
 
 protected:
+	UPROPERTY(EditAnywhere)
 	USkeletalMesh* SkeletalMesh = nullptr;
 
 	// [노드] = 부모 기준 로컬 트랜스폼. 이 컴포넌트만의 포즈이며 처음에는 에셋 노드의 LocalTransform을 복사한다

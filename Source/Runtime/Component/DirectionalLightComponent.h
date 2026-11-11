@@ -1,16 +1,14 @@
 #pragma once
 
 #include "LightComponent.h"
+#include "DirectionalLightComponent.generated.h"
 
 class FLineBatcher;
 
+UCLASS()
 class UDirectionalLightComponent : public ULightComponent
 {
-	DECLARE_CLASS(UDirectionalLightComponent, ULightComponent)
-	REFLECT_START(UDirectionalLightComponent)
-		PROPERTY(OrthoWidth)
-		PROPERTY(ShadowNormalBias)
-	REFLECT_END()
+	GENERATED_BODY()
 
 public:
 	UDirectionalLightComponent() { ShadowResolution = 2048; }
@@ -37,6 +35,8 @@ public:
 	}
 
 private:
+	UPROPERTY(EditAnywhere)
 	float OrthoWidth = 2000.0f;
+	UPROPERTY(EditAnywhere)
 	float ShadowNormalBias = 2.0f;
 };

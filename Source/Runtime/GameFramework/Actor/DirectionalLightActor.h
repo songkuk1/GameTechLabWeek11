@@ -3,10 +3,12 @@
 #include "GameFramework/Actor.h"
 #include "Component/BillboardComponent.h"
 #include "Component/DirectionalLightComponent.h"
+#include "DirectionalLightActor.generated.h"
 
+UCLASS()
 class ADirectionalLightActor final : public AActor
 {
-	DECLARE_CLASS(ADirectionalLightActor, AActor)
+	GENERATED_BODY()
 
 public:
 	ADirectionalLightActor();

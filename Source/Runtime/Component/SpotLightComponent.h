@@ -1,17 +1,14 @@
 #pragma once
 
 #include "PointLightComponent.h"
+#include "SpotLightComponent.generated.h"
 
 class FLineBatcher;
 
+UCLASS()
 class USpotLightComponent : public UPointLightComponent
 {
-	DECLARE_CLASS(USpotLightComponent, UPointLightComponent)
-	REFLECT_START(USpotLightComponent)
-		PROPERTY(InnerConeAngle)
-		PROPERTY(OuterConeAngle)
-		PROPERTY(IsDebugLine)
-	REFLECT_END()
+	GENERATED_BODY()
 
 public:
 	USpotLightComponent() = default;
@@ -32,9 +29,12 @@ public:
 	virtual bool ShouldAlwaysDrawDebug() const override { return IsDebugLine; }
 
 protected:
+	UPROPERTY(EditAnywhere)
 	float InnerConeAngle = 0.0f;
+	UPROPERTY(EditAnywhere)
 	float OuterConeAngle = 44.0f;
 
 private:
+	UPROPERTY(EditAnywhere)
 	bool IsDebugLine = false;
 };

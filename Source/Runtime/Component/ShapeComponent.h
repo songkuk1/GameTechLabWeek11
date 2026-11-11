@@ -1,18 +1,15 @@
 #pragma once
 
 #include "PrimitiveComponent.h"
+#include "ShapeComponent.generated.h"
 
 class FLineBatcher;
 
+UCLASS()
 class UShapeComponent :public UPrimitiveComponent
 {
-	DECLARE_CLASS(UShapeComponent, UPrimitiveComponent)
+	GENERATED_BODY()
 
-	REFLECT_START(ClassName)
-		PROPERTY(ShapeColor)
-		PROPERTY(bDrawOnlyIfSelected)
-		PROPERTY(bIsGameHidden)
-	REFLECT_END()
 
 public:
 	UShapeComponent();
@@ -37,8 +34,11 @@ protected:
 						float StartAngle, float EndAngle, int32 Segments, const FVector4& Color);
 
 protected:
+	UPROPERTY(EditAnywhere)
 	FColor ShapeColor = FColor();
+	UPROPERTY(EditAnywhere)
 	bool bDrawOnlyIfSelected = false;
+	UPROPERTY(EditAnywhere)
 	bool bIsGameHidden = true;
 private:
 };

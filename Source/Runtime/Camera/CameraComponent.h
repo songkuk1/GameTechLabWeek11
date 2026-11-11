@@ -2,21 +2,14 @@
 
 #include "UObject/Class.h"
 #include "Component/SceneComponent.h"
+#include "CameraComponent.generated.h"
 
 struct FMinimalViewInfo;
 
+UCLASS()
 class UCameraComponent : public USceneComponent
 {
-	DECLARE_CLASS(UCameraComponent, USceneComponent)
-	REFLECT_START(UCameraComponent)
-		PROPERTY(bIsOrthogonal)
-		PROPERTY(FieldOfView)
-		PROPERTY(AspectRatio)
-		PROPERTY(bConstrainAspectRatio)
-		PROPERTY(NearClipPlane)
-		PROPERTY(FarClipPlane)
-		PROPERTY(OrthoWidth)
-	REFLECT_END()
+	GENERATED_BODY()
 
 public:
 	FMinimalViewInfo GetCameraView() const;
@@ -45,15 +38,22 @@ public:
 
 protected:
 	// Camera Settings
+	UPROPERTY(EditAnywhere)
 	bool bIsOrthogonal = false;
+	UPROPERTY(EditAnywhere)
 	float FieldOfView = 60.0f;
+	UPROPERTY(EditAnywhere)
 	float AspectRatio = 1.777778f; // 16:9
 
 	// Camera Options
+	UPROPERTY(EditAnywhere)
 	bool bConstrainAspectRatio = false;
 
 	// 그 외
+	UPROPERTY(EditAnywhere)
 	float NearClipPlane = 0.1f;
+	UPROPERTY(EditAnywhere)
 	float FarClipPlane = 10000.0f;
+	UPROPERTY(EditAnywhere)
 	float OrthoWidth = 16.0f;
 };

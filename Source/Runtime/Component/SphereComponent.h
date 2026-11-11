@@ -2,17 +2,16 @@
 
 #include "ShapeComponent.h"
 #include "Collision/CollisionShape.h"
+#include "SphereComponent.generated.h"
 
 class FLineBatcher;
 struct FBox;
 
+UCLASS()
 class USphereComponent :public UShapeComponent
 {
-	DECLARE_CLASS(USphereComponent, UShapeComponent)
+	GENERATED_BODY()
 
-	REFLECT_START(ClassName)
-		PROPERTY(SphereRadius)
-	REFLECT_END()
 
 public:
 	USphereComponent();
@@ -35,5 +34,6 @@ public:
 
 private:
 	//로컬 반지름
+	UPROPERTY(EditAnywhere)
 	float SphereRadius = 0.5f;
 };

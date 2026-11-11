@@ -1,14 +1,16 @@
 #pragma once
 
 #include "GameFramework/Actor.h"
+#include "Coin.generated.h"
 
 class UCoinMovementComponent;
 class UStaticMeshComponent;
 class USphereComponent;
 
+UCLASS()
 class ACoin : public AActor
 {
-	DECLARE_CLASS(ACoin, AActor)
+	GENERATED_BODY()
 
 public:
 	ACoin();

@@ -2,15 +2,15 @@
 
 #include "PrimitiveComponent.h"
 #include "Render/Material.h"
+#include "BillboardComponent.generated.h"
 
 struct FBillboardView;
 
+UCLASS()
 class UBillboardComponent : public UPrimitiveComponent
 {
-	DECLARE_CLASS(UBillboardComponent, UPrimitiveComponent)
+	GENERATED_BODY()
 
-	REFLECT_START(ClassName)
-	REFLECT_END()
 
 public:
 	UBillboardComponent();

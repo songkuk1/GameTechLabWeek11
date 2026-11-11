@@ -2,6 +2,7 @@
 
 #include "Animation/AnimationAsset.h"
 #include "Containers/Array.h"
+#include "BlendSpace1D.generated.h"
 
 class UAnimSequence;
 class USkeleton;
@@ -22,9 +23,10 @@ struct FBlendSpaceAxis1D
 	int32 GridDivisions = 6;
 };
 
+UCLASS()
 class UBlendSpace1D : public UAnimationAsset
 {
-	DECLARE_CLASS(UBlendSpace1D, UAnimationAsset)
+	GENERATED_BODY()
 public:
 	const FBlendSpaceAxis1D& GetAxis() const { return Axis; }
 	bool SetAxis(const FBlendSpaceAxis1D& InAxis);

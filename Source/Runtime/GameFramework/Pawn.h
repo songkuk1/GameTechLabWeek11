@@ -1,15 +1,14 @@
 #pragma once
 
 #include "Actor.h"
+#include "Pawn.generated.h"
 
 class APlayerController;
 
+UCLASS()
 class APawn : public AActor
 {
-	DECLARE_CLASS(APawn, AActor)
-	REFLECT_START(ClassName)
-		PROPERTY(bAutoPossessPlayer)
-		REFLECT_END()
+	GENERATED_BODY()
 
 public:
 	void EndPlay() override;
@@ -33,6 +32,7 @@ public:
 protected:
 	APlayerController* Controller = nullptr;
 
+	UPROPERTY(EditAnywhere)
 	bool bAutoPossessPlayer = false;
 	bool bUseControllerRotationPitch = false;
 	bool bUseControllerRotationYaw = true;

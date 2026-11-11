@@ -2,10 +2,12 @@
 
 #include "UObject/Object.h"
 #include "UObject/Class.h"
+#include "Asset.generated.h"
 
+UCLASS()
 class UAsset : public UObject
 {
-	DECLARE_CLASS(UAsset, UObject)
+	GENERATED_BODY()
 
 public:
 	virtual ~UAsset() = default;

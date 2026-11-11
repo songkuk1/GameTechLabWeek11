@@ -1,16 +1,14 @@
 #pragma once
 #include "MovementComponent.h"
 #include "SceneComponent.h"
+#include "CharacterMovementComponent.generated.h"
 
 class UPrimitiveComponent;
 
+UCLASS()
 class UCharacterMovementComponent : public UMovementComponent
 {
-	DECLARE_CLASS(UCharacterMovementComponent, UMovementComponent)
-	REFLECT_START(ClassName)
-		PROPERTY(RotationRate)
-		PROPERTY(bOrientRotationToMovement)
-	REFLECT_END()
+	GENERATED_BODY()
 
 public:
 	UCharacterMovementComponent();
@@ -43,7 +41,9 @@ private:
 	// 한 프레임 이동에서 미끄러짐을 반복하는 최대 횟수 (바닥 + 벽 모서리 등)
 	int32 MaxSlideIterations = 3;
 
+	UPROPERTY(EditAnywhere)
 	float RotationRate = 540.0f;
+	UPROPERTY(EditAnywhere)
 	bool bOrientRotationToMovement = true;
 
 	UPrimitiveComponent* CollisionComponent = nullptr;

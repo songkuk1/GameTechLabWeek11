@@ -4,6 +4,7 @@
 #include "Animation/AnimNode_StateMachine.h"
 #include "Containers/Array.h"
 #include "Serialization/StructuredArchive.h"
+#include "AnimationGraph.generated.h"
 
 class UAnimSequence;
 class UBlendSpace1D;
@@ -59,9 +60,10 @@ struct FAnimGraphEditorNodePosition
     float Y = 0.0f;
 };
 
+UCLASS()
 class UAnimationGraph : public UAnimationAsset
 {
-    DECLARE_CLASS(UAnimationGraph, UAnimationAsset)
+    GENERATED_BODY()
 public:
     bool SetSkeleton(USkeleton* InSkeleton);
     USkeleton* GetSkeleton() const { return Skeleton; }

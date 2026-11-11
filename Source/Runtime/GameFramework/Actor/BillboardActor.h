@@ -2,10 +2,12 @@
 
 #include "GameFramework/Actor.h"
 #include "Component/BillboardComponent.h"
+#include "BillboardActor.generated.h"
 
+UCLASS()
 class ABillboardActor : public AActor
 {
-	DECLARE_CLASS(ABillboardActor, AActor);
+	GENERATED_BODY();
 public:
 	ABillboardActor();
 	virtual ~ABillboardActor();

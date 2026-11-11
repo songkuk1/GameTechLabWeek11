@@ -2,13 +2,15 @@
 
 #include "Actor.h"
 #include "Camera/CameraTypes.h"
+#include "PlayerController.generated.h"
 
 class APawn;
 class APlayerCameraManager;
 
+UCLASS()
 class APlayerController : public AActor
 {
-	DECLARE_CLASS(APlayerController, AActor)
+	GENERATED_BODY()
 
 public:
 	APlayerController();

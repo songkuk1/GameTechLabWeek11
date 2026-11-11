@@ -1,12 +1,14 @@
 #pragma once
 
 #include "Actor.h"
+#include "PlayerStart.generated.h"
 
 class UBillboardComponent;
 
+UCLASS()
 class APlayerStart : public AActor
 {
-	DECLARE_CLASS(APlayerStart, AActor)
+	GENERATED_BODY()
 
 public:
 	APlayerStart();

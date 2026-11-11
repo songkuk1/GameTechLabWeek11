@@ -3,12 +3,14 @@
 #include "UObject/Object.h"
 #include "UObject/Class.h"
 #include "MovieSceneBinding.h"
+#include "MovieScene.generated.h"
 
 class UMovieSceneCameraCutTrack;
 
+UCLASS()
 class UMovieScene : public UObject
 {
-	DECLARE_CLASS(UMovieScene, UObject)
+	GENERATED_BODY()
 
 public:
 	void Initialize(float InDuration, int32 InFrameCount);

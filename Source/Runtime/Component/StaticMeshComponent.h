@@ -1,14 +1,13 @@
 #pragma once
 
 #include "MeshComponent.h"
+#include "StaticMeshComponent.generated.h"
 
+UCLASS()
 class UStaticMeshComponent : public UMeshComponent
 {
-	DECLARE_CLASS(UStaticMeshComponent, UMeshComponent)
+	GENERATED_BODY()
 
-	REFLECT_START(UStaticMeshComponent)
-		PROPERTY(StaticMesh)
-	REFLECT_END()
 public:
 	UStaticMeshComponent();
 	virtual ~UStaticMeshComponent();
@@ -33,6 +32,7 @@ public:
 	FPrimitiveSceneProxy* CreateSceneProxy() override;
 
 private:
+	UPROPERTY(EditAnywhere)
 	UStaticMesh* StaticMesh = nullptr;
 	// Mesh의 Section별 Material과 Texture를 보존해 각각의 렌더 패킷으로 제출한다.
 	//virtual void SubmitToRenderQueue(TQueue<FRenderPacket>& RenderQueue) override;

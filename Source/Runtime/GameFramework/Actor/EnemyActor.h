@@ -3,16 +3,16 @@
 #include "GameFramework/Pawn.h"
 #include "Component/StaticMeshComponent.h"
 #include "Component/CharacterMovementComponent.h"
+#include "EnemyActor.generated.h"
 
 class UScriptComponent;
 class USphereComponent;
 
+UCLASS()
 class AEnemyActor : public APawn
 {
-    DECLARE_CLASS(AEnemyActor, APawn)
+    GENERATED_BODY()
 
-    REFLECT_START(ClassName)
-        REFLECT_END()
 
 public:
     AEnemyActor();

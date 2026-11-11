@@ -4,10 +4,12 @@
 #include "Asset/ModelData.h"
 
 #include <filesystem>
+#include "Skeleton.generated.h"
 
+UCLASS()
 class USkeleton : public UAsset
 {
-	DECLARE_CLASS(USkeleton, UAsset)
+	GENERATED_BODY()
 
 public:
 	void Initialize(const TArray<FModelNode>& InNodes, const TArray<FModelBone>& InBones);

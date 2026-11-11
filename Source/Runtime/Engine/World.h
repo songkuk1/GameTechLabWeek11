@@ -12,6 +12,7 @@
 #include "Engine/EngineTypes.h"
 #include "Collision/PhysicsScene.h"
 #include "Core/Delegate.h"
+#include "World.generated.h"
 
 class ULevel;
 class UBillboardComponent;
@@ -31,9 +32,10 @@ struct FRenderStats
 	void Reset() { *this = FRenderStats(); }
 };
 
+UCLASS()
 class UWorld : public UObject
 {
-	DECLARE_CLASS(UWorld, UObject)
+	GENERATED_BODY()
 
 public:
 	UWorld() = default;

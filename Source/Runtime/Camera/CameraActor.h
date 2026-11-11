@@ -4,14 +4,16 @@
 #include "UObject/Class.h"
 
 #include "CameraComponent.h"
+#include "CameraActor.generated.h"
 
 //class UCameraComponent;
 
 class UBillboardComponent;
 
+UCLASS()
 class ACameraActor : public AActor
 {
-	DECLARE_CLASS(ACameraActor, AActor)
+	GENERATED_BODY()
 
 public:
 	// 카메라 컴포넌트를 기본 서브오브젝트로 생성해 Actor 루트에 연결한다.

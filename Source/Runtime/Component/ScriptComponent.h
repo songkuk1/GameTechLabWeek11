@@ -2,17 +2,16 @@
 
 #include "ActorComponent.h"
 #include "Script/LuaScriptInstance.h"
+#include "ScriptComponent.generated.h"
 
 class UPrimitiveComponent;
 enum class EAnimNotifyEventType : uint8;
 
+UCLASS()
 class UScriptComponent : public UActorComponent
 {
-    DECLARE_CLASS(UScriptComponent, UActorComponent)
+    GENERATED_BODY()
 
-    REFLECT_START(ClassName)
-        PROPERTY(ScriptPath)
-        REFLECT_END()
 
 public:
     UScriptComponent();
@@ -37,6 +36,7 @@ public:
     }
 
 private:
+    UPROPERTY(EditAnywhere)
     FString ScriptPath = "Assets/Scripts/Templates/Template.lua";
     FLuaScriptInstance ScriptInstance;
 };

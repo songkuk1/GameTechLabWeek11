@@ -1,10 +1,12 @@
 #pragma once
 
 #include "Asset/Asset.h"
+#include "MaterialInterface.generated.h"
 
+UCLASS()
 class UMaterialInterface : public UAsset
 {
-	DECLARE_CLASS(UMaterialInterface, UAsset)
+	GENERATED_BODY()
 public:
 
 private:

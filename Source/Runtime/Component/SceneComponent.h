@@ -4,6 +4,7 @@
 #include "ActorComponent.h"
 #include "Math/Box.h"
 #include "Collision/HitResult.h"
+#include "SceneComponent.generated.h"
 
 enum class EAttachmentRule
 {
@@ -12,13 +13,11 @@ enum class EAttachmentRule
 	SnapToTarget
 };
 
+UCLASS()
 class USceneComponent : public UActorComponent
 {
-	DECLARE_CLASS(USceneComponent, UActorComponent)
+	GENERATED_BODY()
 
-	REFLECT_START(ClassName)
-		PROPERTY(Transform)
-		REFLECT_END()
 
 public:
 	USceneComponent() = default;
@@ -93,6 +92,7 @@ private:
 	void UpdateWorldTransformCache() const;
 
 protected:
+	UPROPERTY(EditAnywhere)
 	FTransform Transform;
 
 	// 월드 변환 캐시. MarkTransformDirty가 자신과 자식들의 캐시를 무효화한다.

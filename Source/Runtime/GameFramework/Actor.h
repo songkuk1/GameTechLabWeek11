@@ -8,16 +8,16 @@
 #include "UObject/UObjectGlobals.h"
 #include "Containers/Set.h"
 #include "Engine/EngineBaseTypes.h"
+#include "Actor.generated.h"
 
 class UWorld;
 class ULevel;
 enum class EAnimNotifyEventType : uint8;
 
+UCLASS()
 class AActor : public UObject
 {
-	DECLARE_CLASS(AActor, UObject)
-	REFLECT_START(ClassName)
-		REFLECT_END()
+	GENERATED_BODY()
 public:
 	AActor();
 	virtual ~AActor();

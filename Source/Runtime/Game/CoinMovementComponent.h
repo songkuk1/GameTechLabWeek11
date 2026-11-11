@@ -1,11 +1,13 @@
 #pragma once
 
 #include "Component/ProjectileMovementComponent.h"
+#include "CoinMovementComponent.generated.h"
 
 // 코인끼리는 충돌하지 않도록 만들기 위한 전용 컴포넌트
+UCLASS()
 class UCoinMovementComponent : public UProjectileMovementComponent
 {
-	DECLARE_CLASS(UCoinMovementComponent, UProjectileMovementComponent)
+	GENERATED_BODY()
 
 public:
 	bool MoveUpdatedComponent(const FVector& Delta, const FRotator& NewRotation, bool bSweep, FHitResult* Hit) override;

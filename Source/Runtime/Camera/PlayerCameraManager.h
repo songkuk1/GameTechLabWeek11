@@ -3,6 +3,7 @@
 #include "GameFramework/Actor.h"
 #include "UObject/Class.h"
 #include "CameraTypes.h"
+#include "PlayerCameraManager.generated.h"
 
 class UCameraComponent;
 class UCameraModifier;
@@ -28,9 +29,10 @@ public:
 	class APawn* GetTargetPawn() const;
 };
 
+UCLASS()
 class APlayerCameraManager : public AActor
 {
-	DECLARE_CLASS(APlayerCameraManager, AActor)
+	GENERATED_BODY()
 
 public:
 	APlayerCameraManager();

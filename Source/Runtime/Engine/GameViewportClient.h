@@ -7,14 +7,16 @@
 #include "Render/PipelineState.h"
 #include "Math/Matrix.h"
 #include "Math/Vector2.h"
+#include "GameViewportClient.generated.h"
 
 class FWidgetTree;
 class FTextRenderer;
 struct FRenderingInfo;
 
+UCLASS()
 class UGameViewportClient : public UObject
 {
-	DECLARE_CLASS(UGameViewportClient, UObject)
+	GENERATED_BODY()
 
 public:
 	UGameViewportClient();

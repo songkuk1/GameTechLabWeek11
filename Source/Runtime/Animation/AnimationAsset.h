@@ -1,8 +1,10 @@
 #pragma once
 
 #include "Asset/Asset.h"
+#include "AnimationAsset.generated.h"
 
+UCLASS()
 class UAnimationAsset : public UAsset
 {
-	DECLARE_CLASS(UAnimationAsset, UAsset)
+	GENERATED_BODY()
 };

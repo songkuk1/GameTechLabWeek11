@@ -2,25 +2,17 @@
 
 #include "Component/SceneComponent.h"
 #include "Math/Color.h"
+#include "DecalComponent.generated.h"
 
 class UMaterial;
 class FDecalSceneProxy;
 class FLineBatcher;
 
+UCLASS()
 class UDecalComponent : public USceneComponent
 {
-    DECLARE_CLASS(UDecalComponent, USceneComponent)
+    GENERATED_BODY()
 
-    REFLECT_START(UDecalComponent)
-        PROPERTY(DecalSize)
-        PROPERTY(DecalColor)
-        PROPERTY(SortOrder)
-        PROPERTY(FadeInStartDelay)
-        PROPERTY(FadeInDuration)
-        PROPERTY(FadeStartDelay)
-        PROPERTY(FadeDuration)
-        PROPERTY(bDestroyOwnerAfterFade)
-        REFLECT_END()
 
 public:
     // 수명주기 갱신
@@ -99,15 +91,23 @@ private:
     UMaterial* DecalMaterial = nullptr;
 
     // 전체 로컬 크기 및 투영 설정
+    UPROPERTY(EditAnywhere)
     FVector DecalSize = FVector(1.0f, 2.0f, 2.0f);
+    UPROPERTY(EditAnywhere)
     FLinearColor DecalColor = FLinearColor(1.0f, 1.0f, 1.0f, 1.0f);
+    UPROPERTY(EditAnywhere)
     int32 SortOrder = 0;
+    UPROPERTY(EditAnywhere)
     float FadeInStartDelay = 0.0f;
+    UPROPERTY(EditAnywhere)
     float FadeInDuration = 0.0f;
+    UPROPERTY(EditAnywhere)
     float FadeStartDelay = 0.0f;
+    UPROPERTY(EditAnywhere)
     float FadeDuration = 0.0f;
 
     // 페이드 아웃 완료 이후의 소유 액터 삭제 설정
+    UPROPERTY(EditAnywhere)
     bool bDestroyOwnerAfterFade = true;
 
     // 비직렬화 재생 상태

@@ -1,12 +1,14 @@
 #pragma once
 
 #include "GameFramework/Actor.h"
+#include "CoinLauncher.generated.h"
 
 class UScriptComponent;
 
+UCLASS()
 class ACoinLauncher : public AActor
 {
-	DECLARE_CLASS(ACoinLauncher, AActor)
+	GENERATED_BODY()
 
 public:
 	ACoinLauncher();

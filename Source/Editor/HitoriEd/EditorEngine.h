@@ -40,15 +40,17 @@
 //Temp
 #include "Text/Font.h"
 #include "Text/TextRenderer.h"
+#include "EditorEngine.generated.h"
 
 class UAnimSequence;
 class USkeletalMesh;
 class UBlendSpace1D;
 class UAnimationGraph;
 
+UCLASS()
 class UEditorEngine : public UEngine
 {
-	DECLARE_CLASS(UEditorEngine, UEngine)
+	GENERATED_BODY()
 
 public:
 	FEngineConfig GetConfig() const override;

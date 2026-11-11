@@ -2,17 +2,15 @@
 
 #include "ShapeComponent.h"
 #include "Collision/CollisionShape.h"
+#include "CapsuleComponent.generated.h"
 
 struct FBox;
 
+UCLASS()
 class UCapsuleComponent :public UShapeComponent
 {
-	DECLARE_CLASS(UCapsuleComponent, UShapeComponent)
+	GENERATED_BODY()
 
-	REFLECT_START(ClassName)
-		PROPERTY(CapsuleHalfHeight)
-		PROPERTY(CapsuleRadius)
-	REFLECT_END()
 
 public:
 	UCapsuleComponent();
@@ -34,7 +32,9 @@ public:
 
 private:
 	//반구를 포함한 절반 높이
+	UPROPERTY(EditAnywhere)
 	float CapsuleHalfHeight = 1.f;
 	//반구의 반지름
+	UPROPERTY(EditAnywhere)
 	float CapsuleRadius = 0.5f;
 };

@@ -2,15 +2,15 @@
 
 #include "GameFramework/Actor.h"
 #include "Component/ScriptComponent.h"
+#include "LuaTestActor.generated.h"
 
 class UScriptComponent;
 
+UCLASS()
 class ALuaTestActor : public AActor
 {
-    DECLARE_CLASS(ALuaTestActor, AActor)
+    GENERATED_BODY()
 
-    REFLECT_START(ClassName)
-        REFLECT_END()
 
 public:
     ALuaTestActor();

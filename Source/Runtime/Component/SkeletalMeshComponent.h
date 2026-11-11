@@ -2,15 +2,17 @@
 
 #include "Component/SkinnedMeshComponent.h"
 #include "Animation/AnimInstance.h"
+#include "SkeletalMeshComponent.generated.h"
 
 class USkeleton;
 class UAnimationGraph;
 struct FAnimNotifyEvent;
 enum class EAnimNotifyEventType : uint8;
 
+UCLASS()
 class USkeletalMeshComponent : public USkinnedMeshComponent
 {
-    DECLARE_CLASS(USkeletalMeshComponent, USkinnedMeshComponent)
+    GENERATED_BODY()
 
 public:
     virtual ~USkeletalMeshComponent() override;

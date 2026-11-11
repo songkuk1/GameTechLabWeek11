@@ -2,12 +2,14 @@
 
 #include "CameraModifier.h"
 #include "UObject/Class.h"
+#include "CameraModifier_CameraShake.generated.h"
 
 class UCameraShakeBase;
 
+UCLASS()
 class UCameraModifier_CameraShake : public UCameraModifier
 {
-	DECLARE_CLASS(UCameraModifier_CameraShake, UCameraModifier)
+	GENERATED_BODY()
 	/*REFLECT_START(ClassName)
 		REFLECT_END()*/
 public:

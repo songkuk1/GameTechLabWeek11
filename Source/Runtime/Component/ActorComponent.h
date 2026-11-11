@@ -3,15 +3,15 @@
 #include "UObject/Object.h"
 #include "UObject/Class.h"
 #include "Engine/EngineBaseTypes.h"
+#include "ActorComponent.generated.h"
 
 class AActor;
 
+UCLASS()
 class UActorComponent : public UObject
 {
-	DECLARE_CLASS(UActorComponent, UObject)
+	GENERATED_BODY()
 
-	REFLECT_START(ClassName)
-	REFLECT_END()
 
 public:
 	UActorComponent() { PrimaryComponentTick.Target = this; }

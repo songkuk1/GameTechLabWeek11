@@ -1,10 +1,12 @@
 #pragma once
 
 #include "PrimitiveComponent.h"
+#include "MeshComponent.generated.h"
 
+UCLASS()
 class UMeshComponent : public UPrimitiveComponent
 {
-	DECLARE_CLASS(UMeshComponent, UPrimitiveComponent)
+	GENERATED_BODY()
 public:
 	UMeshComponent();
 	virtual ~UMeshComponent();

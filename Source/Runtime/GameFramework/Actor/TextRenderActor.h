@@ -2,13 +2,13 @@
 
 #include "GameFramework/Actor.h"
 #include "Component/TextRenderComponent.h"
+#include "TextRenderActor.generated.h"
 
+UCLASS()
 class ATextRenderActor : public AActor
 {
-	DECLARE_CLASS(ATextRenderActor, AActor)
+	GENERATED_BODY()
 
-	REFLECT_START(ClassName)
-	REFLECT_END()
 
 public:
 	ATextRenderActor();

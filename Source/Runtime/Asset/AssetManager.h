@@ -7,6 +7,7 @@
 #include "Asset/LOD/StaticMeshLODGenerator.h"
 #include <filesystem>
 #include <functional>
+#include "AssetManager.generated.h"
 
 enum class EAssetType
 {
@@ -23,9 +24,10 @@ class UAnimSequence;
 
 namespace fs = std::filesystem;
 
+UCLASS()
 class UAssetManager : public UObject
 {
-	DECLARE_CLASS(UAssetManager, UObject)
+	GENERATED_BODY()
 private:
 	UAssetManager() = default;
 

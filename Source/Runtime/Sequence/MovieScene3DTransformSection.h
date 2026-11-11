@@ -3,10 +3,12 @@
 #include "MovieSceneSection.h"
 #include "MovieSceneFloatChannel.h"
 #include "Math/Transform.h"
+#include "MovieScene3DTransformSection.generated.h"
 
+UCLASS()
 class UMovieScene3DTransformSection : public UMovieSceneSection
 {
-	DECLARE_CLASS(UMovieScene3DTransformSection, UMovieSceneSection)
+	GENERATED_BODY()
 
 public:
 	UMovieScene3DTransformSection();

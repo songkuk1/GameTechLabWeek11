@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Asset/Asset.h"
+#include "Font.generated.h"
 
 class UTexture2D;
 
@@ -14,9 +15,10 @@ struct FGlyphInfo // 글자 하나의 정보
 	bool bHasBounds = false; // 공백(unicode 32)처럼 그릴 게 없는 글자 구분용
 };
 
+UCLASS()
 class UFont : public UAsset
 {
-	DECLARE_CLASS(UFont, UAsset)
+	GENERATED_BODY()
 public:
 	bool LoadFontAtlasJson(const FString& JsonPath);
 

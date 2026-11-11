@@ -4,12 +4,14 @@
 #include "Render/SceneRenderer.h"
 #include "Render/SceneRenderTargets.h"
 #include "Text/TextRenderer.h"
+#include "GameEngine.generated.h"
 
 class FTextRenderer;
 
+UCLASS()
 class UGameEngine : public UEngine
 {
-	DECLARE_CLASS(UGameEngine, UEngine)
+	GENERATED_BODY()
 
 public:
 	FEngineConfig GetConfig() const override;
