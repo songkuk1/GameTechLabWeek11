@@ -27,6 +27,9 @@ public:
 
 	FVector GetWorldBoxExtent()const;
 
+	void SetBoxExtent(const FVector& InExtent) { BoxExtent = InExtent; }
+	const FVector& GetBoxExtent() const { return BoxExtent; }
+
 	virtual FBox CalcLocalBounds() const override;
 
 private:

@@ -208,7 +208,14 @@ namespace
 			}
 
 			Scene->SetCurrentAnimationStack(AnimStack);
-			const fbxsdk::FbxTimeSpan TimeSpan = AnimStack->GetLocalTimeSpan();
+			fbxsdk::FbxTimeSpan TimeSpan = AnimStack->GetLocalTimeSpan();
+			if ((TimeSpan.GetStop() - TimeSpan.GetStart()).GetSecondDouble() <= 0.0)
+			{
+				if (fbxsdk::FbxTakeInfo* TakeInfo = Scene->GetTakeInfo(AnimStack->GetName()))
+				{
+					TimeSpan = TakeInfo->mLocalTimeSpan;
+				}
+			}
 			const fbxsdk::FbxTime StartTime = TimeSpan.GetStart();
 			const fbxsdk::FbxTime StopTime = TimeSpan.GetStop();
 			const double StartSeconds = StartTime.GetSecondDouble();

@@ -28,6 +28,15 @@ public:
 
 	void AddKnockback(const FVector& InVelocity);
 
+	void SetOrientRotationToMovement(bool bInOrient) { bOrientRotationToMovement = bInOrient; }
+	bool GetOrientRotationToMovement() const { return bOrientRotationToMovement; }
+	void ResetVelocity()
+	{
+		Velocity = FVector::ZeroVector;
+		KnockbackVelocity = FVector::ZeroVector;
+		PendingMoveInput = FVector::ZeroVector;
+	}
+
 private:
 	// Delta만큼 sweep 이동하고, 막히면 남은 이동을 표면을 따라 미끄러뜨린다
 	void MoveWithSlide(const FVector& Delta, const FRotator& NewRotation);

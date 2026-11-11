@@ -62,6 +62,11 @@ private:
 
     UAnimSequence* NewSequence = nullptr;
     UBlendSpace1D* NewBlendSpace = nullptr;
+    UAnimSequence* NewOverlaySequence = nullptr;
+    char NewBranchBoneBuffer[64] = "spine_01";
+    float NewBlendWeight = 1.0f;
+    bool bNewOverlayLooping = false;
+    int32 NewLayeredBaseMode = 0; // 0 = BlendSpace, 1 = Sequence
 
     int32 SelectedStateIndex = -1;
     int32 DraggingNodeIndex = -1;

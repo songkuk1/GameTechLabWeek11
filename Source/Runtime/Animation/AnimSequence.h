@@ -38,7 +38,7 @@ public:
 	float GetPlayLength() const { return DataModel ? DataModel->PlayLength : 0.0f; }
 	float GetFrameRate() const { return (DataModel && DataModel->FrameRate.IsValid()) ? DataModel->FrameRate.AsDecimal() : 30.0f; }
 	int32 GetTotalFrames() const { return DataModel ? DataModel->NumberOfFrames : 0; }
-	void RetargetToSkeleton(USkeleton* InSkeleton) { SetSkeleton(InSkeleton); }
+	void RetargetToSkeleton(USkeleton* InSkeleton);
 	bool IsForceRootLock() const { return bForceRootLock; }
 	void SetForceRootLock(bool bInLock) { bForceRootLock = bInLock; }
 	const TArray<FAnimNotifyEvent>& GetNotifies() const { return Notifies; }

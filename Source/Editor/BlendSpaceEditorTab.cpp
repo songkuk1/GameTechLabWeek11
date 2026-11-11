@@ -3,6 +3,8 @@
 
 #include "Animation/BlendSpace1D.h"
 #include "Animation/AnimSequence.h"
+#include "Animation/Skeleton.h"
+#include "Asset/AssetManager.h"
 #include "Render/SkeletalMesh.h"
 #include "Component/SkeletalMeshComponent.h"
 
@@ -104,13 +106,51 @@ FBlendSpaceEditorTab::FBlendSpaceEditorTab(UBlendSpace1D* InBlendSpace) : FEdito
         }
     }
 
+    if (BlendSpace && BlendSpace->GetSkeleton())
+    {
+        USkeletalMesh* PreviewMesh = BlendSpace->GetSkeleton()->GetPreviewMesh();
+        FString MeshPathStr = PreviewMesh ? PreviewMesh->GetPath() : BlendSpace->GetSkeleton()->GetPath();
+        std::filesystem::path BaseDir = PathUtils::FromUtf8(MeshPathStr).parent_path();
+        if (BaseDir.empty() || BaseDir.string().find("Assets") == std::string::npos)
+        {
+            BaseDir = std::filesystem::path("Assets") / BaseDir;
+        }
+
+        if (std::filesystem::exists(BaseDir))
+        {
+            for (const auto& Entry : std::filesystem::recursive_directory_iterator(BaseDir))
+            {
+                if (Entry.is_regular_file())
+                {
+                    const auto Ext = Entry.path().extension();
+                    if (_wcsicmp(Ext.c_str(), L".fbx") == 0)
+                    {
+                        UAssetManager::Get().LoadFbxModel(PathUtils::ToUtf8(Entry.path()), false, true, false);
+                    }
+                    else if (_wcsicmp(Ext.c_str(), L".anim") == 0)
+                    {
+                        UAssetManager::Get().LoadAnimSequence(PathUtils::ToUtf8(Entry.path()));
+                    }
+                }
+            }
+        }
+    }
+
     for (TObjectIterator<UAnimSequence> It; It; ++It)
     {
         UAnimSequence* Animation = *It;
 
-        if (Animation && Animation->GetSkeleton() == BlendSpace->GetSkeleton())
+        if (Animation)
         {
-            AvailableAnimations.Add(Animation);
+            USkeleton* TargetSkel = BlendSpace->GetSkeleton();
+            if (Animation->GetSkeleton() == TargetSkel || (TargetSkel && TargetSkel->IsCompatibleWith(Animation->GetSkeleton())))
+            {
+                if (Animation->GetSkeleton() != TargetSkel && TargetSkel)
+                {
+                    Animation->RetargetToSkeleton(TargetSkel);
+                }
+                AvailableAnimations.Add(Animation);
+            }
         }
     }
 

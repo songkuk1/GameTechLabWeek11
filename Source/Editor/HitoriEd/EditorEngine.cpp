@@ -654,7 +654,7 @@ void UEditorEngine::UpdateEditorTabs()
 		PendingPreviewMesh = nullptr;
 	}
 
-	if (PendingAnimationViewerMesh && PendingAnimationViewerAnimation)
+	if (PendingAnimationViewerAnimation)
 	{
 		USkeletalMesh* Mesh = PendingAnimationViewerMesh;
 		UAnimSequence* Animation = PendingAnimationViewerAnimation;
@@ -796,7 +796,14 @@ void UEditorEngine::OpenAnimationSequenceViewer(USkeletalMesh* SkeletalMesh, UAn
 			};
 			for (const char* FallbackPath : FallbackMeshPaths)
 			{
-				if (USkeletalMesh* LoadedMesh = UAssetManager::GetAssetByPath<USkeletalMesh>(FallbackPath))
+				USkeletalMesh* LoadedMesh = UAssetManager::GetAssetByPath<USkeletalMesh>(FallbackPath);
+				if (!LoadedMesh)
+				{
+					UAssetManager::Get().LoadFbxModel(FallbackPath, false);
+					LoadedMesh = UAssetManager::GetAssetByPath<USkeletalMesh>(FallbackPath);
+				}
+
+				if (LoadedMesh)
 				{
 					if (LoadedMesh->GetSkeleton() && TargetSkeleton->IsCompatibleWith(LoadedMesh->GetSkeleton()) && !LoadedMesh->GetMeshData().Vertices.IsEmpty())
 					{

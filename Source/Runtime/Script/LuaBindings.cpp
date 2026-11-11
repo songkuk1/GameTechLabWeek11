@@ -14,6 +14,8 @@
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/Actor/PlayerActor.h"
 #include "GameFramework/Actor/EnemyActor.h"
+#include "GameFramework/Actor/LayerCharacter.h"
+#include "GameFramework/Actor/EnemyCharacter.h"
 #include "Game/CoinLauncher.h"
 #include "Component/PrimitiveComponent.h"
 #include "Component/ScriptComponent.h"
@@ -535,6 +537,19 @@ void FLuaBindings::RegisterLuaBindings(sol::state& Lua, FLuaCoroutineScheduler* 
 		"IsGrounded", &APlayerActor::IsGrounded
 	);
 
+	// --------------------- LayerCharacter ---------------------
+	Lua.new_usertype<ALayerCharacter>(
+		"LayerCharacter",
+		sol::no_constructor,
+		sol::base_classes, sol::bases<APawn, AActor, UObject>(),
+		"StaticClass", &ALayerCharacter::StaticClass,
+		"ResetToLocation", &ALayerCharacter::ResetToLocation,
+		"SetEnableRootMotion", &ALayerCharacter::SetEnableRootMotion,
+		"IsRootMotionEnabled", &ALayerCharacter::IsRootMotionEnabled,
+		"TakeDamage", &ALayerCharacter::TakeDamage,
+		"IsGrounded", &ALayerCharacter::IsGrounded
+	);
+
 	// --------------------- Enemy ---------------------
 	Lua.new_usertype<AEnemyActor>(
 		"Enemy",
@@ -599,6 +614,10 @@ static sol::object ConvertActorToActual(AActor* Actor)
 	if (Actor->GetClass() == APlayerActor::StaticClass())
 	{
 		return sol::make_object(FLuaScriptSystem::Get().GetLuaState(), Cast<APlayerActor>(Actor));
+	}
+	else if (Actor->GetClass() == ALayerCharacter::StaticClass())
+	{
+		return sol::make_object(FLuaScriptSystem::Get().GetLuaState(), Cast<ALayerCharacter>(Actor));
 	}
 	else if (Actor->GetClass() == AEnemyActor::StaticClass())
 	{

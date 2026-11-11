@@ -5,6 +5,7 @@
 #include "Engine/PrimitiveSceneProxy.h"
 #include "Render/RenderPacket.h"
 #include "GameFramework/Actor.h"
+#include "Component/CharacterMovementComponent.h"
 #include "Animation/Skeleton.h"
 #include "Animation/AnimInstance.h"
 #include "Animation/BlendSpace1D.h"
@@ -141,6 +142,46 @@ float USkeletalMeshComponent::GetAnimationBlendInput() const
     return AnimInstance ? AnimInstance->GetAnimationBlendInput() : 0.0f;
 }
 
+void USkeletalMeshComponent::PlayLayeredBoneBlend(UAnimSequence* InBaseAnim, UAnimSequence* InOverlayAnim, const FName& InBranchBoneName, float InBlendWeight)
+{
+    if (!InBaseAnim || !InOverlayAnim)
+    {
+        return;
+    }
+
+    USkeleton* ComponentSkeleton = SkeletalMesh ? SkeletalMesh->GetSkeleton() : nullptr;
+
+    if (!ComponentSkeleton || InBaseAnim->GetSkeleton() != ComponentSkeleton || InOverlayAnim->GetSkeleton() != ComponentSkeleton)
+    {
+        return;
+    }
+
+    if (!EnsureAnimInstance())
+    {
+        return;
+    }
+
+    AnimInstance->PlayLayeredBoneBlend(InBaseAnim, InOverlayAnim, InBranchBoneName, InBlendWeight);
+    bPlayingAnimation = true;
+    TickAnimation(0.0f);
+}
+
+void USkeletalMeshComponent::SetLayeredBlendWeight(float InWeight)
+{
+    if (!AnimInstance)
+    {
+        return;
+    }
+    AnimInstance->SetLayeredBlendWeight(InWeight);
+    AnimInstance->UpdateAnimation(0.0f);
+    EvaluateAnimationPose();
+}
+
+float USkeletalMeshComponent::GetLayeredBlendWeight() const
+{
+    return AnimInstance ? AnimInstance->GetLayeredBlendWeight() : 0.0f;
+}
+
 void USkeletalMeshComponent::TickAnimation(float DeltaSeconds)
 {
     if (!bPlayingAnimation || !AnimInstance)
@@ -157,11 +198,22 @@ void USkeletalMeshComponent::TickAnimation(float DeltaSeconds)
     {
         if (AActor* Owner = GetOwner())
         {
+            const FQuat MeshWorldRotation = GetWorldRotation().Quaternion();
+            const FVector WorldDelta = MeshWorldRotation.RotateVector(RootMotionTranslation * RootMotionScale);
             const FQuat ActorRotation = Owner->GetActorQuat();
-            const FVector NewLocation = Owner->GetActorLocation() + ActorRotation.RotateVector(RootMotionTranslation);
             const FQuat NewRotation = (ActorRotation * RootMotionRotation).Normalized();
 
-            Owner->SetActorTransform(FTransform(NewLocation, Owner->GetActorScale3D(), NewRotation.ToFRotator()));
+            if (UCharacterMovementComponent* MoveComp = Cast<UCharacterMovementComponent>(Owner->FindComponentByClass(UCharacterMovementComponent::StaticClass())))
+            {
+                const FVector HorizontalDelta(WorldDelta.X, WorldDelta.Y, 0.0f);
+                const FRotator UprightRotation(0.0f, Owner->GetActorRotation().Yaw, 0.0f);
+                MoveComp->MoveUpdatedComponent(HorizontalDelta, UprightRotation, true, nullptr);
+            }
+            else
+            {
+                const FVector NewLocation = Owner->GetActorLocation() + WorldDelta;
+                Owner->SetActorTransform(FTransform(NewLocation, Owner->GetActorScale3D(), NewRotation.ToFRotator()));
+            }
         }
     }
 
@@ -435,29 +487,6 @@ void USkeletalMeshComponent::EvaluateAnimationPose()
     }
 
     AnimInstance->EvaluateAnimation(Output);
-
-    if (bRootMotionEnabled)
-    {
-        const TArray<FModelBone>& Bones = Skeleton->GetBones();
-
-        for (const FModelBone& Bone : Bones)
-        {
-            if (Bone.ParentBoneIndex != -1)
-            {
-                continue;
-            }
-
-            int32 RootNodeIndex = Bone.NodeIndex;
-
-            while (RootNodeIndex != -1 && Nodes.IsValidIndex(RootNodeIndex))
-            {
-                Output.Pose[RootNodeIndex] = Nodes[RootNodeIndex].LocalTransform;
-                RootNodeIndex = Nodes[RootNodeIndex].ParentNodeIndex;
-            }
-
-            break;
-        }
-    }
 
     LocalPose = Output.Pose;
 

@@ -28,6 +28,11 @@ public:
 
 	bool GetIsHiddenLine() { return bIsGameHidden; }
 
+	void SetShapeColor(const FColor& InColor) { ShapeColor = InColor; }
+	const FColor& GetShapeColor() const { return ShapeColor; }
+	void SetDrawOnlyIfSelected(bool bInDrawOnlyIfSelected) { bDrawOnlyIfSelected = bInDrawOnlyIfSelected; }
+	void SetGameHidden(bool bInGameHidden) { bIsGameHidden = bInGameHidden; }
+
 protected:
 	FVector4 GetDebugColor() const;   
 

@@ -1,0 +1,244 @@
+{
+    "AnimationGraph": {
+        "EditorNodePositions": [
+            {
+                "NodeName": "__EditorEntryPoint__",
+                "X": 8.0,
+                "Y": 190.0
+            },
+            {
+                "NodeName": "None",
+                "X": -272.0,
+                "Y": 515.0
+            },
+            {
+                "NodeName": "Locomotion",
+                "X": 224.0,
+                "Y": 87.0
+            },
+            {
+                "NodeName": "Jump_Start",
+                "X": 224.0,
+                "Y": -490.0
+            },
+            {
+                "NodeName": "Attack",
+                "X": 832.0,
+                "Y": 112.0
+            },
+            {
+                "NodeName": "Hit",
+                "X": 220.0,
+                "Y": 448.0
+            },
+            {
+                "NodeName": "Jump_Loop",
+                "X": 700.0,
+                "Y": -496.0
+            },
+            {
+                "NodeName": "Jump_Land",
+                "X": 1200.0,
+                "Y": -474.0
+            }
+        ],
+        "EntryState": "Locomotion",
+        "Parameters": [
+            {
+                "BoolDefault": false,
+                "FloatDefault": 0.0,
+                "Name": "Speed",
+                "Type": 1
+            },
+            {
+                "BoolDefault": false,
+                "FloatDefault": 0.0,
+                "Name": "bIsJumping",
+                "Type": 0
+            },
+            {
+                "BoolDefault": false,
+                "FloatDefault": 0.0,
+                "Name": "bIsAttacking",
+                "Type": 0
+            },
+            {
+                "BoolDefault": false,
+                "FloatDefault": 0.0,
+                "Name": "bIsHit",
+                "Type": 0
+            },
+            {
+                "BoolDefault": false,
+                "FloatDefault": 0.0,
+                "Name": "bIsGrounded",
+                "Type": 0
+            }
+        ],
+        "Properties": {},
+        "Skeleton": "Models/Mannequin/UnrealCharac/SKM_Manny_Simple_Skeleton",
+        "States": [
+            {
+                "BlendParameterName": "Speed",
+                "BlendSpace": "NewBlendSpace1D_1.blendspace",
+                "BlendWeight": 1.0,
+                "BranchBoneName": "spine_01",
+                "Looping": true,
+                "Name": "Locomotion",
+                "NodeType": 1,
+                "OverlayLooping": false,
+                "OverlaySequence": null,
+                "PlayRate": 1.0,
+                "Sequence": null
+            },
+            {
+                "BlendParameterName": "None",
+                "BlendSpace": null,
+                "BlendWeight": 1.0,
+                "BranchBoneName": "spine_01",
+                "Looping": false,
+                "Name": "Jump_Start",
+                "NodeType": 0,
+                "OverlayLooping": false,
+                "OverlaySequence": null,
+                "PlayRate": 1.0,
+                "Sequence": "Models/Mannequin/UnrealCharac/Jump/MM_Jump.FBX::Unreal Take"
+            },
+            {
+                "BlendParameterName": "Speed",
+                "BlendSpace": "NewBlendSpace1D_1.blendspace",
+                "BlendWeight": 1.0,
+                "BranchBoneName": "spine_01",
+                "Looping": true,
+                "Name": "Attack",
+                "NodeType": 2,
+                "OverlayLooping": false,
+                "OverlaySequence": "Models/Mannequin/UnrealCharac/Attack/MM_Attack_01.FBX::Unreal Take",
+                "PlayRate": 1.0,
+                "Sequence": null
+            },
+            {
+                "BlendParameterName": "None",
+                "BlendSpace": null,
+                "BlendWeight": 1.0,
+                "BranchBoneName": "spine_01",
+                "Looping": false,
+                "Name": "Hit",
+                "NodeType": 0,
+                "OverlayLooping": false,
+                "OverlaySequence": null,
+                "PlayRate": 1.0,
+                "Sequence": "Models/Mannequin/UnrealCharac/Hit/MM_Death_Front_01.FBX::Unreal Take"
+            },
+            {
+                "BlendParameterName": "None",
+                "BlendSpace": null,
+                "BlendWeight": 1.0,
+                "BranchBoneName": "spine_01",
+                "Looping": true,
+                "Name": "Jump_Loop",
+                "NodeType": 0,
+                "OverlayLooping": false,
+                "OverlaySequence": null,
+                "PlayRate": 1.0,
+                "Sequence": "Models/Mannequin/UnrealCharac/Jump/MM_Fall_Loop.FBX::Unreal Take"
+            },
+            {
+                "BlendParameterName": "None",
+                "BlendSpace": null,
+                "BlendWeight": 1.0,
+                "BranchBoneName": "spine_01",
+                "Looping": false,
+                "Name": "Jump_Land",
+                "NodeType": 0,
+                "OverlayLooping": false,
+                "OverlaySequence": null,
+                "PlayRate": 1.0,
+                "Sequence": "Models/Mannequin/UnrealCharac/Jump/MM_Land.FBX::Unreal Take"
+            }
+        ],
+        "Transitions": [
+            {
+                "AnyState": false,
+                "BlendDuration": 0.15000000596046448,
+                "FloatThreshold": 0.0,
+                "FromState": "Locomotion",
+                "ParameterName": "bIsJumping",
+                "Priority": 0,
+                "Rule": 1,
+                "ToState": "Jump_Start"
+            },
+            {
+                "AnyState": false,
+                "BlendDuration": 0.10000000149011612,
+                "FloatThreshold": 0.0,
+                "FromState": "Locomotion",
+                "ParameterName": "bIsAttacking",
+                "Priority": 0,
+                "Rule": 1,
+                "ToState": "Attack"
+            },
+            {
+                "AnyState": false,
+                "BlendDuration": 0.20000000298023224,
+                "FloatThreshold": 0.0,
+                "FromState": "Attack",
+                "ParameterName": "None",
+                "Priority": 0,
+                "Rule": 3,
+                "ToState": "Locomotion"
+            },
+            {
+                "AnyState": true,
+                "BlendDuration": 0.05000000074505806,
+                "FloatThreshold": 0.0,
+                "FromState": "None",
+                "ParameterName": "bIsHit",
+                "Priority": 0,
+                "Rule": 1,
+                "ToState": "Hit"
+            },
+            {
+                "AnyState": false,
+                "BlendDuration": 0.20000000298023224,
+                "FloatThreshold": 0.0,
+                "FromState": "Hit",
+                "ParameterName": "None",
+                "Priority": 0,
+                "Rule": 3,
+                "ToState": "Locomotion"
+            },
+            {
+                "AnyState": false,
+                "BlendDuration": 0.10000000149011612,
+                "FloatThreshold": 0.0,
+                "FromState": "Jump_Start",
+                "ParameterName": "None",
+                "Priority": 0,
+                "Rule": 3,
+                "ToState": "Jump_Loop"
+            },
+            {
+                "AnyState": false,
+                "BlendDuration": 0.10000000149011612,
+                "FloatThreshold": 0.0,
+                "FromState": "Jump_Loop",
+                "ParameterName": "bIsGrounded",
+                "Priority": 0,
+                "Rule": 1,
+                "ToState": "Jump_Land"
+            },
+            {
+                "AnyState": false,
+                "BlendDuration": 0.15000000596046448,
+                "FloatThreshold": 0.0,
+                "FromState": "Jump_Land",
+                "ParameterName": "None",
+                "Priority": 0,
+                "Rule": 3,
+                "ToState": "Locomotion"
+            }
+        ]
+    },
+    "Version": 1
+}

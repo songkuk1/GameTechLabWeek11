@@ -5,6 +5,7 @@
 #include "Animation/AnimSequence.h"
 #include "Animation/BlendSpace1D.h"
 #include "Animation/Skeleton.h"
+#include "Asset/AssetManager.h"
 
 #include "Render/SkeletalMesh.h"
 #include "Component/SkeletalMeshComponent.h"
@@ -299,13 +300,51 @@ FAnimationGraphEditorTab::FAnimationGraphEditorTab(UAnimationGraph* InGraph) : F
         }
     }
 
+    if (Graph && Graph->GetSkeleton())
+    {
+        USkeletalMesh* PreviewMesh = Graph->GetSkeleton()->GetPreviewMesh();
+        FString MeshPathStr = PreviewMesh ? PreviewMesh->GetPath() : Graph->GetSkeleton()->GetPath();
+        std::filesystem::path BaseDir = PathUtils::FromUtf8(MeshPathStr).parent_path();
+        if (BaseDir.empty() || BaseDir.string().find("Assets") == std::string::npos)
+        {
+            BaseDir = std::filesystem::path("Assets") / BaseDir;
+        }
+
+        if (std::filesystem::exists(BaseDir))
+        {
+            for (const auto& Entry : std::filesystem::recursive_directory_iterator(BaseDir))
+            {
+                if (Entry.is_regular_file())
+                {
+                    const auto Ext = Entry.path().extension();
+                    if (_wcsicmp(Ext.c_str(), L".fbx") == 0)
+                    {
+                        UAssetManager::Get().LoadFbxModel(PathUtils::ToUtf8(Entry.path()), false, true, false);
+                    }
+                    else if (_wcsicmp(Ext.c_str(), L".anim") == 0)
+                    {
+                        UAssetManager::Get().LoadAnimSequence(PathUtils::ToUtf8(Entry.path()));
+                    }
+                }
+            }
+        }
+    }
+
     for (TObjectIterator<UAnimSequence> It; It; ++It)
     {
         UAnimSequence* Animation = *It;
 
-        if (Animation && Animation->GetSkeleton() == Graph->GetSkeleton())
+        if (Animation)
         {
-            AvailableAnimations.Add(Animation);
+            USkeleton* TargetSkel = Graph->GetSkeleton();
+            if (Animation->GetSkeleton() == TargetSkel || (TargetSkel && TargetSkel->IsCompatibleWith(Animation->GetSkeleton())))
+            {
+                if (Animation->GetSkeleton() != TargetSkel && TargetSkel)
+                {
+                    Animation->RetargetToSkeleton(TargetSkel);
+                }
+                AvailableAnimations.Add(Animation);
+            }
         }
     }
 
@@ -703,6 +742,95 @@ void FAnimationGraphEditorTab::DrawStateEditor()
     ImGui::EndDisabled();
 
     ImGui::Separator();
+    ImGui::Text("Layered Blend (Upper/Lower Body)");
+
+    const char* LayeredBaseTypes[] = { "BlendSpace", "Sequence" };
+    ImGui::Combo("Base Type##LB", &NewLayeredBaseMode, LayeredBaseTypes, 2);
+
+    if (NewLayeredBaseMode == 0)
+    {
+        const FString BaseLabel = NewBlendSpace ? NewBlendSpace->GetPath() : "Select Base BlendSpace";
+        if (ImGui::BeginCombo("Base BlendSpace##LB", BaseLabel.c_str()))
+        {
+            for (UBlendSpace1D* BlendSpace : AvailableBlendSpaces)
+            {
+                const bool bSelected = BlendSpace == NewBlendSpace;
+                if (ImGui::Selectable(BlendSpace->GetPath().c_str(), bSelected))
+                {
+                    NewBlendSpace = BlendSpace;
+                }
+            }
+            ImGui::EndCombo();
+        }
+    }
+    else
+    {
+        const FString BaseLabel = NewSequence ? NewSequence->GetPath() : "Select Base Animation";
+        if (ImGui::BeginCombo("Base Sequence##LB", BaseLabel.c_str()))
+        {
+            for (UAnimSequence* Animation : AvailableAnimations)
+            {
+                const bool bSelected = Animation == NewSequence;
+                if (ImGui::Selectable(Animation->GetPath().c_str(), bSelected))
+                {
+                    NewSequence = Animation;
+                }
+            }
+            ImGui::EndCombo();
+        }
+    }
+
+    const FString OverlayLabel = NewOverlaySequence ? NewOverlaySequence->GetPath() : "Select Upper Animation";
+    if (ImGui::BeginCombo("Upper Sequence##LB", OverlayLabel.c_str()))
+    {
+        for (UAnimSequence* Animation : AvailableAnimations)
+        {
+            const bool bSelected = Animation == NewOverlaySequence;
+            if (ImGui::Selectable(Animation->GetPath().c_str(), bSelected))
+            {
+                NewOverlaySequence = Animation;
+            }
+        }
+        ImGui::EndCombo();
+    }
+
+    ImGui::InputText("Branch Bone##LB", NewBranchBoneBuffer, sizeof(NewBranchBoneBuffer));
+    ImGui::SliderFloat("Upper Weight##LB", &NewBlendWeight, 0.0f, 1.0f);
+    ImGui::Checkbox("Upper Looping##LB", &bNewOverlayLooping);
+
+    const bool bCanAddLayered = (NewOverlaySequence != nullptr) && ((NewLayeredBaseMode == 0 && NewBlendSpace != nullptr) || (NewLayeredBaseMode == 1 && NewSequence != nullptr));
+    ImGui::BeginDisabled(!bCanAddLayered);
+
+    if (ImGui::Button("Add Layered Blend State"))
+    {
+        const FName StateName(NewStateNameBuffer);
+        const bool bWasEmpty = Graph->GetStates().IsEmpty();
+        UBlendSpace1D* BaseBS = (NewLayeredBaseMode == 0) ? NewBlendSpace : nullptr;
+        UAnimSequence* BaseSeq = (NewLayeredBaseMode == 1) ? NewSequence : nullptr;
+
+        if (Graph->AddLayeredBlendState(StateName, BaseBS, BaseSeq, NewOverlaySequence, FName(NewBranchBoneBuffer), NewBlendWeight, bNewOverlayLooping))
+        {
+            if (bWasEmpty)
+            {
+                Graph->SetEntryState(StateName);
+            }
+
+            SelectedStateIndex = Graph->GetStates().Num() - 1;
+            std::snprintf(RenameStateBuffer, sizeof(RenameStateBuffer), "%s", StateName.ToString().c_str());
+
+            bDirty = true;
+            ErrorMessage.clear();
+            RefreshPreview();
+        }
+        else
+        {
+            ErrorMessage = "Could not add Layered Blend State. Check its name and Skeleton.";
+        }
+    }
+
+    ImGui::EndDisabled();
+
+    ImGui::Separator();
 
     if (!States.IsValidIndex(SelectedStateIndex))
     {
@@ -712,7 +840,9 @@ void FAnimationGraphEditorTab::DrawStateEditor()
 
     const FAnimGraphStateDefinition State = States[SelectedStateIndex];
 
-    const char* StateTypeLabel = State.NodeType == EAnimGraphStateNodeType::SequencePlayer ? "Sequence Player" : "BlendSpace Player";
+    const char* StateTypeLabel = State.NodeType == EAnimGraphStateNodeType::SequencePlayer ? "Sequence Player"
+        : State.NodeType == EAnimGraphStateNodeType::BlendSpacePlayer ? "BlendSpace Player"
+        : "Layered Bone Blend";
     bool bStateTypeChanged = false;
 
     if (ImGui::BeginCombo("State Type", StateTypeLabel))
@@ -721,11 +851,12 @@ void FAnimationGraphEditorTab::DrawStateEditor()
         {
             if (State.NodeType != EAnimGraphStateNodeType::SequencePlayer)
             {
-                if (!NewSequence)
+                UAnimSequence* ConvertSeq = State.Sequence ? State.Sequence : (NewSequence ? NewSequence : (AvailableAnimations.IsEmpty() ? nullptr : AvailableAnimations[0]));
+                if (!ConvertSeq)
                 {
                     ErrorMessage = "No Animation Sequence is available for this Skeleton.";
                 }
-                else if (Graph->SetSequenceState(State.Name, NewSequence, State.PlayRate, State.bLooping))
+                else if (Graph->SetSequenceState(State.Name, ConvertSeq, State.PlayRate, State.bLooping))
                 {
                     bDirty = true;
                     ErrorMessage.clear();
@@ -743,11 +874,12 @@ void FAnimationGraphEditorTab::DrawStateEditor()
         {
             if (State.NodeType != EAnimGraphStateNodeType::BlendSpacePlayer)
             {
-                if (!NewBlendSpace)
+                UBlendSpace1D* ConvertBS = State.BlendSpace ? State.BlendSpace : (NewBlendSpace ? NewBlendSpace : (AvailableBlendSpaces.IsEmpty() ? nullptr : AvailableBlendSpaces[0]));
+                if (!ConvertBS)
                 {
                     ErrorMessage = "No BlendSpace is available for this Skeleton.";
                 }
-                else if (Graph->SetBlendSpaceState(State.Name, NewBlendSpace, State.PlayRate, State.bLooping))
+                else if (Graph->SetBlendSpaceState(State.Name, ConvertBS, State.PlayRate, State.bLooping))
                 {
                     bDirty = true;
                     ErrorMessage.clear();
@@ -757,6 +889,32 @@ void FAnimationGraphEditorTab::DrawStateEditor()
                 else
                 {
                     ErrorMessage = "Could not convert State to BlendSpace Player.";
+                }
+            }
+        }
+
+        if (ImGui::Selectable("Layered Bone Blend", State.NodeType == EAnimGraphStateNodeType::LayeredBoneBlend))
+        {
+            if (State.NodeType != EAnimGraphStateNodeType::LayeredBoneBlend)
+            {
+                UBlendSpace1D* BaseBS = State.BlendSpace ? State.BlendSpace : (AvailableBlendSpaces.IsEmpty() ? nullptr : AvailableBlendSpaces[0]);
+                UAnimSequence* BaseSeq = State.Sequence ? State.Sequence : (AvailableAnimations.IsEmpty() ? nullptr : AvailableAnimations[0]);
+                UAnimSequence* OverlaySeq = State.OverlaySequence ? State.OverlaySequence : (AvailableAnimations.IsEmpty() ? nullptr : AvailableAnimations[0]);
+
+                if (!OverlaySeq || (!BaseBS && !BaseSeq))
+                {
+                    ErrorMessage = "Need animations to convert to Layered Bone Blend.";
+                }
+                else if (Graph->SetLayeredBlendState(State.Name, BaseBS, BaseSeq, OverlaySeq, State.BranchBoneName.IsNone() ? FName("spine_01") : State.BranchBoneName, State.BlendWeight > 0.0f ? State.BlendWeight : 1.0f, State.bOverlayLooping, State.PlayRate, State.bLooping))
+                {
+                    bDirty = true;
+                    ErrorMessage.clear();
+                    RefreshPreview();
+                    bStateTypeChanged = true;
+                }
+                else
+                {
+                    ErrorMessage = "Could not convert State to Layered Bone Blend.";
                 }
             }
         }
@@ -902,6 +1060,142 @@ void FAnimationGraphEditorTab::DrawStateEditor()
             else
             {
                 ErrorMessage = "Could not update BlendSpace State.";
+            }
+        }
+    }
+    else if (State.NodeType == EAnimGraphStateNodeType::LayeredBoneBlend)
+    {
+        bool bChanged = false;
+        int32 BaseMode = State.BlendSpace ? 0 : 1;
+        const char* BaseModeNames[] = { "BlendSpace", "Sequence" };
+
+        if (ImGui::Combo("Base Source Type", &BaseMode, BaseModeNames, 2))
+        {
+            if (BaseMode == 0 && !State.BlendSpace && !AvailableBlendSpaces.IsEmpty())
+            {
+                UBlendSpace1D* NewBS = AvailableBlendSpaces[0];
+                if (Graph->SetLayeredBlendState(State.Name, NewBS, nullptr, State.OverlaySequence, State.BranchBoneName, State.BlendWeight, State.bOverlayLooping, State.PlayRate, State.bLooping))
+                {
+                    bDirty = true;
+                    RefreshPreview();
+                }
+            }
+            else if (BaseMode == 1 && !State.Sequence && !AvailableAnimations.IsEmpty())
+            {
+                UAnimSequence* NewSeq = AvailableAnimations[0];
+                if (Graph->SetLayeredBlendState(State.Name, nullptr, NewSeq, State.OverlaySequence, State.BranchBoneName, State.BlendWeight, State.bOverlayLooping, State.PlayRate, State.bLooping))
+                {
+                    bDirty = true;
+                    RefreshPreview();
+                }
+            }
+        }
+
+        UBlendSpace1D* CurrentBaseBS = State.BlendSpace;
+        UAnimSequence* CurrentBaseSeq = State.Sequence;
+        UAnimSequence* CurrentOverlaySeq = State.OverlaySequence;
+        FName CurrentBranchBone = State.BranchBoneName;
+        float CurrentBlendWeight = State.BlendWeight;
+        bool bBaseLoop = State.bLooping;
+        bool bOverlayLoop = State.bOverlayLooping;
+
+        if (BaseMode == 0)
+        {
+            const FString BaseLabel = CurrentBaseBS ? CurrentBaseBS->GetPath() : "None";
+            if (ImGui::BeginCombo("Base BlendSpace", BaseLabel.c_str()))
+            {
+                for (UBlendSpace1D* BlendSpace : AvailableBlendSpaces)
+                {
+                    const bool bSelected = BlendSpace == CurrentBaseBS;
+                    if (ImGui::Selectable(BlendSpace->GetPath().c_str(), bSelected))
+                    {
+                        CurrentBaseBS = BlendSpace;
+                        CurrentBaseSeq = nullptr;
+                        bChanged = true;
+                    }
+                }
+                ImGui::EndCombo();
+            }
+
+            if (CurrentBaseBS)
+            {
+                const FString ParamName = CurrentBaseBS->GetAxis().Name.ToString();
+                ImGui::Text("Base Parameter: %s (Float)", ParamName.c_str());
+            }
+        }
+        else
+        {
+            const FString BaseLabel = CurrentBaseSeq ? CurrentBaseSeq->GetPath() : "None";
+            if (ImGui::BeginCombo("Base Sequence", BaseLabel.c_str()))
+            {
+                for (UAnimSequence* Animation : AvailableAnimations)
+                {
+                    const bool bSelected = Animation == CurrentBaseSeq;
+                    if (ImGui::Selectable(Animation->GetPath().c_str(), bSelected))
+                    {
+                        CurrentBaseSeq = Animation;
+                        CurrentBaseBS = nullptr;
+                        bChanged = true;
+                    }
+                }
+                ImGui::EndCombo();
+            }
+        }
+
+        const FString OverlayLabel = CurrentOverlaySeq ? CurrentOverlaySeq->GetPath() : "None";
+        if (ImGui::BeginCombo("Upper Sequence", OverlayLabel.c_str()))
+        {
+            for (UAnimSequence* Animation : AvailableAnimations)
+            {
+                const bool bSelected = Animation == CurrentOverlaySeq;
+                if (ImGui::Selectable(Animation->GetPath().c_str(), bSelected))
+                {
+                    CurrentOverlaySeq = Animation;
+                    bChanged = true;
+                }
+            }
+            ImGui::EndCombo();
+        }
+
+        char BoneNameBuf[64] = {};
+        std::snprintf(BoneNameBuf, sizeof(BoneNameBuf), "%s", CurrentBranchBone.ToString().c_str());
+        if (ImGui::InputText("Branch Bone", BoneNameBuf, sizeof(BoneNameBuf)))
+        {
+            CurrentBranchBone = FName(BoneNameBuf);
+            bChanged = true;
+        }
+
+        if (ImGui::SliderFloat("Blend Weight", &CurrentBlendWeight, 0.0f, 1.0f))
+        {
+            bChanged = true;
+        }
+
+        if (ImGui::DragFloat("Play Rate", &PlayRate, 0.01f))
+        {
+            bChanged = true;
+        }
+
+        if (ImGui::Checkbox("Base Looping", &bBaseLoop))
+        {
+            bChanged = true;
+        }
+
+        if (ImGui::Checkbox("Upper Looping", &bOverlayLoop))
+        {
+            bChanged = true;
+        }
+
+        if (bChanged)
+        {
+            if (Graph->SetLayeredBlendState(State.Name, CurrentBaseBS, CurrentBaseSeq, CurrentOverlaySeq, CurrentBranchBone, CurrentBlendWeight, bOverlayLoop, PlayRate, bBaseLoop))
+            {
+                bDirty = true;
+                ErrorMessage.clear();
+                RefreshPreview();
+            }
+            else
+            {
+                ErrorMessage = "Could not update Layered Blend State.";
             }
         }
     }
@@ -2178,18 +2472,61 @@ void FAnimationGraphEditorTab::DrawGraphCanvas()
         FStateNodeLayout Layout;
 
         Layout.StateName = State.Name.ToString();
-        Layout.NodeType = State.NodeType == EAnimGraphStateNodeType::SequencePlayer ? "Sequence Player" : "BlendSpace Player";
 
-        const FString AssetPath = State.NodeType == EAnimGraphStateNodeType::SequencePlayer
-            ? (State.Sequence ? State.Sequence->GetPath() : "Unassigned Asset")
-            : (State.BlendSpace ? State.BlendSpace->GetPath() : "Unassigned Asset");
+        if (State.NodeType == EAnimGraphStateNodeType::SequencePlayer)
+        {
+            Layout.NodeType = "Sequence Player";
+            const FString AssetPath = State.Sequence ? State.Sequence->GetPath() : "Unassigned Asset";
+            const size_t AssetNameStart = AssetPath.find_last_of("/\\");
+            Layout.AssetName = AssetNameStart == FString::npos ? AssetPath : AssetPath.substr(AssetNameStart + 1);
 
-        const size_t AssetNameStart = AssetPath.find_last_of("/\\");
-        Layout.AssetName = AssetNameStart == FString::npos ? AssetPath : AssetPath.substr(AssetNameStart + 1);
+            char PlayRateBuffer[64];
+            std::snprintf(PlayRateBuffer, sizeof(PlayRateBuffer), "Play Rate: %.2fx  |  %s", State.PlayRate, State.bLooping ? "Loop" : "Once");
+            Layout.PlayRateText = PlayRateBuffer;
+        }
+        else if (State.NodeType == EAnimGraphStateNodeType::BlendSpacePlayer)
+        {
+            Layout.NodeType = "BlendSpace Player";
+            const FString AssetPath = State.BlendSpace ? State.BlendSpace->GetPath() : "Unassigned Asset";
+            const size_t AssetNameStart = AssetPath.find_last_of("/\\");
+            Layout.AssetName = AssetNameStart == FString::npos ? AssetPath : AssetPath.substr(AssetNameStart + 1);
 
-        char PlayRateBuffer[64];
-        std::snprintf(PlayRateBuffer, sizeof(PlayRateBuffer), "Play Rate: %.2fx  |  %s", State.PlayRate, State.bLooping ? "Loop" : "Once");
-        Layout.PlayRateText = PlayRateBuffer;
+            char PlayRateBuffer[64];
+            std::snprintf(PlayRateBuffer, sizeof(PlayRateBuffer), "Play Rate: %.2fx  |  %s", State.PlayRate, State.bLooping ? "Loop" : "Once");
+            Layout.PlayRateText = PlayRateBuffer;
+        }
+        else // LayeredBoneBlend
+        {
+            Layout.NodeType = "Layered Bone Blend";
+
+            FString BaseName = "None";
+            if (State.BlendSpace)
+            {
+                const FString P = State.BlendSpace->GetPath();
+                const size_t Slash = P.find_last_of("/\\");
+                BaseName = (Slash == FString::npos) ? P : P.substr(Slash + 1);
+            }
+            else if (State.Sequence)
+            {
+                const FString P = State.Sequence->GetPath();
+                const size_t Slash = P.find_last_of("/\\");
+                BaseName = (Slash == FString::npos) ? P : P.substr(Slash + 1);
+            }
+
+            FString OverlayName = "None";
+            if (State.OverlaySequence)
+            {
+                const FString P = State.OverlaySequence->GetPath();
+                const size_t Slash = P.find_last_of("/\\");
+                OverlayName = (Slash == FString::npos) ? P : P.substr(Slash + 1);
+            }
+
+            Layout.AssetName = "Base: " + BaseName + "\nUpper: " + OverlayName + "\nBone: " + State.BranchBoneName.ToString();
+
+            char PlayRateBuffer[64];
+            std::snprintf(PlayRateBuffer, sizeof(PlayRateBuffer), "Rate: %.2fx | W: %.1f | %s", State.PlayRate, State.BlendWeight, State.bOverlayLooping ? "Loop" : "Once");
+            Layout.PlayRateText = PlayRateBuffer;
+        }
 
         Layout.bCurrent = bHasDebugInfo && DebugInfo.CurrentStateName == State.Name;
 
@@ -2486,18 +2823,14 @@ void FAnimationGraphEditorTab::DrawGraphCanvas()
         const FAnimGraphStateDefinition& State = States[Index];
 
         const FString StateName = State.Name.ToString();
-        const char* NodeType = State.NodeType == EAnimGraphStateNodeType::SequencePlayer ? "Sequence Player" : "BlendSpace Player";
-
-        const FString AssetPath = State.NodeType == EAnimGraphStateNodeType::SequencePlayer
-            ? (State.Sequence ? State.Sequence->GetPath() : "Unassigned Asset")
-            : (State.BlendSpace ? State.BlendSpace->GetPath() : "Unassigned Asset");
-
-        const size_t AssetNameStart = AssetPath.find_last_of("/\\");
-        const FString AssetName = AssetNameStart == FString::npos ? AssetPath : AssetPath.substr(AssetNameStart + 1);
+        const char* NodeType = State.NodeType == EAnimGraphStateNodeType::SequencePlayer ? "Sequence Player"
+            : State.NodeType == EAnimGraphStateNodeType::BlendSpacePlayer ? "BlendSpace Player"
+            : "Layered Bone Blend";
 
         const ImU32 HeaderColor = bCurrent ? IM_COL32(48, 132, 91, 255)
             : State.NodeType == EAnimGraphStateNodeType::SequencePlayer ? IM_COL32(48, 101, 139, 255)
-            : IM_COL32(105, 76, 143, 255);
+            : State.NodeType == EAnimGraphStateNodeType::BlendSpacePlayer ? IM_COL32(105, 76, 143, 255)
+            : IM_COL32(190, 110, 40, 255);
 
         ed::PushStyleColor(ed::StyleColor_NodeBg, ImVec4(0.12f, 0.13f, 0.16f, 1.0f));
         ed::PushStyleColor(ed::StyleColor_NodeBorder, ImVec4(0.28f, 0.30f, 0.34f, 1.0f));
@@ -2857,6 +3190,17 @@ void FAnimationGraphEditorTab::DrawGraphCanvas()
             if (State.BlendSpace && OpenBlendSpaceEditorCallback)
             {
                 OpenBlendSpaceEditorCallback(State.BlendSpace);
+            }
+        }
+        else if (State.NodeType == EAnimGraphStateNodeType::LayeredBoneBlend)
+        {
+            if (State.BlendSpace && OpenBlendSpaceEditorCallback)
+            {
+                OpenBlendSpaceEditorCallback(State.BlendSpace);
+            }
+            else if (State.OverlaySequence && SkeletalMesh && OpenAnimationSequenceViewerCallback)
+            {
+                OpenAnimationSequenceViewerCallback(SkeletalMesh, State.OverlaySequence);
             }
         }
 

@@ -15,6 +15,7 @@
 #include "Render/SkeletalMesh.h"
 #include "UObject/UObjectIterator.h"
 #include "Animation/AnimSequence.h"
+#include "Animation/Skeleton.h"
 #include "Animation/AnimationGraph.h"
 #include "Core/SplashScreen.h"
 
@@ -239,15 +240,56 @@ void FContentDrawerPanel::OnRender()
 							const FString AnimationPrefix = MeshKey + "::";
 							for (TObjectIterator<UAnimSequence> It; It; ++It)
 							{
-								if (It->GetPath().find(AnimationPrefix) == 0)
+								if (It->GetPath().find(AnimationPrefix) == 0 || It->GetPath().find(MeshKey) != FString::npos)
 								{
 									FoundAnim = *It;
 									break;
 								}
 							}
+
+							if (!FoundAnim)
+							{
+								// 1. 같은 디렉토리에 생성된 .anim 파일 검색
+								std::filesystem::path FbxFilePath = PathUtils::FromUtf8(PathString);
+								std::filesystem::path Dir = FbxFilePath.parent_path();
+								const FString Stem = PathUtils::ToUtf8(FbxFilePath.stem());
+
+								if (fs::exists(Dir))
+								{
+									for (const auto& Entry : fs::directory_iterator(Dir))
+									{
+										if (Entry.is_regular_file() && Entry.path().extension() == ".anim")
+										{
+											const FString Filename = PathUtils::ToUtf8(Entry.path().filename());
+											if (Filename.find(Stem) == 0)
+											{
+												USkeletalMesh* DummyMesh = nullptr;
+												FoundAnim = UAssetManager::LoadAnimSequence(PathUtils::ToUtf8(Entry.path()), &DummyMesh);
+												if (FoundAnim)
+												{
+													break;
+												}
+											}
+										}
+									}
+								}
+
+								// 2. 구버전 .anim.bin 검색
+								if (!FoundAnim)
+								{
+									const FString AnimBinPath = PathString + ".anim.bin";
+									if (fs::exists(PathUtils::FromUtf8(AnimBinPath)))
+									{
+										USkeletalMesh* DummyMesh = nullptr;
+										FoundAnim = UAssetManager::LoadAnimSequence(AnimBinPath, &DummyMesh);
+									}
+								}
+							}
+
 							if (FoundAnim && OpenAnimationSequenceViewer)
 							{
-								OpenAnimationSequenceViewer(nullptr, FoundAnim);
+								USkeletalMesh* FallbackMesh = FoundAnim->GetSkeleton() ? FoundAnim->GetSkeleton()->GetPreviewMesh() : nullptr;
+								OpenAnimationSequenceViewer(FallbackMesh, FoundAnim);
 							}
 							else
 							{

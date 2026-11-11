@@ -8,6 +8,8 @@
 
 FAnimNode_BlendSpacePlayer::FAnimNode_BlendSpacePlayer()
 {
+	PlayerA.SetAllowRootMotion(false);
+	PlayerB.SetAllowRootMotion(false);
 	BlendNode.SetSourceNodes(&PlayerA, &PlayerB);
 }
 
@@ -151,6 +153,23 @@ void FAnimNode_BlendSpacePlayer::Update(const FAnimationUpdateContext& Context)
 	const bool bSampleChanged = PreviousSampleA != SampleIndexA || PreviousSampleB != SampleIndexB;
 	if (bSampleChanged)
 	{
+		if (PreviousSampleB == SampleIndexA && PlayerB.Sequence == SampleA.Animation)
+		{
+			const float OldLengthB = PlayerB.GetPlayLength();
+			if (OldLengthB > 0.0f)
+			{
+				NormalizedTime = std::clamp(PlayerB.GetCurrentTime() / OldLengthB, 0.0f, 1.0f);
+			}
+		}
+		else if (PreviousSampleA == SampleIndexB && PlayerA.Sequence == SampleB.Animation)
+		{
+			const float OldLengthA = PlayerA.GetPlayLength();
+			if (OldLengthA > 0.0f)
+			{
+				NormalizedTime = std::clamp(PlayerA.GetCurrentTime() / OldLengthA, 0.0f, 1.0f);
+			}
+		}
+
 		PlayerA.SetSequence(SampleA.Animation);
 		PlayerB.SetSequence(SampleB.Animation);
 
@@ -171,16 +190,19 @@ void FAnimNode_BlendSpacePlayer::Update(const FAnimationUpdateContext& Context)
 		PlayerA.SetPlaybackPosition(NormalizedTime * LengthA);
 		PlayerB.SetPlaybackPosition(NormalizedTime * LengthB);
 	}
-	
-	const float ReferenceLength = GetPlayLength();
 
-	if (ReferenceLength <= 0.0f)
+	const bool bBlendingFromIdle = (SampleIndexA != SampleIndexB) && (SampleA.SampleValue <= 0.001f);
+	if (bBlendingFromIdle)
 	{
-		return;
+		PlayerA.SetPlayRate(PlayRate * SampleA.RateScale);
+		PlayerB.SetPlayRate(PlayRate * SampleB.RateScale);
 	}
-
-	PlayerA.SetPlayRate(PlayRate * (LengthA / ReferenceLength) * SampleA.RateScale);
-	PlayerB.SetPlayRate(PlayRate * (LengthB / ReferenceLength) * SampleB.RateScale);
+	else
+	{
+		const float BlendedLength = std::max(LengthA + (LengthB - LengthA) * Alpha, 1.0e-4f);
+		PlayerA.SetPlayRate(PlayRate * (LengthA / BlendedLength) * SampleA.RateScale);
+		PlayerB.SetPlayRate(PlayRate * (LengthB / BlendedLength) * SampleB.RateScale);
+	}
 
 	PlayerA.SetLooping(bLoop);
 	PlayerB.SetLooping(bLoop);
@@ -189,7 +211,14 @@ void FAnimNode_BlendSpacePlayer::Update(const FAnimationUpdateContext& Context)
 
 	BlendNode.Update(Context);
 
-	NormalizedTime = std::clamp(PlayerA.GetCurrentTime() / LengthA, 0.0f, 1.0f);
+	if (bBlendingFromIdle)
+	{
+		NormalizedTime = std::clamp(PlayerB.GetCurrentTime() / LengthB, 0.0f, 1.0f);
+	}
+	else
+	{
+		NormalizedTime = std::clamp(PlayerA.GetCurrentTime() / LengthA, 0.0f, 1.0f);
+	}
 }
 
 void FAnimNode_BlendSpacePlayer::Evaluate(FPoseContext& Output)

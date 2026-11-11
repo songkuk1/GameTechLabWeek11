@@ -209,14 +209,84 @@ namespace
 		DataModel->NumberOfKeys = ModelAnimation.NumberOfKeys;
 		DataModel->CurveData.Curves = ModelAnimation.CurveData.Curves;
 
+		auto NormalizeBoneName = [](const FString& InName) -> FString
+		{
+			FString Out;
+			Out.reserve(InName.size());
+			for (char c : InName)
+			{
+				Out.push_back(static_cast<char>(std::tolower(static_cast<unsigned char>(c))));
+			}
+			size_t UnderscorePos = 0;
+			while ((UnderscorePos = Out.find('_', UnderscorePos)) != FString::npos)
+			{
+				size_t DigitStart = UnderscorePos + 1;
+				if (DigitStart < Out.size() && Out[DigitStart] == '0')
+				{
+					size_t NonZero = Out.find_first_not_of('0', DigitStart);
+					if (NonZero != FString::npos && std::isdigit(static_cast<unsigned char>(Out[NonZero])))
+					{
+						Out.erase(DigitStart, NonZero - DigitStart);
+					}
+				}
+				UnderscorePos++;
+			}
+			return Out;
+		};
+
+		const TArray<FModelNode>& SkeletonNodes = Skeleton->GetNodes();
+		TMap<FString, int32> NameToNodeMap;
+		TMap<FString, int32> NormNameToNodeMap;
+		for (int32 i = 0; i < SkeletonNodes.Num(); ++i)
+		{
+			NameToNodeMap.Add(SkeletonNodes[i].Name, i);
+			NormNameToNodeMap.Add(NormalizeBoneName(SkeletonNodes[i].Name), i);
+		}
+
 		for (const FModelAnimationTrack& ModelTrack : ModelAnimation.Tracks)
 		{
 			FBoneAnimationTrack BoneTrack;
 			BoneTrack.Name = ModelTrack.Name;
-			BoneTrack.NodeIndex = ModelTrack.NodeIndex;
+			const FString RawTrackName = ModelTrack.Name.ToString();
+			int32 MappedNodeIndex = ModelTrack.NodeIndex;
+
+			if (const int32* FoundIndex = NameToNodeMap.Find(RawTrackName))
+			{
+				MappedNodeIndex = *FoundIndex;
+			}
+			else if (const int32* FoundNormIndex = NormNameToNodeMap.Find(NormalizeBoneName(RawTrackName)))
+			{
+				MappedNodeIndex = *FoundNormIndex;
+			}
+			BoneTrack.NodeIndex = MappedNodeIndex;
 			BoneTrack.InternalTrack.PosKeys = ModelTrack.PosKeys;
 			BoneTrack.InternalTrack.RotKeys = ModelTrack.RotKeys;
 			BoneTrack.InternalTrack.ScaleKeys = ModelTrack.ScaleKeys;
+
+			// 스케일 불일치 보정 (예: 순수 애니메이션 FBX에서 root 스케일이 0.01인데 스켈레톤 root 스케일은 1.0인 경우)
+			if (MappedNodeIndex >= 0 && MappedNodeIndex < SkeletonNodes.Num() && !BoneTrack.InternalTrack.ScaleKeys.IsEmpty())
+			{
+				const FMatrix& NodeTransform = SkeletonNodes[MappedNodeIndex].LocalTransform;
+				const float NodeScaleX = FVector(NodeTransform.M[0][0], NodeTransform.M[0][1], NodeTransform.M[0][2]).Size();
+				const float TrackScaleX = BoneTrack.InternalTrack.ScaleKeys[0].X;
+
+				if (TrackScaleX > 0.0f && NodeScaleX > 0.0f)
+				{
+					const float Ratio = NodeScaleX / TrackScaleX;
+					if (Ratio > 50.0f && Ratio < 150.0f)
+					{
+						for (FVector& SKey : BoneTrack.InternalTrack.ScaleKeys)
+						{
+							SKey *= Ratio;
+						}
+						for (FVector& PKey : BoneTrack.InternalTrack.PosKeys)
+						{
+							PKey *= Ratio;
+						}
+					}
+				}
+			}
+
 			DataModel->BoneAnimationTracks.Add(std::move(BoneTrack));
 		}
 
@@ -803,7 +873,38 @@ void UAssetManager::LoadFbxModel(const FString& Path, bool bAllowSourceImport, b
 
 	if (ModelData.IsSkeletal)
 	{
+		const bool bHasMeshGeometry = !ModelData.Meshs.IsEmpty() && ModelData.MeshData.Vertices.Num() > 0;
 		USkeleton* Skeleton = !bForceSourceImport && CachedSkeletalMesh ? CachedSkeletalMesh->GetSkeleton() : nullptr;
+
+		// 메쉬가 없는 순수 애니메이션 FBX인 경우, 호환 스켈레톤 탐색하여 공유!
+		if (!Skeleton && !bHasMeshGeometry)
+		{
+			const FString PathLower = Path;
+			// 마네킹 경로 하위일 때만 마네킹 스켈레톤을 우선 공유
+			if (PathLower.find("Mannequin") != FString::npos || PathLower.find("UnrealCharac") != FString::npos)
+			{
+				Skeleton = GetAssetByPath<USkeleton>("Models/Mannequin/UnrealCharac/SKM_Manny_Simple_Skeleton");
+
+				if (!Skeleton)
+				{
+					std::filesystem::path ParentDir = PathUtils::FromUtf8(Path).parent_path();
+					while (!ParentDir.empty() && ParentDir != ParentDir.parent_path())
+					{
+						std::filesystem::path CandidateMeshPath = ParentDir / "SKM_Manny_Simple.FBX";
+						if (fs::exists(CandidateMeshPath))
+						{
+							LoadFbxModel(PathUtils::ToUtf8(CandidateMeshPath), true, true, false);
+							Skeleton = GetAssetByPath<USkeleton>("Models/Mannequin/UnrealCharac/SKM_Manny_Simple_Skeleton");
+							if (Skeleton)
+							{
+								break;
+							}
+						}
+						ParentDir = ParentDir.parent_path();
+					}
+				}
+			}
+		}
 
 		if (!Skeleton)
 		{
@@ -821,7 +922,6 @@ void UAssetManager::LoadFbxModel(const FString& Path, bool bAllowSourceImport, b
 			RegisterAsset(MakeAssetKey(PathUtils::ToUtf8(SkeletonPath)), Skeleton);
 		}
 
-		const bool bHasMeshGeometry = !ModelData.Meshs.IsEmpty() && ModelData.MeshData.Vertices.Num() > 0;
 		USkeletalMesh* SkeletalMesh = !bForceSourceImport ? CachedSkeletalMesh : nullptr;
 
 		if (bHasMeshGeometry)
@@ -906,6 +1006,22 @@ void UAssetManager::LoadFbxModel(const FString& Path, bool bAllowSourceImport, b
 				LoadAnimSequence(AnimationPathString);
 			}
 		}
+		else
+		{
+			for (const FModelAnimation& ModelAnimation : ModelData.Animations)
+			{
+				const FString AnimationKey = MeshKey + "::" + ModelAnimation.Name.ToString();
+				if (GetAssetByPath<UAnimSequence>(AnimationKey))
+				{
+					continue;
+				}
+				TArray<FModelAnimationNotify> EmptyNotifies;
+				if (UAnimSequence* EmbeddedSequence = CreateAnimationSequence(ModelAnimation, EmptyNotifies, Skeleton))
+				{
+					RegisterAsset(AnimationKey, EmbeddedSequence);
+				}
+			}
+		}
 	}
 	else if (bForceSourceImport || !CachedStaticMesh)
 	{
@@ -976,6 +1092,25 @@ UAnimationGraph* UAssetManager::LoadAnimationGraph(const FString& Path)
 	return Graph;
 }
 
+TArray<UAnimSequence*> UAssetManager::GetAnimSequencesForMesh(const FString& MeshKey) const
+{
+	TArray<UAnimSequence*> Result;
+	const FString Prefix = MeshKey + "::";
+	for (const auto& Pair : AssetMap)
+	{
+		if (!Pair.second || !Pair.second->IsA<UAnimSequence>())
+		{
+			continue;
+		}
+		if (Pair.first.size() >= Prefix.size() &&
+			_strnicmp(Pair.first.c_str(), Prefix.c_str(), Prefix.size()) == 0)
+		{
+			Result.Add(Cast<UAnimSequence>(Pair.second));
+		}
+	}
+	return Result;
+}
+
 UAnimSequence* UAssetManager::LoadAnimSequence(const FString& Path, USkeletalMesh** OutSkeletalMesh)
 {
 	if (OutSkeletalMesh)
@@ -1009,7 +1144,10 @@ UAnimSequence* UAssetManager::LoadAnimSequence(const FString& Path, USkeletalMes
 
 	if (!TargetSkeleton)
 	{
-		TargetSkeleton = GetAssetByPath<USkeleton>("Models/Mannequin/UnrealCharac/SKM_Manny_Simple_Skeleton");
+		if (SourceMeshKey.find("Mannequin") != FString::npos || SourceMeshKey.find("UnrealCharac") != FString::npos)
+		{
+			TargetSkeleton = GetAssetByPath<USkeleton>("Models/Mannequin/UnrealCharac/SKM_Manny_Simple_Skeleton");
+		}
 	}
 
 	if (!TargetSkeleton)

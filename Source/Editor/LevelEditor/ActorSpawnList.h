@@ -15,6 +15,8 @@
 #include "GameFramework/PlayerStart.h"
 #include "GameFramework/Actor/PlayerActor.h"
 #include "GameFramework/Actor/EnemyActor.h"
+#include "GameFramework/Actor/LayerCharacter.h"
+#include "GameFramework/Actor/EnemyCharacter.h"
 #include "GameFramework/Actor/DecalActor.h"
 #include "Game/Coin.h"
 #include "Game/CoinLauncher.h"
@@ -44,7 +46,9 @@ inline constexpr FSpawnableActorType SpawnableActorTypes[] =
 	{ "SpotLight",            &ASpotLightActor::StaticClass },
 	{ "Decal",				  &ADecalActor::StaticClass },
 	{ "Player",				  &APlayerActor::StaticClass },
+	{ "LayerCharacter",		  &ALayerCharacter::StaticClass },
 	{ "Enemy",				  &AEnemyActor::StaticClass },
+	{ "EnemyCharacter",		  &AEnemyCharacter::StaticClass },
 	{ "Coin", 				  &ACoin::StaticClass },
 	{ "CoinLauncher",         &ACoinLauncher::StaticClass },
 	{ "CoinRain", 			  &ACoinRain::StaticClass },

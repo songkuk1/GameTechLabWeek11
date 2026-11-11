@@ -4,6 +4,7 @@
 #include "Animation/AnimNode_SequencePlayer.h"
 #include "Animation/AnimNode_TwoWayBlend.h"
 #include "Animation/AnimNode_BlendSpacePlayer.h"
+#include "Animation/AnimNode_LayeredBoneBlend.h"
 #include "Containers/Map.h"
 #include "Containers/Array.h"
 #include <type_traits>
@@ -51,6 +52,9 @@ public:
 	void PlayAnimation(UAnimSequence* InSequence);
 	void PlayBlendAnimation(UAnimSequence* InSequenceA, UAnimSequence* InSequenceB, float InAlpha);
 	void PlayBlendSpace(UBlendSpace1D* InBlendSpace, float InInput);
+	void PlayLayeredBoneBlend(UAnimSequence* InBaseAnim, UAnimSequence* InOverlayAnim, const FName& InBranchBoneName = "spine_01", float InBlendWeight = 1.0f);
+	void SetLayeredBlendWeight(float InWeight);
+	float GetLayeredBlendWeight() const;
 	void SetAnimationBlendAlpha(float InAlpha);
 	float GetAnimationBlendAlpha() const;
 	void SetAnimationBlendInput(float InInput);
@@ -101,6 +105,7 @@ public:
 	void TriggerAnimNotifies(float DeltaSeconds);
 
 	bool IsRootMotionEnabled() const;
+	float GetRootMotionScale() const;
 	void QueueRootMotionDelta(const FVector& Translation, const FQuat& Rotation, float Weight);
 	bool ConsumeRootMotionDelta(FVector& OutTranslation, FQuat& OutRotation);
 protected:
@@ -111,6 +116,7 @@ private:
 	FAnimNode_SequencePlayer SequencePlayer;
 	FAnimNode_TwoWayBlendPlayer TwoWayBlendPlayer;
 	FAnimNode_BlendSpacePlayer BlendSpacePlayer;
+	FAnimNode_LayeredBoneBlendPlayer LayeredBoneBlendPlayer;
 
 	USkeletalMeshComponent* OwningComponent = nullptr;
 	FAnimNode_StateMachine* StateMachineNode = nullptr;

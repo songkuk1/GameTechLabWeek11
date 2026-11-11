@@ -5,6 +5,7 @@
 #include "Animation/AnimSequence.h"
 #include "Animation/AnimationGraph.h"
 #include "Animation/AnimNode_StateMachine.h"
+#include "Animation/AnimNode_LayeredBoneBlend.h"
 #include <algorithm>
 #include <cmath>
 
@@ -71,6 +72,8 @@ bool UAnimInstance::InitializeAnimationGraph(UAnimationGraph* InGraph)
             Player->SetSequence(State.Sequence);
             Player->SetPlayRate(State.PlayRate);
             Player->SetLooping(State.bLooping);
+            // Hit 상태에서만 루트 모션 토글 및 넉백 스케일이 동작하도록 설정
+            Player->SetAllowRootMotion(State.Name == "Hit");
 
             StateNode = Player;
         }
@@ -84,6 +87,49 @@ bool UAnimInstance::InitializeAnimationGraph(UAnimationGraph* InGraph)
             Player->SetLooping(State.bLooping);
 
             StateNode = Player;
+        }
+        else if (State.NodeType == EAnimGraphStateNodeType::LayeredBoneBlend)
+        {
+            FAnimNode_Base* BaseNode = nullptr;
+            if (State.BlendSpace)
+            {
+                FAnimNode_BlendSpacePlayer* BSPlayer = CreateAnimationNode<FAnimNode_BlendSpacePlayer>();
+                BSPlayer->SetBlendSpace(State.BlendSpace);
+                BSPlayer->SetBlendParameter(State.BlendParameterName);
+                BSPlayer->SetPlayRate(State.PlayRate);
+                BSPlayer->SetLooping(State.bLooping);
+                BaseNode = BSPlayer;
+            }
+            else if (State.Sequence)
+            {
+                FAnimNode_SequencePlayer* SeqPlayer = CreateAnimationNode<FAnimNode_SequencePlayer>();
+                SeqPlayer->SetSequence(State.Sequence);
+                SeqPlayer->SetPlayRate(State.PlayRate);
+                SeqPlayer->SetLooping(State.bLooping);
+                SeqPlayer->SetAllowRootMotion(false);
+                BaseNode = SeqPlayer;
+            }
+
+            FAnimNode_SequencePlayer* OverlayPlayer = nullptr;
+            if (State.OverlaySequence)
+            {
+                OverlayPlayer = CreateAnimationNode<FAnimNode_SequencePlayer>();
+                OverlayPlayer->SetSequence(State.OverlaySequence);
+                OverlayPlayer->SetPlayRate(State.PlayRate);
+                OverlayPlayer->SetLooping(State.bOverlayLooping);
+                OverlayPlayer->SetAllowRootMotion(false);
+            }
+
+            FAnimNode_LayeredBoneBlend* BlendNode = CreateAnimationNode<FAnimNode_LayeredBoneBlend>();
+            BlendNode->SetSourceNodes(BaseNode, OverlayPlayer);
+            BlendNode->SetBranchBoneName(State.BranchBoneName.IsNone() ? FName("spine_01") : State.BranchBoneName);
+            BlendNode->SetBlendWeight(State.BlendWeight);
+            if (InGraph->GetSkeleton())
+            {
+                BlendNode->SetSkeleton(InGraph->GetSkeleton());
+            }
+
+            StateNode = BlendNode;
         }
 
         if (!StateNode || !StateMachine->AddState(State.Name, StateNode))
@@ -189,6 +235,29 @@ void UAnimInstance::PlayBlendAnimation(UAnimSequence* InSequenceA, UAnimSequence
 	TwoWayBlendPlayer.SetAnimations(InSequenceA, InSequenceB);
 	TwoWayBlendPlayer.SetAlpha(InAlpha);
 	RootNode = &TwoWayBlendPlayer;
+}
+
+void UAnimInstance::PlayLayeredBoneBlend(UAnimSequence* InBaseAnim, UAnimSequence* InOverlayAnim, const FName& InBranchBoneName, float InBlendWeight)
+{
+    EndActiveAnimNotifyStates();
+    PendingAnimNotifyUpdates.Reset();
+
+    LayeredBoneBlendPlayer.SetAnimations(InBaseAnim, InOverlayAnim);
+    LayeredBoneBlendPlayer.SetBranchBoneName(InBranchBoneName);
+    LayeredBoneBlendPlayer.SetBlendWeight(InBlendWeight);
+    LayeredBoneBlendPlayer.SetLooping(true);
+
+    RootNode = &LayeredBoneBlendPlayer;
+}
+
+void UAnimInstance::SetLayeredBlendWeight(float InWeight)
+{
+    LayeredBoneBlendPlayer.SetBlendWeight(InWeight);
+}
+
+float UAnimInstance::GetLayeredBlendWeight() const
+{
+    return LayeredBoneBlendPlayer.GetBlendWeight();
 }
 
 void UAnimInstance::PlayBlendSpace(UBlendSpace1D* InBlendSpace, float InInput)
@@ -688,6 +757,11 @@ void UAnimInstance::TriggerAnimNotifies(float DeltaSeconds)
 bool UAnimInstance::IsRootMotionEnabled() const
 {
     return OwningComponent && OwningComponent->IsRootMotionEnabled();
+}
+
+float UAnimInstance::GetRootMotionScale() const
+{
+    return OwningComponent ? OwningComponent->GetRootMotionScale() : 1.0f;
 }
 
 void UAnimInstance::QueueRootMotionDelta(const FVector& Translation, const FQuat& Rotation, float Weight)
